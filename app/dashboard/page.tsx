@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +40,7 @@ interface VolunteerData {
   phone: string;
   shifts?: Record<string, string[]>;
   availability?: Record<string, string[]>;
-  submittedAt: any;
+  submittedAt: Timestamp;
 }
 
 export default function DashboardPage() {
@@ -245,7 +244,7 @@ export default function DashboardPage() {
                 <div>
                   <h3 className="font-semibold text-lg mb-1">Access Denied</h3>
                   <p className="text-sm">
-                    You don't have permission to access the admin dashboard.
+                    You don&apos;t have permission to access the admin dashboard.
                     Please contact an administrator.
                   </p>
                 </div>

@@ -161,7 +161,7 @@ export function VolunteerForm() {
               >
                 <div className="space-y-6">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    What's your first name?<span className="text-rose-600 dark:text-rose-400 inline-block ml-1">*</span>
+                    What&apos;s your first name?<span className="text-rose-600 dark:text-rose-400 inline-block ml-1">*</span>
                   </h1>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
@@ -225,7 +225,7 @@ export function VolunteerForm() {
               >
                 <div className="space-y-6">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    What's your phone number?<span className="text-rose-600 dark:text-rose-400 inline-block ml-1">*</span>
+                    What&apos;s your phone number?<span className="text-rose-600 dark:text-rose-400 inline-block ml-1">*</span>
                   </h1>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
@@ -294,7 +294,7 @@ export function VolunteerForm() {
                     {DAYS[currentDayIndex]}, {DAY_DATES[currentDayIndex]}
                   </h1>
                   <p className="text-lg text-muted-foreground">
-                    Select all shifts you're available (or skip if unavailable)
+                    Select all shifts you&apos;re available (or skip if unavailable)
                   </p>
                 </div>
                 <div className="space-y-4">
