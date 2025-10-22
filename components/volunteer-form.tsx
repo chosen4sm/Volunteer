@@ -65,6 +65,24 @@ export function VolunteerForm() {
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const cleaned = value.replace(/\D/g, "");
+    let formatted = "";
+    
+    if (cleaned.length === 0) {
+      formatted = "";
+    } else if (cleaned.length <= 3) {
+      formatted = cleaned;
+    } else if (cleaned.length <= 6) {
+      formatted = `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
+    } else {
+      formatted = `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+    }
+    
+    setFormData({ ...formData, phone: formatted });
+  };
+
   const handleShiftToggle = (day: string, shift: string) => {
     setShiftData((prev) => {
       const dayShifts = prev[day] || [];
@@ -233,7 +251,7 @@ export function VolunteerForm() {
                     ref={inputRef}
                     name="phone"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={handlePhoneChange}
                     type="tel"
                     placeholder="Type your answer here..."
                     autoComplete="tel"
