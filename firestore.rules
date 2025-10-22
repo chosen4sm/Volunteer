@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.admin == true;
+    }
+    
+    // User profiles
+    match /profiles/{userId} {
+      // Users can read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can create their own profile (with admin: false only)
+      allow create: if request.auth != null && 
+                      request.auth.uid == userId &&
+                      request.resource.data.admin == false;
+      
+      // Only admins can update or delete profiles
+      allow update, delete: if isAdmin();
+    }
+    
+    // Public volunteer form submissions
+    match /volunteers/{document=**} {
+      // Anyone can create a volunteer submission (accepts both 'shifts' and 'availability')
+      allow create: if (
+        request.resource.data.keys().hasAll(['firstName', 'lastName', 'phone', 'email', 'submittedAt']) &&
+        request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
+        request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
+        request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
+        request.resource.data.email is string && request.resource.data.email.size() > 0 &&
+        (request.resource.data.keys().hasAny(['shifts', 'availability'])) &&
+        request.resource.data.submittedAt is timestamp
+      );
+      
+      // Only admins can read, update, or delete volunteers
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
