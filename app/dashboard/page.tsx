@@ -38,7 +38,7 @@ import { AssignmentsTab } from "@/components/dashboard/assignments-tab";
 
 type TabType = "overview" | "locations" | "assignments" | "dev";
 
-const DAYS = ["Friday", "Saturday", "Sunday", "Monday"];
+const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
 const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
 
 export default function DashboardPage() {

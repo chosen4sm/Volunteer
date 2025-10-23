@@ -24,7 +24,7 @@ interface OverviewTabProps {
   assignments: Assignment[];
 }
 
-const DAYS = ["Friday", "Saturday", "Sunday", "Monday"];
+const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
 const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
 
 export function OverviewTab({ volunteers, locations, tasks, assignments }: OverviewTabProps) {

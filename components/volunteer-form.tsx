@@ -13,8 +13,8 @@ interface ShiftData {
   [key: string]: string[];
 }
 
-const DAYS = ["Friday", "Saturday", "Sunday", "Monday"];
-const DAY_DATES = ["November 7th", "November 8th", "November 9th", "November 10th"];
+const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
+const DAY_DATES = ["November 7th", "November 8th", "November 9th", "November 10th", "November 11th"];
 const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
 const TEAMS = ["IV", "PMP"];
 
@@ -34,6 +34,7 @@ export function VolunteerForm() {
     Saturday: [],
     Sunday: [],
     Monday: [],
+    Tuesday: [],
   });
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
