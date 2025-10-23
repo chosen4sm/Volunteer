@@ -15,8 +15,7 @@ import { db } from "./firebase";
 
 export interface Volunteer {
   id: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   phone: string;
   email: string;
   team: string;

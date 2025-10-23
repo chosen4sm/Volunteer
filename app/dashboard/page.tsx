@@ -109,67 +109,40 @@ export default function DashboardPage() {
       description: "Creating 100 fake volunteers. This may take a moment.",
     });
 
-    const firstNames = [
-      "John",
-      "Jane",
-      "Michael",
-      "Sarah",
-      "David",
-      "Emma",
-      "Chris",
-      "Olivia",
-      "Ryan",
-      "Sophia",
-      "Daniel",
-      "Ava",
-      "Matthew",
-      "Isabella",
-      "James",
-      "Mia",
-      "Robert",
-      "Charlotte",
-      "William",
-      "Amelia",
-      "Joseph",
-      "Harper",
-      "Thomas",
-      "Evelyn",
-      "Charles",
-    ];
-    const lastNames = [
-      "Smith",
-      "Johnson",
-      "Williams",
-      "Brown",
-      "Jones",
-      "Garcia",
-      "Miller",
-      "Davis",
-      "Rodriguez",
-      "Martinez",
-      "Hernandez",
-      "Lopez",
-      "Gonzalez",
-      "Wilson",
-      "Anderson",
-      "Thomas",
-      "Taylor",
-      "Moore",
-      "Jackson",
-      "Martin",
-      "Lee",
-      "Thompson",
-      "White",
-      "Harris",
-      "Clark",
+    const names = [
+      "John Smith",
+      "Jane Johnson",
+      "Michael Williams",
+      "Sarah Brown",
+      "David Jones",
+      "Emma Garcia",
+      "Chris Miller",
+      "Olivia Davis",
+      "Ryan Rodriguez",
+      "Sophia Martinez",
+      "Daniel Hernandez",
+      "Ava Lopez",
+      "Matthew Gonzalez",
+      "Isabella Wilson",
+      "James Anderson",
+      "Mia Thomas",
+      "Robert Taylor",
+      "Charlotte Moore",
+      "William Jackson",
+      "Amelia Martin",
+      "Joseph Lee",
+      "Harper Thompson",
+      "Thomas White",
+      "Evelyn Harris",
+      "Charles Clark",
     ];
 
     try {
       const promises = [];
       for (let i = 0; i < 100; i++) {
-        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const name = names[Math.floor(Math.random() * names.length)];
         const randomNum = Math.floor(Math.random() * 10000);
+        const emailName = name.toLowerCase().replace(" ", ".");
 
         const shiftData: Record<string, string[]> = {};
         DAYS.forEach((day) => {
@@ -188,9 +161,8 @@ export default function DashboardPage() {
         const teamData = allTeams[Math.floor(Math.random() * allTeams.length)];
 
         const volunteer = {
-          firstName,
-          lastName,
-          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randomNum}@example.com`,
+          name,
+          email: `${emailName}${randomNum}@example.com`,
           phone: `${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
           team: teamData,
           shifts: shiftData,

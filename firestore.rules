@@ -26,9 +26,8 @@ service cloud.firestore {
     match /volunteers/{volunteerId} {
       // Anyone can create a volunteer submission (accepts both 'shifts' and 'availability')
       allow create: if (
-        request.resource.data.keys().hasAll(['firstName', 'lastName', 'phone', 'email', 'team', 'submittedAt']) &&
-        request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
-        request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
+        request.resource.data.keys().hasAll(['name', 'phone', 'email', 'team', 'submittedAt']) &&
+        request.resource.data.name is string && request.resource.data.name.size() > 0 &&
         request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
         request.resource.data.email is string && request.resource.data.email.size() > 0 &&
         request.resource.data.team is string && request.resource.data.team.size() > 0 &&
@@ -41,8 +40,7 @@ service cloud.firestore {
       
       // Anyone can update their own volunteer record (but can't change email)
       allow update: if request.resource.data.email == resource.data.email &&
-                      request.resource.data.firstName is string && request.resource.data.firstName.size() > 0 &&
-                      request.resource.data.lastName is string && request.resource.data.lastName.size() > 0 &&
+                      request.resource.data.name is string && request.resource.data.name.size() > 0 &&
                       request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&
                       request.resource.data.team is string && request.resource.data.team.size() > 0;
       

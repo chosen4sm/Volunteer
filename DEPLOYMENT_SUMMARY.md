@@ -8,7 +8,7 @@
 - **Rules Version**: 2
 - **Features**:
   - Allows anonymous writes to `volunteers` collection
-  - Validates all required fields: `firstName`, `lastName`, `phone`, `email`, `shifts`, `submittedAt`
+  - Validates all required fields: `name`, `phone`, `email`, `team`, `shifts`, `submittedAt`
   - Authenticated users can read, update, and delete entries
   - All fields must pass type validation
 
@@ -28,15 +28,16 @@
 Each document contains:
 ```json
 {
-  "firstName": "string (required, non-empty)",
-  "lastName": "string (required, non-empty)",
+  "name": "string (required, non-empty)",
   "phone": "string (required, non-empty, validated format)",
   "email": "string (required, non-empty, validated format)",
+  "team": "string (required, non-empty)",
   "shifts": {
-    "Friday": ["Day Time" | "Over Night"],
-    "Saturday": ["Day Time" | "Over Night"],
-    "Sunday": ["Day Time" | "Over Night"],
-    "Monday": ["Day Time" | "Over Night"]
+    "Friday": ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"],
+    "Saturday": ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"],
+    "Sunday": ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"],
+    "Monday": ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"],
+    "Tuesday": ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"]
   },
   "submittedAt": "timestamp (server time)"
 }

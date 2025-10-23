@@ -8,8 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export interface VolunteerFormData {
-  firstName: string;
-  lastName: string;
+  name: string;
   phone: string;
   email: string;
   team: string;

@@ -33,8 +33,9 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
   const [filterCount, setFilterCount] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const getInitials = (firstName?: string, lastName?: string) => {
-    return `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase();
+  const getInitials = (name?: string) => {
+    const parts = name?.split(" ") || [];
+    return `${parts[0]?.charAt(0) || ""}${parts[parts.length - 1]?.charAt(0) || ""}`.toUpperCase();
   };
 
   const getTotalShifts = (volunteer: Volunteer) => {
@@ -45,7 +46,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
   const filteredVolunteers = (() => {
     let filtered = volunteers.filter((volunteer) => {
       const matchesSearch = searchQuery
-        ? `${volunteer.firstName} ${volunteer.lastName} ${volunteer.email} ${volunteer.phone}`
+        ? `${volunteer.name} ${volunteer.email} ${volunteer.phone}`
             .toLowerCase()
             .includes(searchQuery.toLowerCase())
         : true;
@@ -303,12 +304,12 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                       <div className="flex items-start space-x-3 flex-1">
                         <Avatar className="h-10 w-10 shrink-0">
                           <AvatarFallback className="bg-accent text-accent-foreground text-sm font-semibold">
-                            {getInitials(volunteer.firstName, volunteer.lastName)}
+                            {getInitials(volunteer.name)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="space-y-1 flex-1 min-w-0">
                           <div className="font-semibold text-foreground">
-                            {volunteer.firstName} {volunteer.lastName}
+                            {volunteer.name}
                           </div>
                           <div className="flex flex-col gap-1">
                             <div className="text-sm text-muted-foreground truncate">

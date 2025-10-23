@@ -65,8 +65,9 @@ export function AssignmentsTab({
   const [assignDay, setAssignDay] = useState("");
   const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
 
-  const getInitials = (firstName?: string, lastName?: string) => {
-    return `${firstName?.charAt(0) || ""}${lastName?.charAt(0) || ""}`.toUpperCase();
+  const getInitials = (name?: string) => {
+    const parts = name?.split(" ") || [];
+    return `${parts[0]?.charAt(0) || ""}${parts[parts.length - 1]?.charAt(0) || ""}`.toUpperCase();
   };
 
   const getTotalShifts = (volunteer: Volunteer) => {
@@ -77,7 +78,7 @@ export function AssignmentsTab({
   const filteredVolunteers = (() => {
     let filtered = volunteers.filter((volunteer) => {
       const matchesSearch = searchQuery
-        ? `${volunteer.firstName} ${volunteer.lastName} ${volunteer.email} ${volunteer.phone}`
+        ? `${volunteer.name} ${volunteer.email} ${volunteer.phone}`
             .toLowerCase()
             .includes(searchQuery.toLowerCase())
         : true;
@@ -204,7 +205,7 @@ export function AssignmentsTab({
       if (selectedVolunteers.includes(v.id)) return false;
       
       const matchesSearch = searchQuery
-        ? `${v.firstName} ${v.lastName} ${v.email} ${v.phone}`
+        ? `${v.name} ${v.email} ${v.phone}`
             .toLowerCase()
             .includes(searchQuery.toLowerCase())
         : true;
@@ -233,7 +234,7 @@ export function AssignmentsTab({
         replacement.id,
       ]);
       toast.success("Volunteer replaced", {
-        description: `${currentVolunteerName} → ${replacement.firstName} ${replacement.lastName}`,
+        description: `${currentVolunteerName} → ${replacement.name}`,
       });
     } else {
       setSelectedVolunteers((prev) => prev.filter((id) => id !== currentVolunteerId));
@@ -308,7 +309,7 @@ export function AssignmentsTab({
 
     const message = `✅ Assignment Confirmation
 
-👤 *${volunteer.firstName} ${volunteer.lastName}*
+👤 *${volunteer.name}*
 📞 ${volunteer.phone}
 
 📍 Location: *${location.name}*
@@ -458,14 +459,14 @@ export function AssignmentsTab({
                       />
                       <Avatar className="h-10 w-10 shrink-0">
                         <AvatarFallback className="bg-accent text-accent-foreground text-sm font-semibold">
-                          {getInitials(volunteer.firstName, volunteer.lastName)}
+                          {getInitials(volunteer.name)}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div>
                             <div className="font-semibold text-sm">
-                              {volunteer.firstName} {volunteer.lastName}
+                              {volunteer.name}
                             </div>
                             <div className="text-xs text-muted-foreground truncate">{volunteer.email}</div>
                             {volunteer.team && (
@@ -502,7 +503,7 @@ export function AssignmentsTab({
                                       e.stopPropagation();
                                       replaceVolunteerWithAlternative(
                                         volunteer.id,
-                                        `${volunteer.firstName} ${volunteer.lastName}`
+                                        volunteer.name
                                       );
                                     }}
                                   >
@@ -653,7 +654,7 @@ export function AssignmentsTab({
                       <SelectContent>
                         {volunteers.map((v) => (
                           <SelectItem key={v.id} value={v.id}>
-                            {v.firstName} {v.lastName}
+                            {v.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -781,12 +782,12 @@ export function AssignmentsTab({
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <Avatar className="h-8 w-8 shrink-0">
                                 <AvatarFallback className="bg-accent text-accent-foreground text-xs">
-                                  {getInitials(volunteer.firstName, volunteer.lastName)}
+                                  {getInitials(volunteer.name)}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-sm">
-                                  {volunteer.firstName} {volunteer.lastName}
+                                  {volunteer.name}
                                 </div>
                                 {scheduleText ? (
                                   <div className="text-xs text-muted-foreground">

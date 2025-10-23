@@ -24,8 +24,7 @@ export function VolunteerForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
     phone: "",
     email: "",
   });
@@ -44,7 +43,7 @@ export function VolunteerForm() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (inputRef.current && currentQuestion < 5 && currentQuestion !== 4) {
+    if (inputRef.current && currentQuestion < 4 && currentQuestion !== 3) {
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
@@ -52,20 +51,20 @@ export function VolunteerForm() {
   }, [currentQuestion]);
 
   const handleNext = () => {
-    if (currentQuestion < 5) {
+    if (currentQuestion < 4) {
       setCurrentQuestion(currentQuestion + 1);
-    } else if (currentQuestion === 5 && currentDayIndex < DAYS.length - 1) {
+    } else if (currentQuestion === 4 && currentDayIndex < DAYS.length - 1) {
       setCurrentDayIndex(currentDayIndex + 1);
-    } else if (currentQuestion === 5 && currentDayIndex === DAYS.length - 1) {
-      setCurrentQuestion(6);
+    } else if (currentQuestion === 4 && currentDayIndex === DAYS.length - 1) {
+      setCurrentQuestion(5);
     }
   };
 
   const handleBack = () => {
-    if (currentQuestion === 6) {
+    if (currentQuestion === 5) {
       setCurrentDayIndex(DAYS.length - 1);
-      setCurrentQuestion(5);
-    } else if (currentQuestion === 5 && currentDayIndex > 0) {
+      setCurrentQuestion(4);
+    } else if (currentQuestion === 4 && currentDayIndex > 0) {
       setCurrentDayIndex(currentDayIndex - 1);
     } else if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
@@ -195,8 +194,7 @@ export function VolunteerForm() {
       if (existing) {
         setExistingVolunteerId(existing.id);
         setFormData({
-          firstName: existing.firstName,
-          lastName: existing.lastName,
+          name: existing.name,
           phone: existing.phone,
           email: existing.email,
         });
@@ -229,8 +227,7 @@ export function VolunteerForm() {
     try {
       if (existingVolunteerId) {
         await updateVolunteer(existingVolunteerId, {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          name: formData.name,
           phone: formData.phone,
           team: team,
           shifts: shiftData,
@@ -240,8 +237,7 @@ export function VolunteerForm() {
         });
       } else {
         await submitVolunteerForm({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          name: formData.name,
           phone: formData.phone,
           email: formData.email,
           team: team,
@@ -251,7 +247,7 @@ export function VolunteerForm() {
           description: "Your volunteer information has been submitted successfully.",
         });
       }
-      setCurrentQuestion(7);
+      setCurrentQuestion(6);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to submit. Please try again.";
       toast.error("Submission Failed", {
@@ -264,11 +260,10 @@ export function VolunteerForm() {
   };
 
   const canProceed = () => {
-    if (currentQuestion === 0) return formData.firstName.trim().length > 0;
-    if (currentQuestion === 1) return formData.lastName.trim().length > 0;
-    if (currentQuestion === 2) return formData.phone.trim().length > 0;
-    if (currentQuestion === 3) return formData.email.trim().length > 0 && formData.email.includes("@");
-    if (currentQuestion === 4) return team.length > 0;
+    if (currentQuestion === 0) return formData.name.trim().length > 0;
+    if (currentQuestion === 1) return formData.phone.trim().length > 0;
+    if (currentQuestion === 2) return formData.email.trim().length > 0 && formData.email.includes("@");
+    if (currentQuestion === 3) return team.length > 0;
     return true;
   };
 
@@ -279,13 +274,13 @@ export function VolunteerForm() {
         className="fixed top-0 left-0 h-1 bg-primary z-50"
         initial={{ width: "0%" }}
         animate={{
-          width: `${((currentQuestion + (currentQuestion === 5 ? currentDayIndex / DAYS.length : 0)) / 7) * 100}%`,
+          width: `${((currentQuestion + (currentQuestion === 4 ? currentDayIndex / DAYS.length : 0)) / 6) * 100}%`,
         }}
         transition={{ duration: 0.3 }}
       />
 
       {/* Logo/Title */}
-      {currentQuestion < 7 && (
+      {currentQuestion < 6 && (
         <div className="fixed top-6 left-6 z-40">
           <h2 className="text-xl font-bold text-primary">
             Volunteer Sign Up
@@ -294,9 +289,9 @@ export function VolunteerForm() {
       )}
 
       {/* Question counter */}
-      {currentQuestion < 7 && (
+      {currentQuestion < 6 && (
         <div className="fixed top-20 right-6 text-sm text-muted-foreground z-40">
-          {currentQuestion + 1} / 7
+          {currentQuestion + 1} / 6
         </div>
       )}
 
@@ -304,7 +299,7 @@ export function VolunteerForm() {
       <div className="flex-1 flex items-center justify-center px-6 sm:px-8 py-20 pb-32 relative z-10">
         <div className="w-full max-w-3xl">
           <AnimatePresence mode="wait">
-            {/* Question 0: First Name */}
+            {/* Question 0: Full Name */}
             {currentQuestion === 0 && (
               <motion.div
                 key="q0"
@@ -316,17 +311,17 @@ export function VolunteerForm() {
               >
                 <div className="space-y-6">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    What&apos;s your first name?<span className="text-destructive inline-block ml-1">*</span>
+                    What&apos;s your full name?<span className="text-destructive inline-block ml-1">*</span>
                   </h1>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
                   <Input
                     ref={inputRef}
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    name="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Type your answer here..."
-                    autoComplete="given-name"
+                    autoComplete="name"
                     className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && canProceed()) handleNext();
@@ -336,42 +331,10 @@ export function VolunteerForm() {
               </motion.div>
             )}
 
-            {/* Question 1: Last Name */}
+            {/* Question 1: Phone */}
             {currentQuestion === 1 && (
               <motion.div
                 key="q1"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-8"
-              >
-                <div className="space-y-6">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    And your last name?<span className="text-destructive inline-block ml-1">*</span>
-                  </h1>
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
-                  <Input
-                    ref={inputRef}
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    placeholder="Type your answer here..."
-                    autoComplete="family-name"
-                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && canProceed()) handleNext();
-                    }}
-                  />
-                </form>
-              </motion.div>
-            )}
-
-            {/* Question 2: Phone */}
-            {currentQuestion === 2 && (
-              <motion.div
-                key="q2"
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
@@ -401,10 +364,10 @@ export function VolunteerForm() {
               </motion.div>
             )}
 
-            {/* Question 3: Email */}
-            {currentQuestion === 3 && (
+            {/* Question 2: Email */}
+            {currentQuestion === 2 && (
               <motion.div
-                key="q3"
+                key="q2"
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
@@ -447,10 +410,10 @@ export function VolunteerForm() {
               </motion.div>
             )}
 
-            {/* Question 4: Team */}
-            {currentQuestion === 4 && (
+            {/* Question 3: Team */}
+            {currentQuestion === 3 && (
               <motion.div
-                key="q4"
+                key="q3"
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
@@ -493,8 +456,8 @@ export function VolunteerForm() {
               </motion.div>
             )}
 
-            {/* Question 5: Availability per day */}
-            {currentQuestion === 5 && (
+            {/* Question 4: Availability per day */}
+            {currentQuestion === 4 && (
               <motion.div
                 key={`q4-${currentDayIndex}`}
                 initial={{ opacity: 0, x: 50 }}
@@ -538,8 +501,8 @@ export function VolunteerForm() {
               </motion.div>
             )}
 
-            {/* Question 6: Review */}
-            {currentQuestion === 6 && (
+            {/* Question 5: Review */}
+            {currentQuestion === 5 && (
               <motion.div
                 key="q5"
                 initial={{ opacity: 0, x: 50 }}
@@ -559,7 +522,7 @@ export function VolunteerForm() {
                 <div className="space-y-6 text-lg">
                   <div className="space-y-2">
                     <p className="text-muted-foreground text-sm">Name</p>
-                    <p className="text-xl">{formData.firstName} {formData.lastName}</p>
+                    <p className="text-xl">{formData.name}</p>
                   </div>
                   <div className="space-y-2">
                     <p className="text-muted-foreground text-sm">Contact</p>
@@ -592,7 +555,7 @@ export function VolunteerForm() {
             )}
 
             {/* Success screen */}
-            {currentQuestion === 7 && (
+            {currentQuestion === 6 && (
               <motion.div
                 key="success"
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -622,7 +585,7 @@ export function VolunteerForm() {
       </div>
 
       {/* Navigation buttons */}
-      {currentQuestion < 7 && (
+      {currentQuestion < 6 && (
         <motion.div
           className="fixed bottom-0 left-0 right-0 p-6 flex justify-between items-center bg-linear-to-t from-background/80 to-transparent backdrop-blur-sm z-50"
           initial={{ opacity: 0, y: 20 }}
@@ -643,10 +606,10 @@ export function VolunteerForm() {
             <div />
           )}
 
-          {currentQuestion < 6 ? (
+          {currentQuestion < 5 ? (
             <Button
               onClick={() => {
-                if (currentQuestion === 3 && canProceed()) {
+                if (currentQuestion === 2 && canProceed()) {
                   checkExistingVolunteer();
                 }
                 handleNext();
@@ -671,7 +634,7 @@ export function VolunteerForm() {
       )}
 
       {/* Keyboard hint */}
-      {currentQuestion < 4 && canProceed() && currentQuestion !== 4 && (
+      {currentQuestion < 3 && canProceed() && currentQuestion !== 3 && (
         <motion.div
           className="fixed bottom-24 right-6 text-sm text-muted-foreground flex items-center gap-2"
           initial={{ opacity: 0 }}

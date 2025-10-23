@@ -30,7 +30,7 @@ Select "Firestore" and "Firestore Rules"
 ### Step 3: Update Firestore Rules
 The `firestore.rules` file has already been configured to:
 - Allow anonymous writes to the `volunteers` collection
-- Validate all required fields (firstName, lastName, phone, email, shifts, submittedAt)
+- Validate all required fields (name, phone, email, team, shifts, submittedAt)
 - Allow authenticated users to read, update, and delete
 
 ### Step 4: Deploy Firestore Rules
@@ -46,26 +46,28 @@ firebase deploy --only firestore:indexes
 ## Form Submission
 
 The volunteer form will:
-1. Collect personal information (First Name, Last Name, Phone, Email)
-2. Allow selection of availability for November 7-10
-3. Track selected shifts (Day Time and Over Night) for each day
-4. Validate all data before submission
-5. Submit to Firestore `volunteers` collection with timestamp
+1. Collect personal information (Full Name, Phone, Email)
+2. Select team (IV or PMP)
+3. Allow selection of availability for November 7-11
+4. Track selected shifts (6-hour shifts) for each day
+5. Validate all data before submission
+6. Submit to Firestore `volunteers` collection with timestamp
 
 ## Data Structure
 
 Each volunteer submission creates a document with:
 ```json
 {
-  "firstName": "John",
-  "lastName": "Doe",
-  "phone": "+1 (555) 123-4567",
+  "name": "John Doe",
+  "phone": "555-123-4567",
   "email": "john@example.com",
+  "team": "IV",
   "shifts": {
-    "Friday": ["Day Time"],
-    "Saturday": ["Day Time", "Over Night"],
+    "Friday": ["6am-12pm", "12pm-6pm"],
+    "Saturday": ["12am-6am"],
     "Sunday": [],
-    "Monday": ["Over Night"]
+    "Monday": ["6pm-12am"],
+    "Tuesday": []
   },
   "submittedAt": "2024-11-07T10:00:00Z"
 }
