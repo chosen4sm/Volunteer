@@ -157,7 +157,7 @@ export default function DashboardPage() {
           shiftData[day] = availableShifts;
         });
 
-        const allTeams = ["IV", "PMP"];
+        const allTeams = ["IV", "PMP", "Construction", "Decor"];
         const teamData = allTeams[Math.floor(Math.random() * allTeams.length)];
 
         const volunteer = {
