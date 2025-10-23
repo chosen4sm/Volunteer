@@ -15,7 +15,8 @@ interface ShiftData {
 
 const DAYS = ["Friday", "Saturday", "Sunday", "Monday"];
 const DAY_DATES = ["November 7th", "November 8th", "November 9th", "November 10th"];
-const SHIFTS = ["Day Time", "Over Night"];
+const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
+const TEAMS = ["IV", "PMP"];
 
 export function VolunteerForm() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -27,6 +28,7 @@ export function VolunteerForm() {
     phone: "",
     email: "",
   });
+  const [team, setTeam] = useState<string>("");
   const [shiftData, setShiftData] = useState<ShiftData>({
     Friday: [],
     Saturday: [],
@@ -37,7 +39,7 @@ export function VolunteerForm() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (inputRef.current && currentQuestion < 4) {
+    if (inputRef.current && currentQuestion < 5 && currentQuestion !== 4) {
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
@@ -45,20 +47,20 @@ export function VolunteerForm() {
   }, [currentQuestion]);
 
   const handleNext = () => {
-    if (currentQuestion < 4) {
+    if (currentQuestion < 5) {
       setCurrentQuestion(currentQuestion + 1);
-    } else if (currentQuestion === 4 && currentDayIndex < DAYS.length - 1) {
+    } else if (currentQuestion === 5 && currentDayIndex < DAYS.length - 1) {
       setCurrentDayIndex(currentDayIndex + 1);
-    } else if (currentQuestion === 4 && currentDayIndex === DAYS.length - 1) {
-      setCurrentQuestion(5);
+    } else if (currentQuestion === 5 && currentDayIndex === DAYS.length - 1) {
+      setCurrentQuestion(6);
     }
   };
 
   const handleBack = () => {
-    if (currentQuestion === 5) {
+    if (currentQuestion === 6) {
       setCurrentDayIndex(DAYS.length - 1);
-      setCurrentQuestion(4);
-    } else if (currentQuestion === 4 && currentDayIndex > 0) {
+      setCurrentQuestion(5);
+    } else if (currentQuestion === 5 && currentDayIndex > 0) {
       setCurrentDayIndex(currentDayIndex - 1);
     } else if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
@@ -83,22 +85,88 @@ export function VolunteerForm() {
     setFormData({ ...formData, phone: formatted });
   };
 
-  const handleShiftToggle = (day: string, shift: string) => {
-    setShiftData((prev) => {
-      const dayShifts = prev[day] || [];
-      const isSelected = dayShifts.includes(shift);
-      if (isSelected) {
-        return {
-          ...prev,
-          [day]: dayShifts.filter((s) => s !== shift),
-        };
-      } else {
-        return {
-          ...prev,
-          [day]: [...dayShifts, shift],
-        };
+  const isShiftDisabled = (day: string, shift: string) => {
+    const dayShifts = shiftData[day] || [];
+    const isSelected = dayShifts.includes(shift);
+    
+    if (isSelected) return false;
+    
+    const dayIndex = DAYS.indexOf(day);
+    const shiftIndex = SHIFTS.indexOf(shift);
+    
+    const twoShiftsBack = shiftIndex >= 2 ? SHIFTS[shiftIndex - 2] : null;
+    const oneShiftBack = shiftIndex > 0 ? SHIFTS[shiftIndex - 1] : null;
+    const oneShiftForward = shiftIndex < SHIFTS.length - 1 ? SHIFTS[shiftIndex + 1] : null;
+    const twoShiftsForward = shiftIndex <= SHIFTS.length - 3 ? SHIFTS[shiftIndex + 2] : null;
+    
+    if (twoShiftsBack && oneShiftBack && dayShifts.includes(twoShiftsBack) && dayShifts.includes(oneShiftBack)) {
+      return true;
+    }
+    
+    if (oneShiftForward && twoShiftsForward && dayShifts.includes(oneShiftForward) && dayShifts.includes(twoShiftsForward)) {
+      return true;
+    }
+    
+    if (shiftIndex === 0 && dayIndex > 0) {
+      const prevDay = DAYS[dayIndex - 1];
+      const lastShift = SHIFTS[SHIFTS.length - 1];
+      const secondLastShift = SHIFTS[SHIFTS.length - 2];
+      if (shiftData[prevDay]?.includes(lastShift) && shiftData[prevDay]?.includes(secondLastShift)) {
+        return true;
       }
-    });
+    }
+    
+    if (shiftIndex === 1 && dayIndex > 0) {
+      const prevDay = DAYS[dayIndex - 1];
+      const lastShift = SHIFTS[SHIFTS.length - 1];
+      const firstShift = SHIFTS[0];
+      if (shiftData[prevDay]?.includes(lastShift) && dayShifts.includes(firstShift)) {
+        return true;
+      }
+    }
+    
+    if (shiftIndex === SHIFTS.length - 1 && dayIndex < DAYS.length - 1) {
+      const nextDay = DAYS[dayIndex + 1];
+      const firstShift = SHIFTS[0];
+      const secondShift = SHIFTS[1];
+      if (shiftData[nextDay]?.includes(firstShift) && shiftData[nextDay]?.includes(secondShift)) {
+        return true;
+      }
+    }
+    
+    if (shiftIndex === SHIFTS.length - 2 && dayIndex < DAYS.length - 1) {
+      const nextDay = DAYS[dayIndex + 1];
+      const lastShift = SHIFTS[SHIFTS.length - 1];
+      const firstShift = SHIFTS[0];
+      if (dayShifts.includes(lastShift) && shiftData[nextDay]?.includes(firstShift)) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
+  const handleShiftToggle = (day: string, shift: string) => {
+    const dayShifts = shiftData[day] || [];
+    const isSelected = dayShifts.includes(shift);
+    
+    if (isSelected) {
+      setShiftData({
+        ...shiftData,
+        [day]: dayShifts.filter((s) => s !== shift),
+      });
+    } else {
+      if (isShiftDisabled(day, shift)) {
+        toast.error("Maximum 2 consecutive shifts", {
+          description: "You need a break after working 2 consecutive shifts.",
+        });
+        return;
+      }
+      setShiftData({
+        ...shiftData,
+        [day]: [...dayShifts, shift],
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -110,12 +178,13 @@ export function VolunteerForm() {
         lastName: formData.lastName,
         phone: formData.phone,
         email: formData.email,
+        team: team,
         shifts: shiftData,
       });
       toast.success("Thank you!", {
         description: "Your volunteer information has been submitted successfully.",
       });
-      setCurrentQuestion(6);
+      setCurrentQuestion(7);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to submit. Please try again.";
       toast.error("Submission Failed", {
@@ -132,6 +201,7 @@ export function VolunteerForm() {
     if (currentQuestion === 1) return formData.lastName.trim().length > 0;
     if (currentQuestion === 2) return formData.phone.trim().length > 0;
     if (currentQuestion === 3) return formData.email.trim().length > 0 && formData.email.includes("@");
+    if (currentQuestion === 4) return team.length > 0;
     return true;
   };
 
@@ -142,13 +212,13 @@ export function VolunteerForm() {
         className="fixed top-0 left-0 h-1 bg-primary z-50"
         initial={{ width: "0%" }}
         animate={{
-          width: `${((currentQuestion + (currentQuestion === 4 ? currentDayIndex / DAYS.length : 0)) / 6) * 100}%`,
+          width: `${((currentQuestion + (currentQuestion === 5 ? currentDayIndex / DAYS.length : 0)) / 7) * 100}%`,
         }}
         transition={{ duration: 0.3 }}
       />
 
       {/* Logo/Title */}
-      {currentQuestion < 6 && (
+      {currentQuestion < 7 && (
         <div className="fixed top-6 left-6 z-40">
           <h2 className="text-xl font-bold text-primary">
             Volunteer Sign Up
@@ -157,9 +227,9 @@ export function VolunteerForm() {
       )}
 
       {/* Question counter */}
-      {currentQuestion < 6 && (
+      {currentQuestion < 7 && (
         <div className="fixed top-20 right-6 text-sm text-muted-foreground z-40">
-          {currentQuestion + 1} / 6
+          {currentQuestion + 1} / 7
         </div>
       )}
 
@@ -297,8 +367,54 @@ export function VolunteerForm() {
               </motion.div>
             )}
 
-            {/* Question 4: Availability per day */}
+            {/* Question 4: Team */}
             {currentQuestion === 4 && (
+              <motion.div
+                key="q4"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-8"
+              >
+                <div className="space-y-4">
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
+                    What team are you part of?<span className="text-destructive inline-block ml-1">*</span>
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Select one
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {TEAMS.map((teamOption) => (
+                    <motion.div
+                      key={teamOption}
+                      whileHover={{ scale: 1.02 }}
+                      className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                        team === teamOption
+                          ? "border-primary bg-accent"
+                          : "border-border bg-background/50 hover:border-primary hover:bg-accent"
+                      }`}
+                      onClick={() => setTeam(teamOption)}
+                    >
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                        team === teamOption
+                          ? "border-primary bg-primary"
+                          : "border-muted-foreground"
+                      }`}>
+                        {team === teamOption && (
+                          <div className="w-3 h-3 rounded-full bg-primary-foreground" />
+                        )}
+                      </div>
+                      <span className="text-xl font-medium">{teamOption}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Question 5: Availability per day */}
+            {currentQuestion === 5 && (
               <motion.div
                 key={`q4-${currentDayIndex}`}
                 initial={{ opacity: 0, x: 50 }}
@@ -316,26 +432,34 @@ export function VolunteerForm() {
                   </p>
                 </div>
                 <div className="space-y-4">
-                  {SHIFTS.map((shift) => (
-                    <motion.div
-                      key={shift}
-                      whileHover={{ scale: 1.02 }}
-                      className="flex items-center space-x-4 p-5 rounded-xl border-2 border-border bg-background/50 hover:border-primary hover:bg-accent cursor-pointer transition-all"
-                      onClick={() => handleShiftToggle(DAYS[currentDayIndex], shift)}
-                    >
-                      <Checkbox
-                        checked={shiftData[DAYS[currentDayIndex]]?.includes(shift) || false}
-                        className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
-                      />
-                      <span className="text-xl font-medium">{shift}</span>
-                    </motion.div>
-                  ))}
+                  {SHIFTS.map((shift) => {
+                    const disabled = isShiftDisabled(DAYS[currentDayIndex], shift);
+                    return (
+                      <motion.div
+                        key={shift}
+                        whileHover={disabled ? {} : { scale: 1.02 }}
+                        className={`flex items-center space-x-4 p-5 rounded-xl border-2 transition-all ${
+                          disabled
+                            ? "border-muted bg-muted/30 cursor-not-allowed opacity-50"
+                            : "border-border bg-background/50 hover:border-primary hover:bg-accent cursor-pointer"
+                        }`}
+                        onClick={() => handleShiftToggle(DAYS[currentDayIndex], shift)}
+                      >
+                        <Checkbox
+                          checked={shiftData[DAYS[currentDayIndex]]?.includes(shift) || false}
+                          disabled={disabled}
+                          className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                        />
+                        <span className="text-xl font-medium">{shift}</span>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
 
-            {/* Question 5: Review */}
-            {currentQuestion === 5 && (
+            {/* Question 6: Review */}
+            {currentQuestion === 6 && (
               <motion.div
                 key="q5"
                 initial={{ opacity: 0, x: 50 }}
@@ -363,6 +487,10 @@ export function VolunteerForm() {
                     <p>{formData.phone}</p>
                   </div>
                   <div className="space-y-2">
+                    <p className="text-muted-foreground text-sm">Team</p>
+                    <p>{team}</p>
+                  </div>
+                  <div className="space-y-2">
                     <p className="text-muted-foreground text-sm">Availability</p>
                     {DAYS.map((day) => (
                       <div key={day}>
@@ -384,7 +512,7 @@ export function VolunteerForm() {
             )}
 
             {/* Success screen */}
-            {currentQuestion === 6 && (
+            {currentQuestion === 7 && (
               <motion.div
                 key="success"
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -414,7 +542,7 @@ export function VolunteerForm() {
       </div>
 
       {/* Navigation buttons */}
-      {currentQuestion < 6 && (
+      {currentQuestion < 7 && (
         <motion.div
           className="fixed bottom-0 left-0 right-0 p-6 flex justify-between items-center bg-linear-to-t from-background/80 to-transparent backdrop-blur-sm z-50"
           initial={{ opacity: 0, y: 20 }}
@@ -435,7 +563,7 @@ export function VolunteerForm() {
             <div />
           )}
 
-          {currentQuestion < 5 ? (
+          {currentQuestion < 6 ? (
             <Button
               onClick={handleNext}
               disabled={!canProceed()}
@@ -458,7 +586,7 @@ export function VolunteerForm() {
       )}
 
       {/* Keyboard hint */}
-      {currentQuestion < 4 && canProceed() && (
+      {currentQuestion < 4 && canProceed() && currentQuestion !== 4 && (
         <motion.div
           className="fixed bottom-24 right-6 text-sm text-muted-foreground flex items-center gap-2"
           initial={{ opacity: 0 }}

@@ -19,6 +19,7 @@ export interface Volunteer {
   lastName: string;
   phone: string;
   email: string;
+  team: string;
   shifts: { [key: string]: string[] };
   submittedAt: Timestamp;
 }

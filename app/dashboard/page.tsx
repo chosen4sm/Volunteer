@@ -39,7 +39,7 @@ import { AssignmentsTab } from "@/components/dashboard/assignments-tab";
 type TabType = "overview" | "locations" | "assignments" | "dev";
 
 const DAYS = ["Friday", "Saturday", "Sunday", "Monday"];
-const SHIFTS = ["Day Time", "Over Night"];
+const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
 
 export default function DashboardPage() {
   const { user, isAdmin, loading } = useAuth();
@@ -176,11 +176,15 @@ export default function DashboardPage() {
           shiftData[day] = availableShifts;
         });
 
+        const allTeams = ["IV", "PMP"];
+        const teamData = allTeams[Math.floor(Math.random() * allTeams.length)];
+
         const volunteer = {
           firstName,
           lastName,
           email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${randomNum}@example.com`,
           phone: `${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+          team: teamData,
           shifts: shiftData,
           submittedAt: Timestamp.fromDate(
             new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000))

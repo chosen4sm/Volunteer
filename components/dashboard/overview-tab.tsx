@@ -25,7 +25,7 @@ interface OverviewTabProps {
 }
 
 const DAYS = ["Friday", "Saturday", "Sunday", "Monday"];
-const SHIFTS = ["Day Time", "Over Night"];
+const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
 
 export function OverviewTab({ volunteers, locations, tasks, assignments }: OverviewTabProps) {
   const [filterDay, setFilterDay] = useState<string>("");
@@ -315,6 +315,11 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                               {volunteer.email}
                             </div>
                             <div className="text-sm text-muted-foreground">{volunteer.phone}</div>
+                            {volunteer.team && (
+                              <div className="text-sm text-muted-foreground">
+                                <span className="font-medium">Team:</span> {volunteer.team}
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-2 mt-2">
                             <Badge variant="secondary">{totalShifts} shifts</Badge>

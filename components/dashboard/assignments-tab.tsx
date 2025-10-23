@@ -43,7 +43,7 @@ interface AssignmentsTabProps {
 }
 
 const DAYS = ["Friday", "Saturday", "Sunday", "Monday"];
-const SHIFTS = ["Day Time", "Over Night"];
+const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
 
 export function AssignmentsTab({
   volunteers,
@@ -247,45 +247,50 @@ export function AssignmentsTab({
     if (!currentDay || !currentShift) return null;
 
     const dayIndex = DAYS.indexOf(currentDay);
+    const shiftIndex = SHIFTS.indexOf(currentShift);
     const volunteerAssignments = assignments.filter((a) => a.volunteerId === volunteer.id);
     
     const consecutiveShifts: string[] = [];
 
-    if (currentShift === "Day Time") {
-      if (dayIndex > 0) {
-        const prevDay = DAYS[dayIndex - 1];
-        const prevAssignment = volunteerAssignments.find(
-          (a) => a.day === prevDay && a.shift === "Over Night"
-        );
-        if (prevAssignment) {
-          consecutiveShifts.push(`${prevDay} Over Night → ${currentDay} Day Time`);
-        }
-      }
-      
-      const sameDayAssignment = volunteerAssignments.find(
-        (a) => a.day === currentDay && a.shift === "Over Night"
+    if (shiftIndex > 0) {
+      const prevShift = SHIFTS[shiftIndex - 1];
+      const sameDayPrevAssignment = volunteerAssignments.find(
+        (a) => a.day === currentDay && a.shift === prevShift
       );
-      if (sameDayAssignment) {
-        consecutiveShifts.push(`${currentDay} Day Time → ${currentDay} Over Night`);
+      if (sameDayPrevAssignment) {
+        consecutiveShifts.push(`${currentDay} ${prevShift} → ${currentDay} ${currentShift}`);
       }
     }
 
-    if (currentShift === "Over Night") {
-      const sameDayAssignment = volunteerAssignments.find(
-        (a) => a.day === currentDay && a.shift === "Day Time"
+    if (shiftIndex < SHIFTS.length - 1) {
+      const nextShift = SHIFTS[shiftIndex + 1];
+      const sameDayNextAssignment = volunteerAssignments.find(
+        (a) => a.day === currentDay && a.shift === nextShift
       );
-      if (sameDayAssignment) {
-        consecutiveShifts.push(`${currentDay} Day Time → ${currentDay} Over Night`);
+      if (sameDayNextAssignment) {
+        consecutiveShifts.push(`${currentDay} ${currentShift} → ${currentDay} ${nextShift}`);
       }
-      
-      if (dayIndex < DAYS.length - 1) {
-        const nextDay = DAYS[dayIndex + 1];
-        const nextAssignment = volunteerAssignments.find(
-          (a) => a.day === nextDay && a.shift === "Day Time"
-        );
-        if (nextAssignment) {
-          consecutiveShifts.push(`${currentDay} Over Night → ${nextDay} Day Time`);
-        }
+    }
+
+    if (shiftIndex === 0 && dayIndex > 0) {
+      const prevDay = DAYS[dayIndex - 1];
+      const lastShift = SHIFTS[SHIFTS.length - 1];
+      const prevDayLastAssignment = volunteerAssignments.find(
+        (a) => a.day === prevDay && a.shift === lastShift
+      );
+      if (prevDayLastAssignment) {
+        consecutiveShifts.push(`${prevDay} ${lastShift} → ${currentDay} ${currentShift}`);
+      }
+    }
+
+    if (shiftIndex === SHIFTS.length - 1 && dayIndex < DAYS.length - 1) {
+      const nextDay = DAYS[dayIndex + 1];
+      const firstShift = SHIFTS[0];
+      const nextDayFirstAssignment = volunteerAssignments.find(
+        (a) => a.day === nextDay && a.shift === firstShift
+      );
+      if (nextDayFirstAssignment) {
+        consecutiveShifts.push(`${currentDay} ${currentShift} → ${nextDay} ${firstShift}`);
       }
     }
 
@@ -463,6 +468,11 @@ export function AssignmentsTab({
                               {volunteer.firstName} {volunteer.lastName}
                             </div>
                             <div className="text-xs text-muted-foreground truncate">{volunteer.email}</div>
+                            {volunteer.team && (
+                              <div className="text-xs text-muted-foreground">
+                                {volunteer.team}
+                              </div>
+                            )}
                           </div>
                           <Badge variant="secondary" className="shrink-0">{totalShifts} shifts</Badge>
                         </div>
