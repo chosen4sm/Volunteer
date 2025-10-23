@@ -61,6 +61,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user && isAdmin) {
       fetchAllData();
+      
+      const intervalId = setInterval(() => {
+        fetchAllData();
+      }, 5000);
+
+      return () => clearInterval(intervalId);
     }
   }, [user, isAdmin]);
 
