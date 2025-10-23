@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { submitVolunteerForm } from "@/lib/utils";
+import { getVolunteerByEmail, getVolunteerByPhone, updateVolunteer } from "@/lib/db";
 import { CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,6 +38,9 @@ export function VolunteerForm() {
     Tuesday: [],
   });
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
+  const [existingVolunteerId, setExistingVolunteerId] = useState<string | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [showExistingMessage, setShowExistingMessage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -170,21 +174,83 @@ export function VolunteerForm() {
     }
   };
 
+  const checkExistingVolunteer = async () => {
+    const email = formData.email;
+    const phone = formData.phone;
+    
+    if ((!phone || phone.length < 10) && (!email || !email.includes("@"))) return;
+    
+    setIsCheckingEmail(true);
+    try {
+      let existing = null;
+      
+      if (phone && phone.length >= 10) {
+        existing = await getVolunteerByPhone(phone);
+      }
+      
+      if (!existing && email && email.includes("@")) {
+        existing = await getVolunteerByEmail(email);
+      }
+      
+      if (existing) {
+        setExistingVolunteerId(existing.id);
+        setFormData({
+          firstName: existing.firstName,
+          lastName: existing.lastName,
+          phone: existing.phone,
+          email: existing.email,
+        });
+        setTeam(existing.team || "");
+        setShiftData(existing.shifts || {
+          Friday: [],
+          Saturday: [],
+          Sunday: [],
+          Monday: [],
+          Tuesday: [],
+        });
+        setShowExistingMessage(true);
+        toast.info("Welcome back!", {
+          description: "We found your information. You can update your availability.",
+        });
+      } else {
+        setExistingVolunteerId(null);
+        setShowExistingMessage(false);
+      }
+    } catch (error) {
+      console.error("Error checking volunteer:", error);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      await submitVolunteerForm({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
-        email: formData.email,
-        team: team,
-        shifts: shiftData,
-      });
-      toast.success("Thank you!", {
-        description: "Your volunteer information has been submitted successfully.",
-      });
+      if (existingVolunteerId) {
+        await updateVolunteer(existingVolunteerId, {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          team: team,
+          shifts: shiftData,
+        });
+        toast.success("Updated!", {
+          description: "Your availability has been updated successfully.",
+        });
+      } else {
+        await submitVolunteerForm({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          email: formData.email,
+          team: team,
+          shifts: shiftData,
+        });
+        toast.success("Thank you!", {
+          description: "Your volunteer information has been submitted successfully.",
+        });
+      }
       setCurrentQuestion(7);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to submit. Please try again.";
@@ -349,8 +415,17 @@ export function VolunteerForm() {
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
                     Your email address?<span className="text-destructive ml-1">*</span>
                   </h1>
+                  {showExistingMessage && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-4 bg-chart-1/10 text-chart-1 rounded-lg text-base"
+                    >
+                      ✓ We found your information! You can continue to update your availability.
+                    </motion.div>
+                  )}
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
+                <form onSubmit={(e) => { e.preventDefault(); if (canProceed() && !isCheckingEmail) { checkExistingVolunteer(); handleNext(); } }}>
                   <Input
                     ref={inputRef}
                     name="email"
@@ -359,9 +434,13 @@ export function VolunteerForm() {
                     type="email"
                     placeholder="name@example.com"
                     autoComplete="email"
+                    disabled={isCheckingEmail}
                     className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && canProceed()) handleNext();
+                      if (e.key === "Enter" && canProceed() && !isCheckingEmail) {
+                        checkExistingVolunteer();
+                        handleNext();
+                      }
                     }}
                   />
                 </form>
@@ -566,12 +645,17 @@ export function VolunteerForm() {
 
           {currentQuestion < 6 ? (
             <Button
-              onClick={handleNext}
-              disabled={!canProceed()}
+              onClick={() => {
+                if (currentQuestion === 3 && canProceed()) {
+                  checkExistingVolunteer();
+                }
+                handleNext();
+              }}
+              disabled={!canProceed() || isCheckingEmail}
               size="lg"
               className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground text-base px-8 shadow-lg"
             >
-              OK <ArrowRight className="w-5 h-5 ml-2" />
+              {isCheckingEmail ? "Checking..." : "OK"} <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           ) : (
             <Button

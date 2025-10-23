@@ -64,6 +64,31 @@ export async function getVolunteer(id: string): Promise<Volunteer | null> {
   return null;
 }
 
+export async function getVolunteerByEmail(email: string): Promise<Volunteer | null> {
+  const q = query(collection(db, "volunteers"), where("email", "==", email.toLowerCase().trim()));
+  const snapshot = await getDocs(q);
+  if (!snapshot.empty) {
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as Volunteer;
+  }
+  return null;
+}
+
+export async function getVolunteerByPhone(phone: string): Promise<Volunteer | null> {
+  const q = query(collection(db, "volunteers"), where("phone", "==", phone.trim()));
+  const snapshot = await getDocs(q);
+  if (!snapshot.empty) {
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as Volunteer;
+  }
+  return null;
+}
+
+export async function updateVolunteer(id: string, data: Partial<Volunteer>): Promise<void> {
+  const docRef = doc(db, "volunteers", id);
+  await updateDoc(docRef, data);
+}
+
 export async function getLocations(): Promise<Location[]> {
   const q = query(collection(db, "locations"), orderBy("name", "asc"));
   const snapshot = await getDocs(q);
