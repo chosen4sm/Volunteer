@@ -23,7 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users, UserPlus, Trash2, AlertTriangle } from "lucide-react";
+import { Users, UserPlus, Trash2, AlertTriangle, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   createAssignment,
@@ -290,6 +290,33 @@ export function AssignmentsTab({
     }
 
     return consecutiveShifts.length > 0 ? consecutiveShifts : null;
+  };
+
+  const sendToWhatsApp = (volunteer: Volunteer, task: Task, location: Location, assignment: Assignment) => {
+    const scheduleText = assignment.day && assignment.shift
+      ? `${assignment.day} - ${assignment.shift}`
+      : assignment.day
+      ? assignment.day
+      : assignment.shift
+      ? assignment.shift
+      : "No schedule specified";
+
+    const message = `✅ Assignment Confirmation
+
+👤 *${volunteer.firstName} ${volunteer.lastName}*
+📞 ${volunteer.phone}
+
+📍 Location: *${location.name}*
+🎯 Task: *${task.name}*
+📅 Schedule: *${scheduleText}*`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    
+    window.open(whatsappUrl, "_blank");
+    toast.success("Opening WhatsApp", {
+      description: "Message is ready to send to your group",
+    });
   };
 
   return (
@@ -762,14 +789,26 @@ export function AssignmentsTab({
                                 )}
                               </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDeleteAssignment(assignment.id)}
-                              className="shrink-0"
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => sendToWhatsApp(volunteer, task, location!, assignment)}
+                                className="text-chart-1 hover:text-chart-1"
+                                title="Share to WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteAssignment(assignment.id)}
+                                className="text-destructive hover:text-destructive"
+                                title="Remove assignment"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         );
                       })}
