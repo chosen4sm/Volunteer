@@ -139,7 +139,7 @@ export function VolunteerForm() {
     <div className="min-h-screen gradient-bg flex flex-col relative overflow-hidden">
       {/* Progress bar */}
       <motion.div
-        className="fixed top-0 left-0 h-1 bg-indigo-600 z-50"
+        className="fixed top-0 left-0 h-1 bg-primary z-50"
         initial={{ width: "0%" }}
         animate={{
           width: `${((currentQuestion + (currentQuestion === 4 ? currentDayIndex / DAYS.length : 0)) / 6) * 100}%`,
@@ -150,7 +150,7 @@ export function VolunteerForm() {
       {/* Logo/Title */}
       {currentQuestion < 6 && (
         <div className="fixed top-6 left-6 z-40">
-          <h2 className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+          <h2 className="text-xl font-bold text-primary">
             Volunteer Sign Up
           </h2>
         </div>
@@ -179,7 +179,7 @@ export function VolunteerForm() {
               >
                 <div className="space-y-6">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    What&apos;s your first name?<span className="text-rose-600 dark:text-rose-400 inline-block ml-1">*</span>
+                    What&apos;s your first name?<span className="text-destructive inline-block ml-1">*</span>
                   </h1>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
@@ -190,7 +190,7 @@ export function VolunteerForm() {
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     placeholder="Type your answer here..."
                     autoComplete="given-name"
-                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-indigo-600 focus-visible:ring-0 transition-colors bg-background/50"
+                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && canProceed()) handleNext();
                     }}
@@ -211,7 +211,7 @@ export function VolunteerForm() {
               >
                 <div className="space-y-6">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    And your last name?<span className="text-rose-600 dark:text-rose-400 inline-block ml-1">*</span>
+                    And your last name?<span className="text-destructive inline-block ml-1">*</span>
                   </h1>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
@@ -222,7 +222,7 @@ export function VolunteerForm() {
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     placeholder="Type your answer here..."
                     autoComplete="family-name"
-                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-indigo-600 focus-visible:ring-0 transition-colors bg-background/50"
+                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && canProceed()) handleNext();
                     }}
@@ -243,7 +243,7 @@ export function VolunteerForm() {
               >
                 <div className="space-y-6">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    What&apos;s your phone number?<span className="text-rose-600 dark:text-rose-400 inline-block ml-1">*</span>
+                    What&apos;s your phone number?<span className="text-destructive inline-block ml-1">*</span>
                   </h1>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
@@ -255,7 +255,7 @@ export function VolunteerForm() {
                     type="tel"
                     placeholder="Type your answer here..."
                     autoComplete="tel"
-                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-indigo-600 focus-visible:ring-0 transition-colors bg-background/50"
+                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && canProceed()) handleNext();
                     }}
@@ -276,7 +276,7 @@ export function VolunteerForm() {
               >
                 <div className="space-y-6">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
-                    Your email address?<span className="text-rose-600 dark:text-rose-400 ml-1">*</span>
+                    Your email address?<span className="text-destructive ml-1">*</span>
                   </h1>
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
@@ -288,7 +288,7 @@ export function VolunteerForm() {
                     type="email"
                     placeholder="name@example.com"
                     autoComplete="email"
-                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-indigo-600 focus-visible:ring-0 transition-colors bg-background/50"
+                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && canProceed()) handleNext();
                     }}
@@ -320,12 +320,12 @@ export function VolunteerForm() {
                     <motion.div
                       key={shift}
                       whileHover={{ scale: 1.02 }}
-                      className="flex items-center space-x-4 p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-background/50 hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 cursor-pointer transition-all"
+                      className="flex items-center space-x-4 p-5 rounded-xl border-2 border-border bg-background/50 hover:border-primary hover:bg-accent cursor-pointer transition-all"
                       onClick={() => handleShiftToggle(DAYS[currentDayIndex], shift)}
                     >
                       <Checkbox
                         checked={shiftData[DAYS[currentDayIndex]]?.includes(shift) || false}
-                        className="w-6 h-6 border-2 border-gray-400 dark:border-gray-500 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 pointer-events-none"
+                        className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
                       />
                       <span className="text-xl font-medium">{shift}</span>
                     </motion.div>
@@ -376,7 +376,7 @@ export function VolunteerForm() {
                   </div>
                 </div>
                 {error && (
-                  <div className="p-4 bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200 rounded-lg">
+                  <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
                     {error}
                   </div>
                 )}
@@ -397,7 +397,7 @@ export function VolunteerForm() {
                   transition={{ duration: 0.5 }}
                   className="flex justify-center"
                 >
-                  <CheckCircle className="w-24 h-24 text-green-600 dark:text-green-400" />
+                  <CheckCircle className="w-24 h-24 text-chart-1" />
                 </motion.div>
                 <div className="space-y-4">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
@@ -440,7 +440,7 @@ export function VolunteerForm() {
               onClick={handleNext}
               disabled={!canProceed()}
               size="lg"
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-base px-8 shadow-lg"
+              className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground text-base px-8 shadow-lg"
             >
               OK <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
@@ -449,7 +449,7 @@ export function VolunteerForm() {
               onClick={handleSubmit}
               disabled={isLoading}
               size="lg"
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-base px-8 shadow-lg"
+              className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground text-base px-8 shadow-lg"
             >
               {isLoading ? "Submitting..." : "Submit"}
             </Button>

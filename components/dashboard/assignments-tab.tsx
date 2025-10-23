@@ -415,8 +415,8 @@ export function AssignmentsTab({
                     onClick={() => toggleVolunteerSelection(volunteer.id)}
                     className={`p-3 rounded-lg border cursor-pointer transition-all ${
                       isSelected
-                        ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30"
-                        : "border-border bg-background hover:border-indigo-600/50"
+                        ? "border-primary bg-accent"
+                        : "border-border bg-background hover:border-primary/50"
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -425,7 +425,7 @@ export function AssignmentsTab({
                         className="pointer-events-none mt-1"
                       />
                       <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarFallback className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-sm font-semibold">
+                        <AvatarFallback className="bg-accent text-accent-foreground text-sm font-semibold">
                           {getInitials(volunteer.firstName, volunteer.lastName)}
                         </AvatarFallback>
                       </Avatar>
@@ -441,26 +441,26 @@ export function AssignmentsTab({
                         </div>
                         
                         {consecutiveShifts && (
-                          <div className="mt-2 mb-2 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <div className="mt-2 mb-2 p-2 bg-chart-3/10 border border-chart-3/30 rounded-lg">
                             <div className="flex items-start gap-2">
-                              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+                              <AlertTriangle className="w-4 h-4 text-chart-3 shrink-0 mt-0.5" />
                               <div className="flex-1">
-                                <div className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                                <div className="text-xs font-semibold text-chart-3">
                                   Consecutive Shifts Detected
                                 </div>
                                 {consecutiveShifts.map((shift, idx) => (
-                                  <div key={idx} className="text-xs text-amber-700 dark:text-amber-300">
+                                  <div key={idx} className="text-xs text-chart-3">
                                     {shift}
                                   </div>
                                 ))}
                                 <div className="flex items-center justify-between mt-2 gap-2">
-                                  <div className="text-xs text-amber-600 dark:text-amber-400">
+                                  <div className="text-xs text-chart-3">
                                     Consider replacing with someone else
                                   </div>
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-6 px-2 text-xs border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900"
+                                    className="h-6 px-2 text-xs border-chart-3/30 hover:bg-chart-3/10"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       replaceVolunteerWithAlternative(
@@ -501,7 +501,7 @@ export function AssignmentsTab({
       </Card>
 
       {selectedVolunteers.length > 0 && (
-        <Card className="border-indigo-600">
+        <Card className="border-primary">
           <CardHeader>
             <CardTitle>Assign {selectedVolunteers.length} Volunteer(s) to Task</CardTitle>
             <CardDescription>Choose location, task, and optional day/shift</CardDescription>
@@ -576,7 +576,7 @@ export function AssignmentsTab({
               </div>
               <Button
                 onClick={handleBulkAssignment}
-                className="w-full bg-indigo-600 hover:bg-indigo-700"
+                className="w-full bg-primary hover:bg-primary/90"
                 disabled={!assignLocationId || !assignTaskId}
               >
                 <UserPlus className="w-4 h-4 mr-2" />
@@ -743,7 +743,7 @@ export function AssignmentsTab({
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <Avatar className="h-8 w-8 shrink-0">
-                                <AvatarFallback className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs">
+                                <AvatarFallback className="bg-accent text-accent-foreground text-xs">
                                   {getInitials(volunteer.firstName, volunteer.lastName)}
                                 </AvatarFallback>
                               </Avatar>
@@ -768,7 +768,7 @@ export function AssignmentsTab({
                               onClick={() => handleDeleteAssignment(assignment.id)}
                               className="shrink-0"
                             >
-                              <Trash2 className="w-4 h-4 text-red-600" />
+                              <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
                           </div>
                         );

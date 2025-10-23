@@ -232,7 +232,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => handleDeleteLocation(location.id)}>
-                      <Trash2 className="w-4 h-4 text-red-600" />
+                      <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>
                 </div>
@@ -338,7 +338,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)}>
-                        <Trash2 className="w-4 h-4 text-red-600" />
+                        <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
                   </div>

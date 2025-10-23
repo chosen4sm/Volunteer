@@ -103,7 +103,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+            <div className="text-2xl font-bold text-primary">
               {volunteers.length}
             </div>
             <p className="text-xs text-muted-foreground">Total registrations</p>
@@ -116,7 +116,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+            <div className="text-2xl font-bold text-destructive">
               {locations.length}
             </div>
             <p className="text-xs text-muted-foreground">{tasks.length} tasks</p>
@@ -129,7 +129,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="text-2xl font-bold text-chart-2">
               {assignments.length}
             </div>
             <p className="text-xs text-muted-foreground">Volunteers assigned</p>
@@ -297,12 +297,12 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                 return (
                   <div
                     key={volunteer.id}
-                    className="p-4 rounded-lg border bg-background hover:border-indigo-600/50 transition-all"
+                    className="p-4 rounded-lg border bg-background hover:border-primary/50 transition-all"
                   >
                     <div className="flex flex-col md:flex-row md:items-start gap-4">
                       <div className="flex items-start space-x-3 flex-1">
                         <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarFallback className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-sm font-semibold">
+                          <AvatarFallback className="bg-accent text-accent-foreground text-sm font-semibold">
                             {getInitials(volunteer.firstName, volunteer.lastName)}
                           </AvatarFallback>
                         </Avatar>
@@ -319,7 +319,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                           <div className="flex gap-2 mt-2">
                             <Badge variant="secondary">{totalShifts} shifts</Badge>
                             {volunteerAssignments.length > 0 && (
-                              <Badge className="bg-green-600">
+                              <Badge className="bg-chart-1 text-primary-foreground">
                                 {volunteerAssignments.length} assigned
                               </Badge>
                             )}

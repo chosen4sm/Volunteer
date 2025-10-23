@@ -281,8 +281,8 @@ export default function DashboardPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-foreground">Volunteer Dashboard</h1>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-indigo-600 text-white">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
                       <User className="h-5 w-5" />
                     </AvatarFallback>
                   </Avatar>
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400">
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -325,7 +325,7 @@ export default function DashboardPage() {
               onClick={() => setActiveTab("overview")}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === "overview"
-                  ? "border-indigo-600 text-indigo-600"
+                  ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -336,7 +336,7 @@ export default function DashboardPage() {
               onClick={() => setActiveTab("locations")}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === "locations"
-                  ? "border-indigo-600 text-indigo-600"
+                  ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -347,7 +347,7 @@ export default function DashboardPage() {
               onClick={() => setActiveTab("assignments")}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === "assignments"
-                  ? "border-indigo-600 text-indigo-600"
+                  ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -359,7 +359,7 @@ export default function DashboardPage() {
                 onClick={() => setActiveTab("dev")}
                 className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                   activeTab === "dev"
-                    ? "border-red-600 text-red-600"
+                    ? "border-destructive text-destructive"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -403,7 +403,7 @@ export default function DashboardPage() {
 
           {activeTab === "dev" && (
             <div className="space-y-6">
-              <Card className="border-2 border-amber-200 dark:border-amber-800">
+              <Card className="border-2 border-chart-3/30">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Database className="w-5 h-5" />
@@ -431,7 +431,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="border-t pt-6 space-y-4">
-                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                    <div className="flex items-center gap-2 text-destructive">
                       <AlertTriangle className="w-5 h-5" />
                       <h3 className="text-lg font-semibold">Danger Zone</h3>
                     </div>
