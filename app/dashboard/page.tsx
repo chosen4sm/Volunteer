@@ -27,6 +27,7 @@ import {
   getTasks,
   getAssignments,
   nukeAllData,
+  createLocation,
   type Volunteer,
   type Location,
   type Task,
@@ -50,6 +51,7 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isSeedingHalls, setIsSeedingHalls] = useState(false);
   const [isNuking, setIsNuking] = useState(false);
 
   useEffect(() => {
@@ -213,6 +215,39 @@ export default function DashboardPage() {
       });
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const seedHalls = async () => {
+    if (isSeedingHalls) return;
+
+    setIsSeedingHalls(true);
+    toast.info("Seeding halls...", {
+      description: "Creating Hall A through Hall D.",
+    });
+
+    try {
+      const halls = ["Hall A", "Hall B", "Hall C", "Hall D"];
+      const promises = halls.map((hall) =>
+        createLocation({
+          name: hall,
+          description: `${hall} location`,
+        })
+      );
+
+      await Promise.all(promises);
+      await fetchAllData();
+
+      toast.success("Success!", {
+        description: "Hall A through Hall D have been created.",
+      });
+    } catch (error) {
+      console.error("Error seeding halls:", error);
+      toast.error("Seeding failed", {
+        description: "Failed to seed halls. Check console for details.",
+      });
+    } finally {
+      setIsSeedingHalls(false);
     }
   };
 
@@ -427,17 +462,28 @@ export default function DashboardPage() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Seed Data</h3>
                     <p className="text-sm text-muted-foreground">
-                      Generate fake volunteers for testing purposes.
+                      Generate fake data for testing purposes.
                     </p>
-                    <Button
-                      onClick={seedFakeData}
-                      disabled={isSeeding}
-                      variant="outline"
-                      className="gap-2"
-                    >
-                      <Database className="w-4 h-4" />
-                      {isSeeding ? "Seeding..." : "Seed 100 Volunteers"}
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        onClick={seedFakeData}
+                        disabled={isSeeding}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <Database className="w-4 h-4" />
+                        {isSeeding ? "Seeding..." : "Seed 100 Volunteers"}
+                      </Button>
+                      <Button
+                        onClick={seedHalls}
+                        disabled={isSeedingHalls}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        {isSeedingHalls ? "Seeding..." : "Seed Hall A - D"}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="border-t pt-6 space-y-4">
