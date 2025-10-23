@@ -325,8 +325,7 @@ export function VolunteerForm() {
                     >
                       <Checkbox
                         checked={shiftData[DAYS[currentDayIndex]]?.includes(shift) || false}
-                        onCheckedChange={() => handleShiftToggle(DAYS[currentDayIndex], shift)}
-                        className="w-6 h-6 border-2 border-gray-400 dark:border-gray-500 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                        className="w-6 h-6 border-2 border-gray-400 dark:border-gray-500 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 pointer-events-none"
                       />
                       <span className="text-xl font-medium">{shift}</span>
                     </motion.div>

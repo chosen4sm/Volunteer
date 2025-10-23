@@ -38,5 +38,23 @@ service cloud.firestore {
       // Only admins can read, update, or delete volunteers
       allow read, update, delete: if isAdmin();
     }
+    
+    // Locations (categories)
+    match /locations/{locationId} {
+      // Only admins can manage locations
+      allow read, create, update, delete: if isAdmin();
+    }
+    
+    // Tasks (sub-categories under locations)
+    match /tasks/{taskId} {
+      // Only admins can manage tasks
+      allow read, create, update, delete: if isAdmin();
+    }
+    
+    // Assignments (manual volunteer-to-task assignments)
+    match /assignments/{assignmentId} {
+      // Only admins can manage assignments
+      allow read, create, update, delete: if isAdmin();
+    }
   }
 }
