@@ -1,14 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "tasks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "locationId", "order": "ASCENDING" },
-        { "fieldPath": "name", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "assignments",
       "queryScope": "COLLECTION",
       "fields": [
