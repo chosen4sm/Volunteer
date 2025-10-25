@@ -795,7 +795,7 @@ export function AssignmentsTab({
                       <div>
                         <h3 className="font-semibold text-lg">{task.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {location?.name || "Unknown location"} • {taskAssignments.length} volunteer
+                          {location?.name || "No location assigned"} • {taskAssignments.length} volunteer
                           {taskAssignments.length !== 1 ? "s" : ""}
                         </p>
                       </div>
