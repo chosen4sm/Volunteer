@@ -1,12 +1,22 @@
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
+export interface FormQuestion {
+  id: string;
+  type: "text" | "tel" | "email" | "select" | "checkbox-multi" | "shifts";
+  label: string;
+  placeholder?: string;
+  required: boolean;
+  optionsFrom?: "teams" | "experiences";
+}
+
 export interface FormConfig {
   days: string[];
   dayDates: string[];
   shifts: string[];
   teams: string[];
   experiences: Array<{ id: string; label: string }>;
+  questions: FormQuestion[];
 }
 
 export const DEFAULT_FORM_CONFIG: FormConfig = {
@@ -17,6 +27,49 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
   experiences: [
     { id: "construction", label: "Construction" },
     { id: "decor", label: "Decor" },
+  ],
+  questions: [
+    {
+      id: "name",
+      type: "text",
+      label: "What's your full name?",
+      placeholder: "Type your answer here...",
+      required: true,
+    },
+    {
+      id: "phone",
+      type: "tel",
+      label: "What's your phone number?",
+      placeholder: "Type your answer here...",
+      required: true,
+    },
+    {
+      id: "email",
+      type: "email",
+      label: "Your email address?",
+      placeholder: "name@example.com",
+      required: true,
+    },
+    {
+      id: "team",
+      type: "select",
+      label: "What team are you part of?",
+      required: true,
+      optionsFrom: "teams",
+    },
+    {
+      id: "experience",
+      type: "checkbox-multi",
+      label: "Do you have experience in the following?",
+      required: false,
+      optionsFrom: "experiences",
+    },
+    {
+      id: "shifts",
+      type: "shifts",
+      label: "Select your availability",
+      required: false,
+    },
   ],
 };
 

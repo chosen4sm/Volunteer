@@ -7,36 +7,34 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { submitVolunteerForm } from "@/lib/utils";
 import { getVolunteerByEmail, getVolunteerByPhone, updateVolunteer } from "@/lib/db";
-import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
+import { getFormConfig, type FormConfig } from "@/lib/config";
 import { CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ShiftData {
   [key: string]: string[];
 }
 
+interface FormAnswers {
+  [key: string]: string | string[];
+}
+
 export function VolunteerForm() {
-  const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [formConfig, setFormConfig] = useState<FormConfig | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-  });
-  const [team, setTeam] = useState<string>("");
-  const [experiences, setExperiences] = useState<string[]>([]);
-  const [shiftData, setShiftData] = useState<ShiftData>({
-    Friday: [],
-    Saturday: [],
-    Sunday: [],
-    Monday: [],
-    Tuesday: [],
-  });
+  const [formAnswers, setFormAnswers] = useState<FormAnswers>({});
+  const [shiftData, setShiftData] = useState<ShiftData>({});
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const [existingVolunteerId, setExistingVolunteerId] = useState<string | null>(null);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [showExistingMessage, setShowExistingMessage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -45,6 +43,13 @@ export function VolunteerForm() {
       try {
         const config = await getFormConfig();
         setFormConfig(config);
+        
+        // Initialize shift data
+        const shifts: ShiftData = {};
+        config.days.forEach((day) => {
+          shifts[day] = [];
+        });
+        setShiftData(shifts);
       } catch (error) {
         console.error("Error fetching form config:", error);
       }
@@ -53,214 +58,92 @@ export function VolunteerForm() {
   }, []);
 
   useEffect(() => {
-    if (inputRef.current && currentQuestion < 4 && currentQuestion !== 3) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+    if (inputRef.current && currentQuestionIndex < (formConfig?.questions.length || 0)) {
+      const currentQuestion = formConfig?.questions[currentQuestionIndex];
+      if (currentQuestion && ["text", "tel", "email"].includes(currentQuestion.type)) {
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      }
     }
-  }, [currentQuestion]);
+  }, [currentQuestionIndex, formConfig]);
+
+  if (!formConfig) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <div className="text-lg text-muted-foreground">Loading form...</div>
+      </div>
+    );
+  }
+
+  const currentQuestion = formConfig.questions[currentQuestionIndex];
+  const totalQuestions = formConfig.questions.length + (formConfig.days?.length || 0) + 1; // +1 for review
+  const isShiftsQuestion = currentQuestion?.type === "shifts";
 
   const handleNext = () => {
-    if (currentQuestion < 5) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else if (currentQuestion === 5 && currentDayIndex < formConfig.days.length - 1) {
-      setCurrentDayIndex(currentDayIndex + 1);
-    } else if (currentQuestion === 5 && currentDayIndex === formConfig.days.length - 1) {
-      setCurrentQuestion(6);
+    if (!currentQuestion?.required || validateCurrentAnswer()) {
+      if (isShiftsQuestion && currentDayIndex < formConfig.days.length - 1) {
+        setCurrentDayIndex(currentDayIndex + 1);
+      } else if (isShiftsQuestion && currentDayIndex === formConfig.days.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      } else if (currentQuestionIndex < formConfig.questions.length - 1) {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setCurrentDayIndex(0);
+      } else {
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+      }
+    } else {
+      toast.error("Please fill in all required fields");
     }
   };
 
   const handleBack = () => {
-    if (currentQuestion === 6) {
-      setCurrentDayIndex(formConfig.days.length - 1);
-      setCurrentQuestion(5);
-    } else if (currentQuestion === 5 && currentDayIndex > 0) {
+    if (isShiftsQuestion && currentDayIndex > 0) {
       setCurrentDayIndex(currentDayIndex - 1);
-    } else if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
+    } else if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      if (isShiftsQuestion) {
+        setCurrentDayIndex(formConfig.days.length - 1);
+      }
     }
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    const cleaned = value.replace(/\D/g, "");
-    let formatted = "";
-    
-    if (cleaned.length === 0) {
-      formatted = "";
-    } else if (cleaned.length <= 3) {
-      formatted = cleaned;
-    } else if (cleaned.length <= 6) {
-      formatted = `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
-    } else {
-      formatted = `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
-    }
-    
-    setFormData({ ...formData, phone: formatted });
-  };
+  const validateCurrentAnswer = (): boolean => {
+    if (!currentQuestion) return true;
+    if (!currentQuestion.required) return true;
 
-  const isShiftDisabled = (day: string, shift: string) => {
-    const dayShifts = shiftData[day] || [];
-    const isSelected = dayShifts.includes(shift);
+    const answer = formAnswers[currentQuestion.id];
+    if (!answer || (typeof answer === "string" && !answer.trim())) return false;
+    if (Array.isArray(answer) && answer.length === 0 && currentQuestion.type !== "shifts") return false;
     
-    if (isSelected) return false;
-    
-    const dayIndex = formConfig.days.indexOf(day);
-    const shiftIndex = formConfig.shifts.indexOf(shift);
-    
-    const twoShiftsBack = shiftIndex >= 2 ? formConfig.shifts[shiftIndex - 2] : null;
-    const oneShiftBack = shiftIndex > 0 ? formConfig.shifts[shiftIndex - 1] : null;
-    const oneShiftForward = shiftIndex < formConfig.shifts.length - 1 ? formConfig.shifts[shiftIndex + 1] : null;
-    const twoShiftsForward = shiftIndex <= formConfig.shifts.length - 3 ? formConfig.shifts[shiftIndex + 2] : null;
-    
-    if (twoShiftsBack && oneShiftBack && dayShifts.includes(twoShiftsBack) && dayShifts.includes(oneShiftBack)) {
-      return true;
-    }
-    
-    if (oneShiftForward && twoShiftsForward && dayShifts.includes(oneShiftForward) && dayShifts.includes(twoShiftsForward)) {
-      return true;
-    }
-    
-    if (shiftIndex === 0 && dayIndex > 0) {
-      const prevDay = formConfig.days[dayIndex - 1];
-      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
-      const secondLastShift = formConfig.shifts[formConfig.shifts.length - 2];
-      if (shiftData[prevDay]?.includes(lastShift) && shiftData[prevDay]?.includes(secondLastShift)) {
-        return true;
-      }
-    }
-    
-    if (shiftIndex === 1 && dayIndex > 0) {
-      const prevDay = formConfig.days[dayIndex - 1];
-      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
-      const firstShift = formConfig.shifts[0];
-      if (shiftData[prevDay]?.includes(lastShift) && dayShifts.includes(firstShift)) {
-        return true;
-      }
-    }
-    
-    if (shiftIndex === formConfig.shifts.length - 1 && dayIndex < formConfig.days.length - 1) {
-      const nextDay = formConfig.days[dayIndex + 1];
-      const firstShift = formConfig.shifts[0];
-      const secondShift = formConfig.shifts[1];
-      if (shiftData[nextDay]?.includes(firstShift) && shiftData[nextDay]?.includes(secondShift)) {
-        return true;
-      }
-    }
-    
-    if (shiftIndex === formConfig.shifts.length - 2 && dayIndex < formConfig.days.length - 1) {
-      const nextDay = formConfig.days[dayIndex + 1];
-      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
-      const firstShift = formConfig.shifts[0];
-      if (dayShifts.includes(lastShift) && shiftData[nextDay]?.includes(firstShift)) {
-        return true;
-      }
-    }
-    
-    return false;
-  };
-
-  const handleShiftToggle = (day: string, shift: string) => {
-    const dayShifts = shiftData[day] || [];
-    const isSelected = dayShifts.includes(shift);
-    
-    if (isSelected) {
-      setShiftData({
-        ...shiftData,
-        [day]: dayShifts.filter((s) => s !== shift),
-      });
-    } else {
-      if (isShiftDisabled(day, shift)) {
-        toast.error("Maximum 2 consecutive shifts", {
-          description: "You need a break after working 2 consecutive shifts.",
-        });
-        return;
-      }
-      setShiftData({
-        ...shiftData,
-        [day]: [...dayShifts, shift],
-      });
-    }
-  };
-
-  const checkExistingVolunteer = async () => {
-    const email = formData.email;
-    const phone = formData.phone;
-    
-    if ((!phone || phone.length < 10) && (!email || !email.includes("@"))) return;
-    
-    setIsCheckingEmail(true);
-    try {
-      let existing = null;
-      
-      if (phone && phone.length >= 10) {
-        existing = await getVolunteerByPhone(phone);
-      }
-      
-      if (!existing && email && email.includes("@")) {
-        existing = await getVolunteerByEmail(email);
-      }
-      
-      if (existing) {
-        setExistingVolunteerId(existing.id);
-        setFormData({
-          name: existing.name,
-          phone: existing.phone,
-          email: existing.email,
-        });
-        setTeam(existing.team || "");
-        setExperiences(existing.experiences || []);
-        setShiftData(existing.shifts || {
-          Friday: [],
-          Saturday: [],
-          Sunday: [],
-          Monday: [],
-          Tuesday: [],
-        });
-        setShowExistingMessage(true);
-        toast.info("Welcome back!", {
-          description: "We found your information. You can update your availability.",
-        });
-      } else {
-        setExistingVolunteerId(null);
-        setShowExistingMessage(false);
-      }
-    } catch (error) {
-      console.error("Error checking volunteer:", error);
-    } finally {
-      setIsCheckingEmail(false);
-    }
+    return true;
   };
 
   const handleSubmit = async () => {
     setIsLoading(true);
     setError(null);
     try {
+      const submitData = {
+        name: formAnswers.name as string,
+        phone: formAnswers.phone as string,
+        email: formAnswers.email as string,
+        team: formAnswers.team as string,
+        experiences: (formAnswers.experience as string[]) || [],
+        shifts: shiftData,
+      };
+
       if (existingVolunteerId) {
-        await updateVolunteer(existingVolunteerId, {
-          name: formData.name,
-          phone: formData.phone,
-          team: team,
-          experiences: experiences,
-          shifts: shiftData,
-        });
+        await updateVolunteer(existingVolunteerId, submitData);
         toast.success("Updated!", {
           description: "Your availability has been updated successfully.",
         });
       } else {
-        await submitVolunteerForm({
-          name: formData.name,
-          phone: formData.phone,
-          email: formData.email,
-          team: team,
-          experiences: experiences,
-          shifts: shiftData,
-        });
+        await submitVolunteerForm(submitData);
         toast.success("Thank you!", {
           description: "Your volunteer information has been submitted successfully.",
         });
       }
-      setCurrentQuestion(7);
+      setCurrentQuestionIndex(formConfig.questions.length + 1);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to submit. Please try again.";
       toast.error("Submission Failed", {
@@ -272,13 +155,69 @@ export function VolunteerForm() {
     }
   };
 
-  const canProceed = () => {
-    if (currentQuestion === 0) return formData.name.trim().length > 0;
-    if (currentQuestion === 1) return formData.phone.trim().length > 0;
-    if (currentQuestion === 2) return formData.email.trim().length > 0 && formData.email.includes("@");
-    if (currentQuestion === 3) return team.length > 0;
-    if (currentQuestion === 4) return true;
-    return true;
+  const checkExistingVolunteer = async () => {
+    const email = formAnswers.email as string;
+    const phone = formAnswers.phone as string;
+
+    if ((!phone || phone.length < 10) && (!email || !email.includes("@"))) return;
+
+    try {
+      let existing = null;
+
+      if (phone && phone.length >= 10) {
+        existing = await getVolunteerByPhone(phone);
+      }
+
+      if (!existing && email && email.includes("@")) {
+        existing = await getVolunteerByEmail(email);
+      }
+
+      if (existing) {
+        setExistingVolunteerId(existing.id);
+        setFormAnswers({
+          name: existing.name,
+          phone: existing.phone,
+          email: existing.email,
+          team: existing.team || "",
+          experience: existing.experiences || [],
+        });
+        setShiftData(existing.shifts || {});
+        setShowExistingMessage(true);
+        toast.info("Welcome back!", {
+          description: "We found your information. You can update your availability.",
+        });
+      } else {
+        setExistingVolunteerId(null);
+        setShowExistingMessage(false);
+      }
+    } catch (error) {
+      console.error("Error checking volunteer:", error);
+    }
+  };
+
+  const handleAnswerChange = (value: string | string[]) => {
+    if (!currentQuestion) return;
+    setFormAnswers({
+      ...formAnswers,
+      [currentQuestion.id]: value,
+    });
+  };
+
+  const handleShiftToggle = (shift: string) => {
+    const day = formConfig.days[currentDayIndex];
+    const dayShifts = shiftData[day] || [];
+
+    if (dayShifts.includes(shift)) {
+      setShiftData({
+        ...shiftData,
+        [day]: dayShifts.filter((s) => s !== shift),
+      });
+    } else {
+      setShiftData({
+        ...shiftData,
+        [day]: [...dayShifts, shift],
+      });
+    }
   };
 
   return (
@@ -288,24 +227,22 @@ export function VolunteerForm() {
         className="fixed top-0 left-0 h-1 bg-primary z-50"
         initial={{ width: "0%" }}
         animate={{
-          width: `${((currentQuestion + (currentQuestion === 5 ? currentDayIndex / formConfig.days.length : 0)) / 7) * 100}%`,
+          width: `${((currentQuestionIndex + (isShiftsQuestion ? currentDayIndex / formConfig.days.length : 0)) / totalQuestions) * 100}%`,
         }}
         transition={{ duration: 0.3 }}
       />
 
       {/* Logo/Title */}
-      {currentQuestion < 7 && (
+      {currentQuestionIndex < formConfig.questions.length && (
         <div className="fixed top-6 left-6 z-40">
-          <h2 className="text-xl font-bold text-primary">
-            Volunteer Sign Up
-          </h2>
+          <h2 className="text-xl font-bold text-primary">Volunteer Sign Up</h2>
         </div>
       )}
 
       {/* Question counter */}
-      {currentQuestion < 7 && (
+      {currentQuestionIndex < formConfig.questions.length && (
         <div className="fixed top-20 right-6 text-sm text-muted-foreground z-40">
-          {currentQuestion + 1} / 7
+          {currentQuestionIndex + 1} / {totalQuestions - 1}
         </div>
       )}
 
@@ -313,10 +250,10 @@ export function VolunteerForm() {
       <div className="flex-1 flex items-center justify-center px-6 sm:px-8 py-20 pb-32 relative z-10">
         <div className="w-full max-w-3xl">
           <AnimatePresence mode="wait">
-            {/* Question 0: Full Name */}
-            {currentQuestion === 0 && (
+            {/* Regular questions */}
+            {!isShiftsQuestion && currentQuestionIndex < formConfig.questions.length && currentQuestion && (
               <motion.div
-                key="q0"
+                key={`q${currentQuestionIndex}`}
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
@@ -325,202 +262,111 @@ export function VolunteerForm() {
               >
                 <div className="space-y-6">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    What&apos;s your full name?<span className="text-destructive inline-block ml-1">*</span>
+                    {currentQuestion.label}
+                    {currentQuestion.required && <span className="text-destructive inline-block ml-1">*</span>}
                   </h1>
                 </div>
-                <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
-                  <Input
-                    ref={inputRef}
-                    name="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Type your answer here..."
-                    autoComplete="name"
-                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && canProceed()) handleNext();
-                    }}
-                  />
-                </form>
-              </motion.div>
-            )}
 
-            {/* Question 1: Phone */}
-            {currentQuestion === 1 && (
-              <motion.div
-                key="q1"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-8"
-              >
-                <div className="space-y-6">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight">
-                    What&apos;s your phone number?<span className="text-destructive inline-block ml-1">*</span>
-                  </h1>
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); if (canProceed()) handleNext(); }}>
-                  <Input
-                    ref={inputRef}
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handlePhoneChange}
-                    type="tel"
-                    placeholder="Type your answer here..."
-                    autoComplete="tel"
-                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && canProceed()) handleNext();
-                    }}
-                  />
-                </form>
-              </motion.div>
-            )}
+                {showExistingMessage && currentQuestion.id === "email" && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-chart-1/10 text-chart-1 rounded-lg text-base"
+                  >
+                    ✓ We found your information! You can continue to update your availability.
+                  </motion.div>
+                )}
 
-            {/* Question 2: Email */}
-            {currentQuestion === 2 && (
-              <motion.div
-                key="q2"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-8"
-              >
-                <div className="space-y-6">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
-                    Your email address?<span className="text-destructive ml-1">*</span>
-                  </h1>
-                  {showExistingMessage && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-4 bg-chart-1/10 text-chart-1 rounded-lg text-base"
-                    >
-                      ✓ We found your information! You can continue to update your availability.
-                    </motion.div>
-                  )}
-                </div>
-                <form onSubmit={(e) => { e.preventDefault(); if (canProceed() && !isCheckingEmail) { checkExistingVolunteer(); handleNext(); } }}>
-                  <Input
-                    ref={inputRef}
-                    name="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    type="email"
-                    placeholder="name@example.com"
-                    autoComplete="email"
-                    disabled={isCheckingEmail}
-                    className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && canProceed() && !isCheckingEmail) {
+                {/* Text, Tel, Email inputs */}
+                {["text", "tel", "email"].includes(currentQuestion.type) && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (currentQuestion.id === "email") {
                         checkExistingVolunteer();
-                        handleNext();
                       }
+                      handleNext();
                     }}
-                  />
-                </form>
+                  >
+                    <Input
+                      ref={inputRef}
+                      type={currentQuestion.type}
+                      value={(formAnswers[currentQuestion.id] as string) || ""}
+                      onChange={(e) => handleAnswerChange(e.target.value)}
+                      placeholder={currentQuestion.placeholder || "Type your answer here..."}
+                      autoComplete={currentQuestion.type === "email" ? "email" : currentQuestion.type === "tel" ? "tel" : "name"}
+                      className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && validateCurrentAnswer()) {
+                          if (currentQuestion.id === "email") {
+                            checkExistingVolunteer();
+                          }
+                          handleNext();
+                        }
+                      }}
+                    />
+                  </form>
+                )}
+
+                {/* Select */}
+                {currentQuestion.type === "select" && (
+                  <div>
+                    <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
+                      <SelectTrigger className="text-xl h-14 px-4">
+                        <SelectValue placeholder={currentQuestion.placeholder || "Select an option"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currentQuestion.optionsFrom === "teams"
+                          ? formConfig.teams.map((team) => (
+                              <SelectItem key={team} value={team}>
+                                {team}
+                              </SelectItem>
+                            ))
+                          : null}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Checkbox Multi */}
+                {currentQuestion.type === "checkbox-multi" && (
+                  <div className="space-y-4">
+                    {currentQuestion.optionsFrom === "experiences"
+                      ? formConfig.experiences.map((exp) => (
+                          <motion.div
+                            key={exp.id}
+                            whileHover={{ scale: 1.02 }}
+                            className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                              (formAnswers[currentQuestion.id] as string[])?.includes(exp.id)
+                                ? "border-primary bg-accent"
+                                : "border-border bg-background/50 hover:border-primary hover:bg-accent"
+                            }`}
+                            onClick={() => {
+                              const current = (formAnswers[currentQuestion.id] as string[]) || [];
+                              if (current.includes(exp.id)) {
+                                handleAnswerChange(current.filter((e) => e !== exp.id));
+                              } else {
+                                handleAnswerChange([...current, exp.id]);
+                              }
+                            }}
+                          >
+                            <Checkbox
+                              checked={(formAnswers[currentQuestion.id] as string[])?.includes(exp.id) || false}
+                              className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                            />
+                            <span className="text-xl font-medium">{exp.label}</span>
+                          </motion.div>
+                        ))
+                      : null}
+                  </div>
+                )}
               </motion.div>
             )}
 
-            {/* Question 3: Team */}
-            {currentQuestion === 3 && (
+            {/* Shifts question */}
+            {isShiftsQuestion && (
               <motion.div
-                key="q3"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-8"
-              >
-                <div className="space-y-4">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
-                    What team are you part of?<span className="text-destructive inline-block ml-1">*</span>
-                  </h1>
-                  <p className="text-lg text-muted-foreground">
-                    Select one
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  {formConfig.teams.map((teamOption) => (
-                    <motion.div
-                      key={teamOption}
-                      whileHover={{ scale: 1.02 }}
-                      className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                        team === teamOption
-                          ? "border-primary bg-accent"
-                          : "border-border bg-background/50 hover:border-primary hover:bg-accent"
-                      }`}
-                      onClick={() => setTeam(teamOption)}
-                    >
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                        team === teamOption
-                          ? "border-primary bg-primary"
-                          : "border-muted-foreground"
-                      }`}>
-                        {team === teamOption && (
-                          <div className="w-3 h-3 rounded-full bg-primary-foreground" />
-                        )}
-                      </div>
-                      <span className="text-xl font-medium">{teamOption}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Question 4: Experiences */}
-            {currentQuestion === 4 && (
-              <motion.div
-                key="q4"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-8"
-              >
-                <div className="space-y-4">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
-                    Do you have experience in the following?
-                  </h1>
-                  <p className="text-lg text-muted-foreground">
-                    Select all that apply (optional)
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  {formConfig.experiences.map((exp) => (
-                    <motion.div
-                      key={exp.id}
-                      whileHover={{ scale: 1.02 }}
-                      className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                        experiences.includes(exp.id)
-                          ? "border-primary bg-accent"
-                          : "border-border bg-background/50 hover:border-primary hover:bg-accent"
-                      }`}
-                      onClick={() =>
-                        setExperiences(
-                          experiences.includes(exp.id)
-                            ? experiences.filter((e) => e !== exp.id)
-                            : [...experiences, exp.id]
-                        )
-                      }
-                    >
-                      <Checkbox
-                        checked={experiences.includes(exp.id)}
-                        className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
-                      />
-                      <span className="text-xl font-medium">{exp.label}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Question 5: Availability per day */}
-            {currentQuestion === 5 && (
-              <motion.div
-                key={`q4-${currentDayIndex}`}
+                key={`shifts-${currentDayIndex}`}
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
@@ -531,41 +377,35 @@ export function VolunteerForm() {
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
                     {formConfig.days[currentDayIndex]}, {formConfig.dayDates[currentDayIndex]}
                   </h1>
-                  <p className="text-lg text-muted-foreground">
-                    Select all shifts you&apos;re available (or skip if unavailable)
-                  </p>
+                  <p className="text-lg text-muted-foreground">Select all shifts you&apos;re available (or skip if unavailable)</p>
                 </div>
                 <div className="space-y-4">
-                  {formConfig.shifts.map((shift) => {
-                    const disabled = isShiftDisabled(formConfig.days[currentDayIndex], shift);
-                    return (
-                      <motion.div
-                        key={shift}
-                        whileHover={disabled ? {} : { scale: 1.02 }}
-                        className={`flex items-center space-x-4 p-5 rounded-xl border-2 transition-all ${
-                          disabled
-                            ? "border-muted bg-muted/30 cursor-not-allowed opacity-50"
-                            : "border-border bg-background/50 hover:border-primary hover:bg-accent cursor-pointer"
-                        }`}
-                        onClick={() => handleShiftToggle(formConfig.days[currentDayIndex], shift)}
-                      >
-                        <Checkbox
-                          checked={shiftData[formConfig.days[currentDayIndex]]?.includes(shift) || false}
-                          disabled={disabled}
-                          className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
-                        />
-                        <span className="text-xl font-medium">{shift}</span>
-                      </motion.div>
-                    );
-                  })}
+                  {formConfig.shifts.map((shift) => (
+                    <motion.div
+                      key={shift}
+                      whileHover={{ scale: 1.02 }}
+                      className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                        shiftData[formConfig.days[currentDayIndex]]?.includes(shift)
+                          ? "border-primary bg-accent"
+                          : "border-border bg-background/50 hover:border-primary hover:bg-accent"
+                      }`}
+                      onClick={() => handleShiftToggle(shift)}
+                    >
+                      <Checkbox
+                        checked={shiftData[formConfig.days[currentDayIndex]]?.includes(shift) || false}
+                        className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                      />
+                      <span className="text-xl font-medium">{shift}</span>
+                    </motion.div>
+                  ))}
                 </div>
               </motion.div>
             )}
 
-            {/* Question 6: Review */}
-            {currentQuestion === 6 && (
+            {/* Review screen */}
+            {currentQuestionIndex === formConfig.questions.length && (
               <motion.div
-                key="q6"
+                key="review"
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
@@ -573,56 +413,50 @@ export function VolunteerForm() {
                 className="space-y-8"
               >
                 <div className="space-y-4">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
-                    Almost done! 🎉
-                  </h1>
-                  <p className="text-lg text-muted-foreground">
-                    Review your information
-                  </p>
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">Almost done! 🎉</h1>
+                  <p className="text-lg text-muted-foreground">Review your information</p>
                 </div>
                 <div className="space-y-6 text-lg">
-                  <div className="space-y-2">
-                    <p className="text-muted-foreground text-sm">Name</p>
-                    <p className="text-xl">{formData.name}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-muted-foreground text-sm">Contact</p>
-                    <p>{formData.email}</p>
-                    <p>{formData.phone}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-muted-foreground text-sm">Team</p>
-                    <p>{team}</p>
-                  </div>
-                  {experiences.length > 0 && (
+                  {formConfig.questions.map((q) => {
+                    const answer = formAnswers[q.id];
+                    if (!answer || (Array.isArray(answer) && answer.length === 0)) return null;
+
+                    let displayValue = answer;
+                    if (q.type === "checkbox-multi" && Array.isArray(answer)) {
+                      displayValue = formConfig.experiences
+                        .filter((e) => answer.includes(e.id))
+                        .map((e) => e.label)
+                        .join(", ");
+                    }
+
+                    return (
+                      <div key={q.id} className="space-y-2">
+                        <p className="text-muted-foreground text-sm capitalize">{q.label}</p>
+                        <p className="text-xl">{displayValue}</p>
+                      </div>
+                    );
+                  })}
+
+                  {Object.keys(shiftData).some((day) => shiftData[day].length > 0) && (
                     <div className="space-y-2">
-                      <p className="text-muted-foreground text-sm">Experience</p>
-                      <p>{formConfig.experiences.filter(e => experiences.includes(e.id)).map(e => e.label).join(", ")}</p>
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <p className="text-muted-foreground text-sm">Availability</p>
-                    {formConfig.days.map((day) => (
-                      <div key={day}>
-                        {shiftData[day]?.length > 0 && (
-                          <p>
+                      <p className="text-muted-foreground text-sm">Availability</p>
+                      {formConfig.days.map((day) => {
+                        if (!shiftData[day] || shiftData[day].length === 0) return null;
+                        return (
+                          <p key={day}>
                             <span className="font-medium">{day}:</span> {shiftData[day].join(", ")}
                           </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                {error && (
-                  <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
-                    {error}
-                  </div>
-                )}
+                {error && <div className="p-4 bg-destructive/10 text-destructive rounded-lg">{error}</div>}
               </motion.div>
             )}
 
             {/* Success screen */}
-            {currentQuestion === 7 && (
+            {currentQuestionIndex > formConfig.questions.length && (
               <motion.div
                 key="success"
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -638,12 +472,8 @@ export function VolunteerForm() {
                   <CheckCircle className="w-24 h-24 text-chart-1" />
                 </motion.div>
                 <div className="space-y-4">
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
-                    Thank you! 🙏
-                  </h1>
-                  <p className="text-xl text-muted-foreground">
-                    Your volunteer information has been submitted successfully.
-                  </p>
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">Thank you! 🙏</h1>
+                  <p className="text-xl text-muted-foreground">Your volunteer information has been submitted successfully.</p>
                 </div>
               </motion.div>
             )}
@@ -652,20 +482,15 @@ export function VolunteerForm() {
       </div>
 
       {/* Navigation buttons */}
-      {currentQuestion < 7 && (
+      {currentQuestionIndex <= formConfig.questions.length && (
         <motion.div
           className="fixed bottom-0 left-0 right-0 p-6 flex justify-between items-center bg-linear-to-t from-background/80 to-transparent backdrop-blur-sm z-50"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          {currentQuestion > 0 ? (
-            <Button
-              onClick={handleBack}
-              variant="ghost"
-              size="lg"
-              className="text-base"
-            >
+          {currentQuestionIndex > 0 ? (
+            <Button onClick={handleBack} variant="ghost" size="lg" className="text-base">
               <ArrowLeft className="w-5 h-5 mr-2" />
               Back
             </Button>
@@ -673,19 +498,19 @@ export function VolunteerForm() {
             <div />
           )}
 
-          {currentQuestion < 6 ? (
+          {currentQuestionIndex < formConfig.questions.length ? (
             <Button
               onClick={() => {
-                if (currentQuestion === 2 && canProceed()) {
+                if (currentQuestion?.id === "email" && validateCurrentAnswer()) {
                   checkExistingVolunteer();
                 }
                 handleNext();
               }}
-              disabled={!canProceed() || isCheckingEmail}
+              disabled={currentQuestion?.required && !validateCurrentAnswer()}
               size="lg"
               className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground text-base px-8 shadow-lg"
             >
-              {isCheckingEmail ? "Checking..." : "OK"} <ArrowRight className="w-5 h-5 ml-2" />
+              OK <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           ) : (
             <Button
@@ -697,18 +522,6 @@ export function VolunteerForm() {
               {isLoading ? "Submitting..." : "Submit"}
             </Button>
           )}
-        </motion.div>
-      )}
-
-      {/* Keyboard hint */}
-      {currentQuestion < 3 && canProceed() && currentQuestion !== 3 && (
-        <motion.div
-          className="fixed bottom-24 right-6 text-sm text-muted-foreground flex items-center gap-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter ↵</kbd>
         </motion.div>
       )}
     </div>
