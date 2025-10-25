@@ -33,6 +33,7 @@ import {
   type Task,
   type Assignment,
 } from "@/lib/db";
+import { FORM_CONFIG } from "@/lib/config";
 
 interface AssignmentsTabProps {
   volunteers: Volunteer[];
@@ -42,8 +43,8 @@ interface AssignmentsTabProps {
   onDataChange: () => void;
 }
 
-const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
-const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
+const DAYS = FORM_CONFIG.days;
+const SHIFTS = FORM_CONFIG.shifts;
 
 export function AssignmentsTab({
   volunteers,

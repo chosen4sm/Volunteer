@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Users } from "lucide-react";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
+import { FORM_CONFIG } from "@/lib/config";
 
 interface OverviewTabProps {
   volunteers: Volunteer[];
@@ -24,8 +25,8 @@ interface OverviewTabProps {
   assignments: Assignment[];
 }
 
-const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
-const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
+const DAYS = FORM_CONFIG.days;
+const SHIFTS = FORM_CONFIG.shifts;
 
 export function OverviewTab({ volunteers, locations, tasks, assignments }: OverviewTabProps) {
   const [filterDay, setFilterDay] = useState<string>("");

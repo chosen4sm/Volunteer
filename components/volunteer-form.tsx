@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { submitVolunteerForm } from "@/lib/utils";
 import { getVolunteerByEmail, getVolunteerByPhone, updateVolunteer } from "@/lib/db";
+import { FORM_CONFIG } from "@/lib/config";
 import { CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,10 +15,11 @@ interface ShiftData {
   [key: string]: string[];
 }
 
-const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
-const DAY_DATES = ["November 7th", "November 8th", "November 9th", "November 10th", "November 11th"];
-const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
-const TEAMS = ["IV", "PMP", "Construction", "Decor"];
+const DAYS = FORM_CONFIG.days;
+const DAY_DATES = FORM_CONFIG.dayDates;
+const SHIFTS = FORM_CONFIG.shifts;
+const TEAMS = FORM_CONFIG.teams;
+const EXPERIENCES = FORM_CONFIG.experiences;
 
 export function VolunteerForm() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -29,6 +31,7 @@ export function VolunteerForm() {
     email: "",
   });
   const [team, setTeam] = useState<string>("");
+  const [experiences, setExperiences] = useState<string[]>([]);
   const [shiftData, setShiftData] = useState<ShiftData>({
     Friday: [],
     Saturday: [],
@@ -51,20 +54,20 @@ export function VolunteerForm() {
   }, [currentQuestion]);
 
   const handleNext = () => {
-    if (currentQuestion < 4) {
+    if (currentQuestion < 5) {
       setCurrentQuestion(currentQuestion + 1);
-    } else if (currentQuestion === 4 && currentDayIndex < DAYS.length - 1) {
+    } else if (currentQuestion === 5 && currentDayIndex < DAYS.length - 1) {
       setCurrentDayIndex(currentDayIndex + 1);
-    } else if (currentQuestion === 4 && currentDayIndex === DAYS.length - 1) {
-      setCurrentQuestion(5);
+    } else if (currentQuestion === 5 && currentDayIndex === DAYS.length - 1) {
+      setCurrentQuestion(6);
     }
   };
 
   const handleBack = () => {
-    if (currentQuestion === 5) {
+    if (currentQuestion === 6) {
       setCurrentDayIndex(DAYS.length - 1);
-      setCurrentQuestion(4);
-    } else if (currentQuestion === 4 && currentDayIndex > 0) {
+      setCurrentQuestion(5);
+    } else if (currentQuestion === 5 && currentDayIndex > 0) {
       setCurrentDayIndex(currentDayIndex - 1);
     } else if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
@@ -199,6 +202,7 @@ export function VolunteerForm() {
           email: existing.email,
         });
         setTeam(existing.team || "");
+        setExperiences(existing.experiences || []);
         setShiftData(existing.shifts || {
           Friday: [],
           Saturday: [],
@@ -230,6 +234,7 @@ export function VolunteerForm() {
           name: formData.name,
           phone: formData.phone,
           team: team,
+          experiences: experiences,
           shifts: shiftData,
         });
         toast.success("Updated!", {
@@ -241,13 +246,14 @@ export function VolunteerForm() {
           phone: formData.phone,
           email: formData.email,
           team: team,
+          experiences: experiences,
           shifts: shiftData,
         });
         toast.success("Thank you!", {
           description: "Your volunteer information has been submitted successfully.",
         });
       }
-      setCurrentQuestion(6);
+      setCurrentQuestion(7);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to submit. Please try again.";
       toast.error("Submission Failed", {
@@ -264,6 +270,7 @@ export function VolunteerForm() {
     if (currentQuestion === 1) return formData.phone.trim().length > 0;
     if (currentQuestion === 2) return formData.email.trim().length > 0 && formData.email.includes("@");
     if (currentQuestion === 3) return team.length > 0;
+    if (currentQuestion === 4) return true;
     return true;
   };
 
@@ -274,13 +281,13 @@ export function VolunteerForm() {
         className="fixed top-0 left-0 h-1 bg-primary z-50"
         initial={{ width: "0%" }}
         animate={{
-          width: `${((currentQuestion + (currentQuestion === 4 ? currentDayIndex / DAYS.length : 0)) / 6) * 100}%`,
+          width: `${((currentQuestion + (currentQuestion === 5 ? currentDayIndex / DAYS.length : 0)) / 7) * 100}%`,
         }}
         transition={{ duration: 0.3 }}
       />
 
       {/* Logo/Title */}
-      {currentQuestion < 6 && (
+      {currentQuestion < 7 && (
         <div className="fixed top-6 left-6 z-40">
           <h2 className="text-xl font-bold text-primary">
             Volunteer Sign Up
@@ -289,9 +296,9 @@ export function VolunteerForm() {
       )}
 
       {/* Question counter */}
-      {currentQuestion < 6 && (
+      {currentQuestion < 7 && (
         <div className="fixed top-20 right-6 text-sm text-muted-foreground z-40">
-          {currentQuestion + 1} / 6
+          {currentQuestion + 1} / 7
         </div>
       )}
 
@@ -456,8 +463,55 @@ export function VolunteerForm() {
               </motion.div>
             )}
 
-            {/* Question 4: Availability per day */}
+            {/* Question 4: Experiences */}
             {currentQuestion === 4 && (
+              <motion.div
+                key="q4"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-8"
+              >
+                <div className="space-y-4">
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
+                    Do you have experience in the following?
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Select all that apply (optional)
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {EXPERIENCES.map((exp) => (
+                    <motion.div
+                      key={exp.id}
+                      whileHover={{ scale: 1.02 }}
+                      className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                        experiences.includes(exp.id)
+                          ? "border-primary bg-accent"
+                          : "border-border bg-background/50 hover:border-primary hover:bg-accent"
+                      }`}
+                      onClick={() =>
+                        setExperiences(
+                          experiences.includes(exp.id)
+                            ? experiences.filter((e) => e !== exp.id)
+                            : [...experiences, exp.id]
+                        )
+                      }
+                    >
+                      <Checkbox
+                        checked={experiences.includes(exp.id)}
+                        className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                      />
+                      <span className="text-xl font-medium">{exp.label}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Question 5: Availability per day */}
+            {currentQuestion === 5 && (
               <motion.div
                 key={`q4-${currentDayIndex}`}
                 initial={{ opacity: 0, x: 50 }}
@@ -501,10 +555,10 @@ export function VolunteerForm() {
               </motion.div>
             )}
 
-            {/* Question 5: Review */}
-            {currentQuestion === 5 && (
+            {/* Question 6: Review */}
+            {currentQuestion === 6 && (
               <motion.div
-                key="q5"
+                key="q6"
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
@@ -533,6 +587,12 @@ export function VolunteerForm() {
                     <p className="text-muted-foreground text-sm">Team</p>
                     <p>{team}</p>
                   </div>
+                  {experiences.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-muted-foreground text-sm">Experience</p>
+                      <p>{EXPERIENCES.filter(e => experiences.includes(e.id)).map(e => e.label).join(", ")}</p>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <p className="text-muted-foreground text-sm">Availability</p>
                     {DAYS.map((day) => (
@@ -555,7 +615,7 @@ export function VolunteerForm() {
             )}
 
             {/* Success screen */}
-            {currentQuestion === 6 && (
+            {currentQuestion === 7 && (
               <motion.div
                 key="success"
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -585,7 +645,7 @@ export function VolunteerForm() {
       </div>
 
       {/* Navigation buttons */}
-      {currentQuestion < 6 && (
+      {currentQuestion < 7 && (
         <motion.div
           className="fixed bottom-0 left-0 right-0 p-6 flex justify-between items-center bg-linear-to-t from-background/80 to-transparent backdrop-blur-sm z-50"
           initial={{ opacity: 0, y: 20 }}
@@ -606,7 +666,7 @@ export function VolunteerForm() {
             <div />
           )}
 
-          {currentQuestion < 5 ? (
+          {currentQuestion < 6 ? (
             <Button
               onClick={() => {
                 if (currentQuestion === 2 && canProceed()) {

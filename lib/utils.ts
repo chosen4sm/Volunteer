@@ -12,6 +12,7 @@ export interface VolunteerFormData {
   phone: string;
   email: string;
   team: string;
+  experiences?: string[];
   shifts: Record<string, string[]>;
   submittedAt: Timestamp;
 }
