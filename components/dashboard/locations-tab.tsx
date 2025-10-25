@@ -6,13 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -99,7 +92,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
     }
     try {
       if (editingTask) {
-        const updateData: any = {
+        const updateData: { name: string; description: string; locationId?: string } = {
           name: taskName,
           description: taskDescription,
         };
@@ -109,7 +102,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
         await updateTask(editingTask.id, updateData);
         toast.success("Task updated");
       } else {
-        const createData: any = {
+        const createData: { name: string; description: string } = {
           name: taskName,
           description: taskDescription,
         };

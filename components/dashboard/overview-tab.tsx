@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -110,70 +109,125 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
     return allocation;
   };
 
+  const getTeamAllocation = () => {
+    const allocation: { [key: string]: number } = {};
+    formConfig.teams.forEach((team) => {
+      allocation[team] = volunteers.filter((v) => v.team === team).length;
+    });
+    return allocation;
+  };
+
+  const getExperienceAllocation = () => {
+    const allocation: { [key: string]: number } = {};
+    formConfig.experiences.forEach((exp) => {
+      allocation[exp.id] = volunteers.filter((v) => 
+        (v.experiences || []).includes(exp.id)
+      ).length;
+    });
+    return allocation;
+  };
+
   const shiftAllocation = getShiftAllocation();
   const taskAllocation = getTaskAllocation();
+  const teamAllocation = getTeamAllocation();
+  const experienceAllocation = getExperienceAllocation();
 
   return (
-    <>
-      <div className="grid gap-4 md:grid-cols-3">
+    <div className="space-y-6">
+      <div className="grid gap-4 grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Volunteers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Volunteers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">
-              {volunteers.length}
-            </div>
-            <p className="text-xs text-muted-foreground">Total registrations</p>
+            <div className="text-3xl font-bold">{volunteers.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Total registered</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Locations</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Locations</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {locations.length}
-            </div>
-            <p className="text-xs text-muted-foreground">{tasks.length} tasks</p>
+            <div className="text-3xl font-bold">{locations.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">{tasks.length} tasks</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Assignments</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Assignments</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-chart-2">
-              {assignments.length}
-            </div>
-            <p className="text-xs text-muted-foreground">Volunteers assigned</p>
+            <div className="text-3xl font-bold">{assignments.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Active assignments</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Teams</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{formConfig.teams.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Configured teams</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Availability by Shifts</CardTitle>
-            <CardDescription>Volunteer count per day and shift</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Teams Distribution</CardTitle>
+            <CardDescription>Volunteers per team</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              {formConfig.teams.map((team) => (
+                <div key={team} className="p-3 rounded-lg border">
+                  <div className="text-sm text-muted-foreground">{team}</div>
+                  <div className="text-2xl font-bold mt-1">{teamAllocation[team] || 0}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Experience Distribution</CardTitle>
+            <CardDescription>Volunteers by experience</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2">
+              {formConfig.experiences.map((exp) => (
+                <div key={exp.id} className="p-3 rounded-lg border">
+                  <div className="text-sm text-muted-foreground">{exp.label}</div>
+                  <div className="text-2xl font-bold mt-1">{experienceAllocation[exp.id] || 0}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Shift Availability</CardTitle>
+            <CardDescription>Volunteers available per shift</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
               {DAYS.map((day) => (
                 <div key={day}>
                   <div className="text-sm font-semibold mb-2">{day}</div>
                   <div className="grid grid-cols-2 gap-2">
                     {SHIFTS.map((shift) => (
-                      <div key={shift} className="p-3 rounded-lg border bg-muted/50">
+                      <div key={shift} className="p-2 rounded-lg border">
                         <div className="text-xs text-muted-foreground">{shift}</div>
-                        <div className="text-lg font-bold text-foreground">
-                          {shiftAllocation[day][shift]}
-                        </div>
+                        <div className="text-lg font-bold">{shiftAllocation[day][shift]}</div>
                       </div>
                     ))}
                   </div>
@@ -184,9 +238,9 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Allocation by Tasks</CardTitle>
-            <CardDescription>Volunteers assigned to each task</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Task Assignments</CardTitle>
+            <CardDescription>Volunteers assigned to tasks</CardDescription>
           </CardHeader>
           <CardContent>
             {tasks.length === 0 ? (
@@ -196,16 +250,14 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                 {tasks.map((task) => {
                   const location = locations.find((l) => l.id === task.locationId);
                   return (
-                    <div key={task.id} className="p-3 rounded-lg border bg-muted/50">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="text-sm font-medium">{task.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {location?.name || "No location assigned"}
-                          </div>
+                    <div key={task.id} className="p-3 rounded-lg border flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{task.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {location?.name || "No location"}
                         </div>
-                        <Badge variant="secondary">{taskAllocation[task.id] || 0}</Badge>
                       </div>
+                      <Badge variant="secondary" className="ml-2">{taskAllocation[task.id] || 0}</Badge>
                     </div>
                   );
                 })}
@@ -216,79 +268,17 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Filter Volunteers</CardTitle>
-          <CardDescription>Find volunteers by availability or search</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-5">
-            <div className="space-y-2">
-              <Label htmlFor="volunteers-needed">Number Needed</Label>
-              <Input
-                id="volunteers-needed"
-                type="number"
-                min="1"
-                placeholder="e.g., 50"
-                value={filterCount}
-                onChange={(e) => setFilterCount(e.target.value)}
-              />
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Volunteers</CardTitle>
+              <CardDescription>
+                {filteredVolunteers.length !== volunteers.length
+                  ? `Showing ${filteredVolunteers.length} of ${volunteers.length}`
+                  : `${volunteers.length} total`}
+              </CardDescription>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="search">Search</Label>
-              <Input
-                id="search"
-                placeholder="Name, email, phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="day">Day</Label>
-              <Select value={filterDay || undefined} onValueChange={(val) => setFilterDay(val)}>
-                <SelectTrigger id="day">
-                  <SelectValue placeholder="All days" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAYS.map((day) => (
-                    <SelectItem key={day} value={day}>
-                      {day}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="shift">Shift</Label>
-              <Select value={filterShift || undefined} onValueChange={(val) => setFilterShift(val)}>
-                <SelectTrigger id="shift">
-                  <SelectValue placeholder="All shifts" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SHIFTS.map((shift) => (
-                    <SelectItem key={shift} value={shift}>
-                      {shift}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="experience">Experience</Label>
-              <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
-                <SelectTrigger id="experience">
-                  <SelectValue placeholder="All experiences" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formConfig.experiences.map((exp) => (
-                    <SelectItem key={exp.id} value={exp.id}>
-                      {exp.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="invisible">Actions</Label>
+            {(searchQuery || filterDay || filterShift || filterCount || filterExperience) && (
               <Button
                 onClick={() => {
                   setSearchQuery("");
@@ -298,96 +288,119 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                   setFilterExperience("");
                 }}
                 variant="outline"
-                className="w-full"
+                size="sm"
               >
                 Clear Filters
               </Button>
-            </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Volunteers ({filteredVolunteers.length})</CardTitle>
-          <CardDescription>
-            {filteredVolunteers.length !== volunteers.length
-              ? `Showing ${filteredVolunteers.length} of ${volunteers.length} volunteers`
-              : "All volunteer submissions"}
-          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex gap-3">
+            <Input
+              placeholder="Search name, email, phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-2"
+            />
+            <Select value={filterDay || undefined} onValueChange={(val) => setFilterDay(val)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Day" />
+              </SelectTrigger>
+              <SelectContent>
+                {DAYS.map((day) => (
+                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterShift || undefined} onValueChange={(val) => setFilterShift(val)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Shift" />
+              </SelectTrigger>
+              <SelectContent>
+                {SHIFTS.map((shift) => (
+                  <SelectItem key={shift} value={shift}>{shift}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Experience" />
+              </SelectTrigger>
+              <SelectContent>
+                {formConfig.experiences.map((exp) => (
+                  <SelectItem key={exp.id} value={exp.id}>{exp.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="number"
+              min="1"
+              placeholder="Limit"
+              value={filterCount}
+              onChange={(e) => setFilterCount(e.target.value)}
+              className="w-24"
+            />
+          </div>
+
           {filteredVolunteers.length === 0 ? (
-            <div className="py-8 text-center">
-              <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <div className="py-12 text-center">
+              <Users className="mx-auto h-12 w-12 text-muted-foreground/30" />
               <p className="mt-4 text-muted-foreground">No volunteers found</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {filteredVolunteers.map((volunteer) => {
                 const shiftData = volunteer.shifts || {};
                 const totalShifts = getTotalShifts(volunteer);
                 const volunteerAssignments = assignments.filter((a) => a.volunteerId === volunteer.id);
 
                 return (
-                  <div
-                    key={volunteer.id}
-                    className="p-4 rounded-lg border bg-background hover:border-primary/50 transition-all"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-start gap-4">
-                      <div className="flex items-start space-x-3 flex-1">
-                        <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarFallback className="bg-accent text-accent-foreground text-sm font-semibold">
-                            {getInitials(volunteer.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <div className="font-semibold text-foreground">
-                            {volunteer.name}
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <div className="text-sm text-muted-foreground truncate">
-                              {volunteer.email}
+                  <div key={volunteer.id} className="p-4 rounded-lg border hover:border-primary/50 transition">
+                    <div className="flex gap-4">
+                      <Avatar className="h-10 w-10 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                          {getInitials(volunteer.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div>
+                          <div className="font-semibold">{volunteer.name}</div>
+                          <div className="text-sm text-muted-foreground">{volunteer.email} • {volunteer.phone}</div>
+                          {volunteer.team && (
+                            <div className="text-sm text-muted-foreground mt-1">
+                              Team: <span className="font-medium">{volunteer.team}</span>
                             </div>
-                            <div className="text-sm text-muted-foreground">{volunteer.phone}</div>
-                            {volunteer.team && (
-                              <div className="text-sm text-muted-foreground">
-                                <span className="font-medium">Team:</span> {volunteer.team}
-                              </div>
-                            )}
-                            {volunteer.experiences && volunteer.experiences.length > 0 && (
-                              <div className="text-sm text-muted-foreground">
-                                <span className="font-medium">Experience:</span>{" "}
-                                {volunteer.experiences.map((exp) => formConfig.experiences.find(e => e.id === exp)?.label).join(", ")}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2 mt-2">
-                            <Badge variant="secondary">{totalShifts} shifts</Badge>
-                            {volunteerAssignments.length > 0 && (
-                              <Badge className="bg-chart-1 text-primary-foreground">
-                                {volunteerAssignments.length} assigned
-                              </Badge>
-                            )}
-                          </div>
+                          )}
                         </div>
-                      </div>
 
-                      <div className="flex-1 space-y-2">
-                        <div className="text-sm font-semibold">Availability:</div>
-                        {Object.keys(shiftData).length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {volunteer.experiences && volunteer.experiences.length > 0 && (
+                          <div className="flex gap-2 flex-wrap">
+                            {volunteer.experiences.map((exp) => {
+                              const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
+                              return expLabel ? <Badge key={exp} variant="outline" className="text-xs">{expLabel}</Badge> : null;
+                            })}
+                          </div>
+                        )}
+
+                        {Object.keys(shiftData).length > 0 && (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
                             {formConfig.days
                               .filter((day) => shiftData[day]?.length > 0)
                               .map((day) => (
-                                <div key={day} className="text-sm p-2 rounded bg-muted/50">
-                                  <span className="font-medium">{day}:</span>{" "}
-                                  {shiftData[day].join(", ")}
+                                <div key={day} className="p-2 rounded bg-muted">
+                                  <span className="font-medium">{day}:</span> {shiftData[day].join(", ")}
                                 </div>
                               ))}
                           </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">No shifts selected</span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-2 items-end">
+                        <Badge variant="secondary">{totalShifts} shifts</Badge>
+                        {volunteerAssignments.length > 0 && (
+                          <Badge>{volunteerAssignments.length} tasks</Badge>
                         )}
                       </div>
                     </div>
@@ -398,7 +411,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
           )}
         </CardContent>
       </Card>
-    </>
+    </div>
   );
 }
 

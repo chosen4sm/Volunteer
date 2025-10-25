@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -79,11 +78,6 @@ export function AssignmentsTab({
 
   const DAYS = formConfig.days;
   const SHIFTS = formConfig.shifts;
-
-  const getInitials = (name?: string) => {
-    const parts = name?.split(" ") || [];
-    return `${parts[0]?.charAt(0) || ""}${parts[parts.length - 1]?.charAt(0) || ""}`.toUpperCase();
-  };
 
   const getTotalShifts = (volunteer: Volunteer) => {
     const shiftData = volunteer.shifts || {};
@@ -344,81 +338,15 @@ export function AssignmentsTab({
   };
 
   return (
-    <>
+    <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Filter Volunteers</CardTitle>
-          <CardDescription>Find volunteers by availability or search to assign them to tasks</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-5">
-            <div className="space-y-2">
-              <Label htmlFor="volunteers-needed-assign">Number Needed</Label>
-              <Input
-                id="volunteers-needed-assign"
-                type="number"
-                min="1"
-                placeholder="e.g., 50"
-                value={filterCount}
-                onChange={(e) => setFilterCount(e.target.value)}
-              />
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Filter & Select Volunteers</CardTitle>
+              <CardDescription>Find volunteers to assign to tasks</CardDescription>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="search-assign">Search</Label>
-              <Input
-                id="search-assign"
-                placeholder="Name, email, phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="day-assign">Day</Label>
-              <Select value={filterDay || undefined} onValueChange={(val) => setFilterDay(val)}>
-                <SelectTrigger id="day-assign">
-                  <SelectValue placeholder="All days" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAYS.map((day) => (
-                    <SelectItem key={day} value={day}>
-                      {day}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="shift-assign">Shift</Label>
-              <Select value={filterShift || undefined} onValueChange={(val) => setFilterShift(val)}>
-                <SelectTrigger id="shift-assign">
-                  <SelectValue placeholder="All shifts" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SHIFTS.map((shift) => (
-                    <SelectItem key={shift} value={shift}>
-                      {shift}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="experience-assign">Experience</Label>
-              <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
-                <SelectTrigger id="experience-assign">
-                  <SelectValue placeholder="All experiences" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formConfig.experiences.map((exp) => (
-                    <SelectItem key={exp.id} value={exp.id}>
-                      {exp.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="invisible">Actions</Label>
+            {(searchQuery || filterDay || filterShift || filterCount || filterExperience) && (
               <Button
                 onClick={() => {
                   setSearchQuery("");
@@ -428,27 +356,68 @@ export function AssignmentsTab({
                   setFilterExperience("");
                 }}
                 variant="outline"
-                className="w-full"
+                size="sm"
               >
                 Clear Filters
               </Button>
-            </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-3">
+            <Input
+              placeholder="Search name, email, phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-2"
+            />
+            <Select value={filterDay || undefined} onValueChange={(val) => setFilterDay(val)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Day" />
+              </SelectTrigger>
+              <SelectContent>
+                {DAYS.map((day) => (
+                  <SelectItem key={day} value={day}>{day}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterShift || undefined} onValueChange={(val) => setFilterShift(val)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Shift" />
+              </SelectTrigger>
+              <SelectContent>
+                {SHIFTS.map((shift) => (
+                  <SelectItem key={shift} value={shift}>{shift}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Experience" />
+              </SelectTrigger>
+              <SelectContent>
+                {formConfig.experiences.map((exp) => (
+                  <SelectItem key={exp.id} value={exp.id}>{exp.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="number"
+              min="1"
+              placeholder="Limit"
+              value={filterCount}
+              onChange={(e) => setFilterCount(e.target.value)}
+              className="w-24"
+            />
+          </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Select Volunteers ({selectedVolunteers.length} selected)</CardTitle>
-              <CardDescription>
-                {selectedVolunteers.length > 0 && selectedVolunteers.length > filteredVolunteers.filter(v => selectedVolunteers.includes(v.id)).length
-                  ? `Showing ${displayVolunteers.length} volunteers (${selectedVolunteers.length} selected, ${filteredVolunteers.length} match filters)`
-                  : filteredVolunteers.length !== volunteers.length
-                  ? `Showing ${filteredVolunteers.length} of ${volunteers.length} volunteers`
-                  : "All volunteers"}
-              </CardDescription>
+          <div className="flex items-center justify-between pt-2 border-t">
+            <div className="text-sm text-muted-foreground">
+              {selectedVolunteers.length > 0
+                ? `${selectedVolunteers.length} selected • ${filteredVolunteers.length} match filters`
+                : filteredVolunteers.length !== volunteers.length
+                ? `Showing ${filteredVolunteers.length} of ${volunteers.length}`
+                : `${volunteers.length} total`}
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={selectAllFilteredVolunteers}>
@@ -456,20 +425,18 @@ export function AssignmentsTab({
               </Button>
               {selectedVolunteers.length > 0 && (
                 <Button size="sm" variant="outline" onClick={clearVolunteerSelection}>
-                  Clear Selection
+                  Clear ({selectedVolunteers.length})
                 </Button>
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
           {filteredVolunteers.length === 0 ? (
-            <div className="py-8 text-center">
-              <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <div className="py-12 text-center">
+              <Users className="mx-auto h-12 w-12 text-muted-foreground/30" />
               <p className="mt-4 text-muted-foreground">No volunteers found</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {displayVolunteers.map((volunteer) => {
                 const isSelected = selectedVolunteers.includes(volunteer.id);
                 const shiftData = volunteer.shifts || {};
@@ -480,88 +447,69 @@ export function AssignmentsTab({
                   <div
                     key={volunteer.id}
                     onClick={() => toggleVolunteerSelection(volunteer.id)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      isSelected
-                        ? "border-primary bg-accent"
-                        : "border-border bg-background hover:border-primary/50"
+                    className={`p-3 rounded-lg border cursor-pointer transition ${
+                      isSelected ? "border-primary bg-primary/5" : "hover:border-primary/50"
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={isSelected}
-                        className="pointer-events-none mt-1"
-                      />
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarFallback className="bg-accent text-accent-foreground text-sm font-semibold">
-                          {getInitials(volunteer.name)}
-                        </AvatarFallback>
-                      </Avatar>
+                    <div className="flex gap-3">
+                      <Checkbox checked={isSelected} className="pointer-events-none mt-1" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div>
-                            <div className="font-semibold text-sm">
-                              {volunteer.name}
-                            </div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm">{volunteer.name}</div>
                             <div className="text-xs text-muted-foreground truncate">{volunteer.email}</div>
                             {volunteer.team && (
-                              <div className="text-xs text-muted-foreground">
-                                {volunteer.team}
-                              </div>
-                            )}
-                            {volunteer.experiences && volunteer.experiences.length > 0 && (
-                              <div className="text-xs text-muted-foreground">
-                                Exps: {volunteer.experiences.map(exp => formConfig.experiences.find(e => e.id === exp)?.label).join(", ")}
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                Team: <span className="font-medium">{volunteer.team}</span>
                               </div>
                             )}
                           </div>
-                          <Badge variant="secondary" className="shrink-0">{totalShifts} shifts</Badge>
+                          <Badge variant="secondary" className="shrink-0">{totalShifts}</Badge>
                         </div>
-                        
+
+                        {volunteer.experiences && volunteer.experiences.length > 0 && (
+                          <div className="flex gap-1 flex-wrap mt-2">
+                            {volunteer.experiences.map((exp) => {
+                              const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
+                              return expLabel ? <Badge key={exp} variant="outline" className="text-xs">{expLabel}</Badge> : null;
+                            })}
+                          </div>
+                        )}
+
                         {consecutiveShifts && (
-                          <div className="mt-2 mb-2 p-2 bg-chart-3/10 border border-chart-3/30 rounded-lg">
+                          <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                             <div className="flex items-start gap-2">
-                              <AlertTriangle className="w-4 h-4 text-chart-3 shrink-0 mt-0.5" />
-                              <div className="flex-1">
-                                <div className="text-xs font-semibold text-chart-3">
-                                  Consecutive Shifts Detected
+                              <AlertTriangle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-yellow-600">
+                                  Consecutive Shifts
                                 </div>
                                 {consecutiveShifts.map((shift, idx) => (
-                                  <div key={idx} className="text-xs text-chart-3">
-                                    {shift}
-                                  </div>
+                                  <div key={idx} className="text-xs text-yellow-600">{shift}</div>
                                 ))}
-                                <div className="flex items-center justify-between mt-2 gap-2">
-                                  <div className="text-xs text-chart-3">
-                                    Consider replacing with someone else
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-6 px-2 text-xs border-chart-3/30 hover:bg-chart-3/10"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      replaceVolunteerWithAlternative(
-                                        volunteer.id,
-                                        volunteer.name
-                                      );
-                                    }}
-                                  >
-                                    Replace
-                                  </Button>
-                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs mt-1 border-yellow-500/30"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    replaceVolunteerWithAlternative(volunteer.id, volunteer.name);
+                                  }}
+                                >
+                                  Replace
+                                </Button>
                               </div>
                             </div>
                           </div>
                         )}
 
                         {Object.keys(shiftData).length > 0 && (
-                          <div className="mt-2 space-y-1">
+                          <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
                             {formConfig.days
                               .filter((day) => shiftData[day]?.length > 0)
                               .map((day) => (
-                                <div key={day} className="text-xs">
-                                  <span className="font-medium text-foreground">{day}:</span>{" "}
-                                  <span className="text-muted-foreground">{shiftData[day].join(", ")}</span>
+                                <div key={day} className="p-1.5 rounded bg-muted">
+                                  <span className="font-medium">{day}:</span> {shiftData[day].join(", ")}
                                 </div>
                               ))}
                           </div>
@@ -577,102 +525,74 @@ export function AssignmentsTab({
       </Card>
 
       {selectedVolunteers.length > 0 && (
-        <Card className="border-primary">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Assign {selectedVolunteers.length} Volunteer(s) to Task</CardTitle>
-                <CardDescription>Choose task and optional day/shift</CardDescription>
-              </div>
-            </div>
+        <Card className="border-2 border-primary">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''}</CardTitle>
+            <CardDescription>Choose task and schedule</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="bulk-location">Location (optional)</Label>
-                  <Select value={assignLocationId || undefined} onValueChange={setAssignLocationId}>
-                    <SelectTrigger id="bulk-location">
-                      <SelectValue placeholder="Select location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bulk-task">Task</Label>
-                  <Select value={assignTaskId || undefined} onValueChange={setAssignTaskId}>
-                    <SelectTrigger id="bulk-task">
-                      <SelectValue placeholder="Select task" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tasks
-                        .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
-                        .map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name} {t.locationId ? `(${locations.find(l => l.id === t.locationId)?.name})` : '(No location)'}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="bulk-day">Day (optional)</Label>
-                  <Select value={assignDay || undefined} onValueChange={(val) => setAssignDay(val || "")}>
-                    <SelectTrigger id="bulk-day">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAYS.map((day) => (
-                        <SelectItem key={day} value={day}>
-                          {day}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bulk-shift">Shift (optional)</Label>
-                  <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")}>
-                    <SelectTrigger id="bulk-shift">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHIFTS.map((shift) => (
-                        <SelectItem key={shift} value={shift}>
-                          {shift}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button
-                onClick={handleBulkAssignment}
-                className="w-full bg-primary hover:bg-primary/90"
-                disabled={!assignTaskId}
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Assign {selectedVolunteers.length} Volunteer(s)
-              </Button>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 grid-cols-2">
+              <Select value={assignLocationId || undefined} onValueChange={setAssignLocationId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Location (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={assignTaskId || undefined} onValueChange={setAssignTaskId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Task *" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tasks
+                    .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
+                    .map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} {t.locationId ? `(${locations.find(l => l.id === t.locationId)?.name})` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
+            <div className="grid gap-3 grid-cols-2">
+              <Select value={assignDay || undefined} onValueChange={(val) => setAssignDay(val || "")}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Day (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAYS.map((day) => (
+                    <SelectItem key={day} value={day}>{day}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Shift (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SHIFTS.map((shift) => (
+                    <SelectItem key={shift} value={shift}>{shift}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleBulkAssignment} className="w-full" disabled={!assignTaskId}>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''}
+            </Button>
           </CardContent>
         </Card>
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Assignments by Task ({assignments.length} total)</CardTitle>
-              <CardDescription>View volunteers grouped by their assigned tasks</CardDescription>
+              <CardTitle className="text-lg">Assignments ({assignments.length})</CardTitle>
+              <CardDescription>Volunteers grouped by task</CardDescription>
             </div>
             <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
               <DialogTrigger asChild>
@@ -774,15 +694,15 @@ export function AssignmentsTab({
         </CardHeader>
         <CardContent>
           {assignments.length === 0 ? (
-            <div className="py-8 text-center">
-              <UserPlus className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <div className="py-12 text-center">
+              <UserPlus className="mx-auto h-12 w-12 text-muted-foreground/30" />
               <p className="mt-4 text-muted-foreground">No assignments yet</p>
-              <p className="text-sm text-muted-foreground">
-                Use the filter above to select volunteers and assign them to tasks
+              <p className="text-sm text-muted-foreground mt-1">
+                Select volunteers above and assign them to tasks
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {tasks.map((task) => {
                 const taskAssignments = assignments.filter((a) => a.taskId === task.id);
                 if (taskAssignments.length === 0) return null;
@@ -790,18 +710,15 @@ export function AssignmentsTab({
                 const location = locations.find((l) => l.id === task.locationId);
 
                 return (
-                  <div key={task.id} className="border rounded-lg p-4 bg-muted/30">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{task.name}</h3>
+                  <div key={task.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold">{task.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {location?.name || "No location assigned"} • {taskAssignments.length} volunteer
-                          {taskAssignments.length !== 1 ? "s" : ""}
+                          {location?.name || "No location"}
                         </p>
                       </div>
-                      <Badge variant="secondary" className="ml-2">
-                        {taskAssignments.length}
-                      </Badge>
+                      <Badge variant="secondary">{taskAssignments.length}</Badge>
                     </div>
                     <div className="space-y-2">
                       {taskAssignments.map((assignment) => {
@@ -810,44 +727,20 @@ export function AssignmentsTab({
 
                         const scheduleText = assignment.day && assignment.shift
                           ? `${assignment.day} - ${assignment.shift}`
-                          : assignment.day
-                          ? assignment.day
-                          : assignment.shift
-                          ? assignment.shift
-                          : null;
+                          : assignment.day || assignment.shift || "No schedule";
 
                         return (
-                          <div
-                            key={assignment.id}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-background"
-                          >
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <Avatar className="h-8 w-8 shrink-0">
-                                <AvatarFallback className="bg-accent text-accent-foreground text-xs">
-                                  {getInitials(volunteer.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-sm">
-                                  {volunteer.name}
-                                </div>
-                                {scheduleText ? (
-                                  <div className="text-xs text-muted-foreground">
-                                    {scheduleText}
-                                  </div>
-                                ) : (
-                                  <div className="text-xs text-muted-foreground italic">
-                                    No schedule specified
-                                  </div>
-                                )}
-                              </div>
+                          <div key={assignment.id} className="flex items-center justify-between p-2 rounded-lg border">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm">{volunteer.name}</div>
+                              <div className="text-xs text-muted-foreground">{scheduleText}</div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => sendToWhatsApp(volunteer, task, location!, assignment)}
-                                className="text-chart-1 hover:text-chart-1"
+                                className="h-8 w-8 p-0 text-green-600 hover:text-green-600"
                                 title="Share to WhatsApp"
                               >
                                 <MessageCircle className="w-4 h-4" />
@@ -856,8 +749,8 @@ export function AssignmentsTab({
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleDeleteAssignment(assignment.id)}
-                                className="text-destructive hover:text-destructive"
-                                title="Remove assignment"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                title="Remove"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -873,7 +766,7 @@ export function AssignmentsTab({
           )}
         </CardContent>
       </Card>
-    </>
+    </div>
   );
 }
 

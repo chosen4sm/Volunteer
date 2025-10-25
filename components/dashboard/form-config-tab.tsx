@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Settings, Plus, Trash2, Database, AlertTriangle, Check, ChevronDown, ChevronUp, Save, X } from "lucide-react";
+import { Settings, Plus, Trash2, Database, AlertTriangle, ChevronDown, ChevronUp, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { getFormConfig, invalidateConfigCache, type FormConfig, type FormQuestion } from "@/lib/config";
 import { seedFormConfig, updateFormConfig } from "@/lib/seeder";
