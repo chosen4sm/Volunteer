@@ -310,21 +310,32 @@ export function VolunteerForm() {
 
                 {/* Select */}
                 {currentQuestion.type === "select" && (
-                  <div>
-                    <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
-                      <SelectTrigger className="text-xl h-14 px-4">
-                        <SelectValue placeholder={currentQuestion.placeholder || "Select an option"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {currentQuestion.optionsFrom === "teams"
-                          ? formConfig.teams.map((team) => (
-                              <SelectItem key={team} value={team}>
-                                {team}
-                              </SelectItem>
-                            ))
-                          : null}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-4">
+                    {currentQuestion.optionsFrom === "teams"
+                      ? formConfig.teams.map((team) => (
+                          <motion.div
+                            key={team}
+                            whileHover={{ scale: 1.02 }}
+                            className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                              (formAnswers[currentQuestion.id] as string) === team
+                                ? "border-primary bg-accent"
+                                : "border-border bg-background/50 hover:border-primary hover:bg-accent"
+                            }`}
+                            onClick={() => handleAnswerChange(team)}
+                          >
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                              (formAnswers[currentQuestion.id] as string) === team
+                                ? "border-primary bg-primary"
+                                : "border-muted-foreground"
+                            }`}>
+                              {(formAnswers[currentQuestion.id] as string) === team && (
+                                <div className="w-3 h-3 rounded-full bg-primary-foreground" />
+                              )}
+                            </div>
+                            <span className="text-xl font-medium">{team}</span>
+                          </motion.div>
+                        ))
+                      : null}
                   </div>
                 )}
 
