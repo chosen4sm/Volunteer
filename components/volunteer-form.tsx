@@ -291,6 +291,7 @@ export function VolunteerForm() {
                     <Input
                       ref={inputRef}
                       type={currentQuestion.type}
+                      name={currentQuestion.id}
                       value={(formAnswers[currentQuestion.id] as string) || ""}
                       onChange={(e) => handleAnswerChange(e.target.value)}
                       placeholder={currentQuestion.placeholder || "Type your answer here..."}
