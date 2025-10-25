@@ -33,7 +33,7 @@ export interface Location {
 
 export interface Task {
   id: string;
-  locationId: string;
+  locationId?: string;
   name: string;
   description?: string;
   createdAt: Timestamp;

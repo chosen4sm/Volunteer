@@ -377,15 +377,14 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                         <div className="text-sm font-semibold">Availability:</div>
                         {Object.keys(shiftData).length > 0 ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {Object.entries(shiftData).map(
-                              ([day, shifts]) =>
-                                shifts.length > 0 && (
-                                  <div key={day} className="text-sm p-2 rounded bg-muted/50">
-                                    <span className="font-medium">{day}:</span>{" "}
-                                    <span className="text-muted-foreground">{shifts.join(", ")}</span>
-                                  </div>
-                                )
-                            )}
+                            {formConfig.days
+                              .filter((day) => shiftData[day]?.length > 0)
+                              .map((day) => (
+                                <div key={day} className="text-sm p-2 rounded bg-muted/50">
+                                  <span className="font-medium">{day}:</span>{" "}
+                                  {shiftData[day].join(", ")}
+                                </div>
+                              ))}
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">No shifts selected</span>

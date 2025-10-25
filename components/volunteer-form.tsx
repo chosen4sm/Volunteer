@@ -155,9 +155,8 @@ export function VolunteerForm() {
     }
   };
 
-  const checkExistingVolunteer = async () => {
+  const checkExistingVolunteer = async (phone: string) => {
     const email = formAnswers.email as string;
-    const phone = formAnswers.phone as string;
 
     if ((!phone || phone.length < 10) && (!email || !email.includes("@"))) return;
 
@@ -174,13 +173,14 @@ export function VolunteerForm() {
 
       if (existing) {
         setExistingVolunteerId(existing.id);
-        setFormAnswers({
+        setFormAnswers((prev) => ({
+          ...prev,
           name: existing.name,
           phone: existing.phone,
           email: existing.email,
           team: existing.team || "",
           experience: existing.experiences || [],
-        });
+        }));
         setShiftData(existing.shifts || {});
         setShowExistingMessage(true);
         toast.info("Welcome back!", {
@@ -201,6 +201,10 @@ export function VolunteerForm() {
       ...formAnswers,
       [currentQuestion.id]: value,
     });
+
+    if (currentQuestion.id === "phone" && typeof value === "string" && value.length >= 10) {
+      checkExistingVolunteer(value);
+    }
   };
 
   const isShiftDisabled = (shift: string): boolean => {
@@ -340,7 +344,7 @@ export function VolunteerForm() {
                   </h1>
                 </div>
 
-                {showExistingMessage && currentQuestion.id === "email" && (
+                {showExistingMessage && currentQuestion.id === "phone" && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -386,13 +390,16 @@ export function VolunteerForm() {
                             ? currentQuestion.options 
                             : formConfig.teams.map(team => ({ id: team, label: team }));
                           
+                          // Sort options alphabetically by label
+                          const sortedOptions = [...options].sort((a, b) => a.label.localeCompare(b.label));
+                          
                           // Use large buttons if: ≤5 options OR has custom options from DB
-                          const useButtons = options.length <= 5 || !!currentQuestion.options;
+                          const useButtons = sortedOptions.length <= 5 || !!currentQuestion.options;
                           
                           return useButtons ? (
                             // Large buttons (for ≤5 options OR custom options)
                             <div className="space-y-4">
-                              {options.map((opt) => (
+                              {sortedOptions.map((opt) => (
                                 <motion.div
                                   key={opt.id}
                                   whileHover={{ scale: 1.02 }}
@@ -423,7 +430,7 @@ export function VolunteerForm() {
                                 <SelectValue placeholder="Select an option" />
                               </SelectTrigger>
                               <SelectContent>
-                                {options.map((opt) => (
+                                {sortedOptions.map((opt) => (
                                   <SelectItem key={opt.id} value={opt.id}>
                                     {opt.label}
                                   </SelectItem>
@@ -445,7 +452,11 @@ export function VolunteerForm() {
                           const options = currentQuestion.options 
                             ? currentQuestion.options 
                             : formConfig.experiences;
-                          return options.map((opt) => (
+                          
+                          // Sort options alphabetically by label
+                          const sortedOptions = [...options].sort((a, b) => a.label.localeCompare(b.label));
+                          
+                          return sortedOptions.map((opt) => (
                             <motion.div
                               key={opt.id}
                               whileHover={{ scale: 1.02 }}
@@ -623,9 +634,6 @@ export function VolunteerForm() {
           {currentQuestionIndex < formConfig.questions.length ? (
             <Button
               onClick={() => {
-                if (currentQuestion?.id === "email" && validateCurrentAnswer()) {
-                  checkExistingVolunteer();
-                }
                 handleNext();
               }}
               disabled={currentQuestion?.required && !validateCurrentAnswer()}

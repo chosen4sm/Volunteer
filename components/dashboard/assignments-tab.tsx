@@ -556,15 +556,14 @@ export function AssignmentsTab({
 
                         {Object.keys(shiftData).length > 0 && (
                           <div className="mt-2 space-y-1">
-                            {Object.entries(shiftData).map(
-                              ([day, shifts]) =>
-                                shifts.length > 0 && (
-                                  <div key={day} className="text-xs">
-                                    <span className="font-medium text-foreground">{day}:</span>{" "}
-                                    <span className="text-muted-foreground">{shifts.join(", ")}</span>
-                                  </div>
-                                )
-                            )}
+                            {formConfig.days
+                              .filter((day) => shiftData[day]?.length > 0)
+                              .map((day) => (
+                                <div key={day} className="text-xs">
+                                  <span className="font-medium text-foreground">{day}:</span>{" "}
+                                  <span className="text-muted-foreground">{shiftData[day].join(", ")}</span>
+                                </div>
+                              ))}
                           </div>
                         )}
                       </div>
