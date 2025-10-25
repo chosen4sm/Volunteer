@@ -28,6 +28,7 @@ export function FormConfigTab() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [editedConfig, setEditedConfig] = useState<FormConfig | null>(null);
+  const [activeTab, setActiveTab] = useState("teams");
 
   useEffect(() => {
     fetchConfig();
@@ -166,9 +167,17 @@ export function FormConfigTab() {
     );
   }
 
+  const tabs = [
+    { id: "teams", label: "Teams", count: editedConfig.teams.length },
+    { id: "experiences", label: "Experiences", count: editedConfig.experiences.length },
+    { id: "days", label: "Days & Dates", count: editedConfig.days.length },
+    { id: "shifts", label: "Shifts", count: editedConfig.shifts.length },
+    { id: "questions", label: "Questions", count: editedConfig.questions.length },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Header with seed button */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -176,7 +185,7 @@ export function FormConfigTab() {
             Form Configuration
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Edit form options and questions. Changes sync to all users instantly.
+            Edit form options and questions. Changes sync instantly.
           </p>
         </div>
         <Button
@@ -191,271 +200,222 @@ export function FormConfigTab() {
         </Button>
       </div>
 
-      {/* Teams */}
+      {/* Tabs */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Teams</CardTitle>
-          <CardDescription>Add or remove team options for volunteers</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        <CardHeader className="pb-3">
           <div className="flex flex-wrap gap-2">
-            {editedConfig.teams.map((team) => (
-              <Badge key={team} variant="secondary" className="pl-3 py-2">
-                {team}
-                <button
-                  onClick={() => removeTeam(team)}
-                  className="ml-2 hover:opacity-70"
-                >
-                  ×
-                </button>
-              </Badge>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {tab.label}
+                <Badge variant="outline" className="ml-2 text-xs">
+                  {tab.count}
+                </Badge>
+              </button>
             ))}
           </div>
-          <TeamAddForm onAdd={addTeam} />
-        </CardContent>
-      </Card>
-
-      {/* Experiences */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Experiences</CardTitle>
-          <CardDescription>Add or remove experience options for volunteers</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            {editedConfig.experiences.map((exp) => (
-              <div
-                key={exp.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
-              >
+
+        <CardContent className="space-y-6 min-h-96">
+          {/* Teams Tab */}
+          {activeTab === "teams" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold mb-3">Team Options</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {editedConfig.teams.map((team) => (
+                    <Badge key={team} variant="secondary" className="pl-3 py-2">
+                      {team}
+                      <button
+                        onClick={() => removeTeam(team)}
+                        className="ml-2 hover:opacity-70"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <TeamAddForm onAdd={addTeam} />
+            </div>
+          )}
+
+          {/* Experiences Tab */}
+          {activeTab === "experiences" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold mb-3">Experience Options</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
+                  {editedConfig.experiences.map((exp) => (
+                    <div
+                      key={exp.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
+                    >
+                      <div>
+                        <p className="font-medium">{exp.label}</p>
+                        <p className="text-xs text-muted-foreground">ID: {exp.id}</p>
+                      </div>
+                      <button
+                        onClick={() => removeExperience(exp.id)}
+                        className="text-destructive hover:opacity-70"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <ExperienceAddForm onAdd={addExperience} />
+            </div>
+          )}
+
+          {/* Days Tab */}
+          {activeTab === "days" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <p className="font-medium">{exp.label}</p>
-                  <p className="text-xs text-muted-foreground">ID: {exp.id}</p>
-                </div>
-                <button
-                  onClick={() => removeExperience(exp.id)}
-                  className="text-destructive hover:opacity-70"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <ExperienceAddForm onAdd={addExperience} />
-        </CardContent>
-      </Card>
-
-      {/* Days */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Days</CardTitle>
-          <CardDescription>Edit event days and dates</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm">Days</Label>
-              <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
-                {editedConfig.days.map((day, idx) => (
-                  <Input
-                    key={idx}
-                    value={day}
-                    onChange={(e) => {
-                      const newDays = [...editedConfig.days];
-                      newDays[idx] = e.target.value;
-                      setEditedConfig({ ...editedConfig, days: newDays });
-                    }}
-                    placeholder={`Day ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm">Dates</Label>
-              <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
-                {editedConfig.dayDates.map((date, idx) => (
-                  <Input
-                    key={idx}
-                    value={date}
-                    onChange={(e) => {
-                      const newDates = [...editedConfig.dayDates];
-                      newDates[idx] = e.target.value;
-                      setEditedConfig({ ...editedConfig, dayDates: newDates });
-                    }}
-                    placeholder={`Date ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            ⚠️ Keep days and dates in sync - same number of items
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Shifts */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Shifts</CardTitle>
-          <CardDescription>Edit available shift times</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {editedConfig.shifts.map((shift, idx) => (
-              <Input
-                key={idx}
-                value={shift}
-                onChange={(e) => {
-                  const newShifts = [...editedConfig.shifts];
-                  newShifts[idx] = e.target.value;
-                  setEditedConfig({ ...editedConfig, shifts: newShifts });
-                }}
-                placeholder={`Shift ${idx + 1}`}
-              />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Questions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Form Questions</CardTitle>
-          <CardDescription>Add, edit, or remove form questions</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            {editedConfig.questions.map((question, idx) => (
-              <div
-                key={question.id}
-                className="p-4 rounded-lg border bg-muted/30 space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="font-medium">{question.label}</div>
-                    <div className="text-sm text-muted-foreground space-y-1 mt-1">
-                      <div>ID: {question.id}</div>
-                      <div>Type: <Badge className="ml-1">{question.type}</Badge></div>
-                      {question.required && <div>Required: Yes</div>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {idx > 0 && (
-                      <button
-                        onClick={() => {
-                          const newQuestions = [...editedConfig.questions];
-                          [newQuestions[idx], newQuestions[idx - 1]] = [newQuestions[idx - 1], newQuestions[idx]];
-                          setEditedConfig({ ...editedConfig, questions: newQuestions });
+                  <h3 className="font-semibold mb-3">Days</h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {editedConfig.days.map((day, idx) => (
+                      <Input
+                        key={idx}
+                        value={day}
+                        onChange={(e) => {
+                          const newDays = [...editedConfig.days];
+                          newDays[idx] = e.target.value;
+                          setEditedConfig({ ...editedConfig, days: newDays });
                         }}
-                        className="text-muted-foreground hover:text-foreground p-1"
-                        title="Move up"
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </button>
-                    )}
-                    {idx < editedConfig.questions.length - 1 && (
-                      <button
-                        onClick={() => {
-                          const newQuestions = [...editedConfig.questions];
-                          [newQuestions[idx], newQuestions[idx + 1]] = [newQuestions[idx + 1], newQuestions[idx]];
-                          setEditedConfig({ ...editedConfig, questions: newQuestions });
-                        }}
-                        className="text-muted-foreground hover:text-foreground p-1"
-                        title="Move down"
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        const newQuestions = editedConfig.questions.filter((_, i) => i !== idx);
-                        setEditedConfig({ ...editedConfig, questions: newQuestions });
-                      }}
-                      className="text-destructive hover:opacity-70 p-1"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Edit question fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t">
-                  <div>
-                    <Label className="text-xs">Label</Label>
-                    <Input
-                      value={question.label}
-                      onChange={(e) => {
-                        const newQuestions = [...editedConfig.questions];
-                        newQuestions[idx].label = e.target.value;
-                        setEditedConfig({ ...editedConfig, questions: newQuestions });
-                      }}
-                      className="text-sm"
-                      placeholder="Question label"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Type</Label>
-                    <Select
-                      value={question.type}
-                      onValueChange={(value) => {
-                        const newQuestions = [...editedConfig.questions];
-                        newQuestions[idx].type = value as FormQuestion["type"];
-                        setEditedConfig({ ...editedConfig, questions: newQuestions });
-                      }}
-                    >
-                      <SelectTrigger className="text-sm h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {QUESTION_TYPES.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Placeholder</Label>
-                    <Input
-                      value={question.placeholder || ""}
-                      onChange={(e) => {
-                        const newQuestions = [...editedConfig.questions];
-                        newQuestions[idx].placeholder = e.target.value || undefined;
-                        setEditedConfig({ ...editedConfig, questions: newQuestions });
-                      }}
-                      className="text-sm"
-                      placeholder="Help text"
-                    />
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        checked={question.required}
-                        onCheckedChange={(checked) => {
-                          const newQuestions = [...editedConfig.questions];
-                          newQuestions[idx].required = checked as boolean;
-                          setEditedConfig({ ...editedConfig, questions: newQuestions });
-                        }}
-                        id={`required-${idx}`}
+                        placeholder={`Day ${idx + 1}`}
                       />
-                      <Label htmlFor={`required-${idx}`} className="text-xs cursor-pointer">
-                        Required
-                      </Label>
-                    </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-3">Dates</h3>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {editedConfig.dayDates.map((date, idx) => (
+                      <Input
+                        key={idx}
+                        value={date}
+                        onChange={(e) => {
+                          const newDates = [...editedConfig.dayDates];
+                          newDates[idx] = e.target.value;
+                          setEditedConfig({ ...editedConfig, dayDates: newDates });
+                        }}
+                        placeholder={`Date ${idx + 1}`}
+                      />
+                    ))}
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-          <QuestionAddForm onAdd={(q) => {
-            setEditedConfig({
-              ...editedConfig,
-              questions: [...editedConfig.questions, q],
-            });
-          }} />
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Keep days and dates in sync - same number of items
+              </p>
+            </div>
+          )}
+
+          {/* Shifts Tab */}
+          {activeTab === "shifts" && (
+            <div className="space-y-4">
+              <h3 className="font-semibold">Shift Times</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {editedConfig.shifts.map((shift, idx) => (
+                  <Input
+                    key={idx}
+                    value={shift}
+                    onChange={(e) => {
+                      const newShifts = [...editedConfig.shifts];
+                      newShifts[idx] = e.target.value;
+                      setEditedConfig({ ...editedConfig, shifts: newShifts });
+                    }}
+                    placeholder={`Shift ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Questions Tab */}
+          {activeTab === "questions" && (
+            <div className="space-y-4">
+              <h3 className="font-semibold mb-3">Form Questions</h3>
+              <div className="space-y-3 max-h-96 overflow-y-auto mb-4">
+                {editedConfig.questions.map((question, idx) => (
+                  <div
+                    key={question.id}
+                    className="p-3 rounded-lg border bg-muted/50 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{question.label}</p>
+                        <p className="text-xs text-muted-foreground">ID: {question.id}</p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {idx > 0 && (
+                          <button
+                            onClick={() => {
+                              const newQuestions = [...editedConfig.questions];
+                              [newQuestions[idx], newQuestions[idx - 1]] = [newQuestions[idx - 1], newQuestions[idx]];
+                              setEditedConfig({ ...editedConfig, questions: newQuestions });
+                            }}
+                            className="text-muted-foreground hover:text-foreground p-1"
+                            title="Move up"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+                        )}
+                        {idx < editedConfig.questions.length - 1 && (
+                          <button
+                            onClick={() => {
+                              const newQuestions = [...editedConfig.questions];
+                              [newQuestions[idx], newQuestions[idx + 1]] = [newQuestions[idx + 1], newQuestions[idx]];
+                              setEditedConfig({ ...editedConfig, questions: newQuestions });
+                            }}
+                            className="text-muted-foreground hover:text-foreground p-1"
+                            title="Move down"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            const newQuestions = editedConfig.questions.filter((_, i) => i !== idx);
+                            setEditedConfig({ ...editedConfig, questions: newQuestions });
+                          }}
+                          className="text-destructive hover:opacity-70 p-1"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Type:</span>
+                        <Badge className="ml-1">{question.type}</Badge>
+                      </div>
+                      {question.required && (
+                        <div className="text-chart-2">Required: Yes</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <QuestionAddForm onAdd={(q) => {
+                setEditedConfig({
+                  ...editedConfig,
+                  questions: [...editedConfig.questions, q],
+                });
+              }} />
+            </div>
+          )}
         </CardContent>
       </Card>
 
