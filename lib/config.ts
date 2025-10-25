@@ -71,13 +71,6 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
       label: "Select your availability",
       required: false,
     },
-    {
-      id: "jamat-khane",
-      type: "select",
-      label: "Select your primary Jamat Khane*",
-      required: true,
-      options: [],
-    },
   ],
 };
 

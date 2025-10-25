@@ -386,10 +386,11 @@ export function VolunteerForm() {
                             ? currentQuestion.options 
                             : formConfig.teams.map(team => ({ id: team, label: team }));
                           
-                          const useButtons = options.length <= 5 || currentQuestion.id === "jamat-khane";
+                          // Use large buttons if: ≤5 options OR has custom options from DB
+                          const useButtons = options.length <= 5 || !!currentQuestion.options;
                           
                           return useButtons ? (
-                            // Large buttons (for ≤5 options OR jamat-khane)
+                            // Large buttons (for ≤5 options OR custom options)
                             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                               {options.map((opt) => (
                                 <motion.div
@@ -416,7 +417,7 @@ export function VolunteerForm() {
                               ))}
                             </div>
                           ) : (
-                            // Dropdown for other questions with >5 options
+                            // Dropdown for predefined options with >5 items
                             <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
                               <SelectTrigger size="lg" className="border-2">
                                 <SelectValue placeholder="Select an option" />
