@@ -391,7 +391,7 @@ export function VolunteerForm() {
                           
                           return useButtons ? (
                             // Large buttons (for ≤5 options OR custom options)
-                            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                            <div className="space-y-4">
                               {options.map((opt) => (
                                 <motion.div
                                   key={opt.id}
