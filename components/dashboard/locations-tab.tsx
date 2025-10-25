@@ -94,8 +94,8 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
   };
 
   const handleCreateTask = async () => {
-    if (!taskName.trim() || !taskLocationId) {
-      toast.error("Please fill in all required fields");
+    if (!taskName.trim()) {
+      toast.error("Please enter a task name");
       return;
     }
     try {
@@ -103,14 +103,14 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
         await updateTask(editingTask.id, {
           name: taskName,
           description: taskDescription,
-          locationId: taskLocationId,
+          locationId: taskLocationId || undefined,
         });
         toast.success("Task updated");
       } else {
         await createTask({
           name: taskName,
           description: taskDescription,
-          locationId: taskLocationId,
+          locationId: taskLocationId || undefined,
         });
         toast.success("Task created");
       }
@@ -149,7 +149,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
     setEditingTask(task);
     setTaskName(task.name);
     setTaskDescription(task.description || "");
-    setTaskLocationId(task.locationId);
+    setTaskLocationId(task.locationId || "");
     setTaskDialogOpen(true);
   };
 
@@ -259,7 +259,6 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     setTaskDescription("");
                     setTaskLocationId("");
                   }}
-                  disabled={locations.length === 0}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Task
@@ -268,11 +267,11 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>{editingTask ? "Edit Task" : "Create Task"}</DialogTitle>
-                  <DialogDescription>Add a task within a location</DialogDescription>
+                  <DialogDescription>Create a task and optionally link it to a location</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="task-location">Location</Label>
+                    <Label htmlFor="task-location">Location (optional)</Label>
                     <Select value={taskLocationId || undefined} onValueChange={setTaskLocationId}>
                       <SelectTrigger id="task-location">
                         <SelectValue placeholder="Select location" />
@@ -327,7 +326,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     <div>
                       <div className="font-medium">{task.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {location?.name || "Unknown location"}
+                        {location?.name || "No location assigned"}
                       </div>
                       {task.description && (
                         <div className="text-sm text-muted-foreground mt-1">{task.description}</div>
