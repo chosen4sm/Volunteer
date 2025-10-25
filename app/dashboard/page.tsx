@@ -36,8 +36,9 @@ import {
 import { OverviewTab } from "@/components/dashboard/overview-tab";
 import { LocationsTab } from "@/components/dashboard/locations-tab";
 import { AssignmentsTab } from "@/components/dashboard/assignments-tab";
+import { FormConfigTab } from "@/components/dashboard/form-config-tab";
 
-type TabType = "overview" | "locations" | "assignments" | "dev";
+type TabType = "overview" | "locations" | "assignments" | "form-config" | "dev";
 
 const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
 const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
@@ -371,6 +372,17 @@ export default function DashboardPage() {
               <UserPlus className="w-4 h-4 inline mr-2" />
               Assignments
             </button>
+            <button
+              onClick={() => setActiveTab("form-config")}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === "form-config"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Database className="w-4 h-4 inline mr-2" />
+              Form Config
+            </button>
             {process.env.NODE_ENV === "development" && (
               <button
                 onClick={() => setActiveTab("dev")}
@@ -416,6 +428,10 @@ export default function DashboardPage() {
               assignments={assignments}
               onDataChange={fetchAllData}
             />
+          )}
+
+          {activeTab === "form-config" && (
+            <FormConfigTab />
           )}
 
           {activeTab === "dev" && (
