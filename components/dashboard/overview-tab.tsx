@@ -201,7 +201,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                         <div>
                           <div className="text-sm font-medium">{task.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {location?.name || "Unknown location"}
+                            {location?.name || "No location assigned"}
                           </div>
                         </div>
                         <Badge variant="secondary">{taskAllocation[task.id] || 0}</Badge>

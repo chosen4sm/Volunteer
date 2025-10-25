@@ -579,14 +579,18 @@ export function AssignmentsTab({
       {selectedVolunteers.length > 0 && (
         <Card className="border-primary">
           <CardHeader>
-            <CardTitle>Assign {selectedVolunteers.length} Volunteer(s) to Task</CardTitle>
-            <CardDescription>Choose location, task, and optional day/shift</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Assign {selectedVolunteers.length} Volunteer(s) to Task</CardTitle>
+                <CardDescription>Choose task and optional day/shift</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="bulk-location">Location</Label>
+                  <Label htmlFor="bulk-location">Location (optional)</Label>
                   <Select value={assignLocationId || undefined} onValueChange={setAssignLocationId}>
                     <SelectTrigger id="bulk-location">
                       <SelectValue placeholder="Select location" />
@@ -608,10 +612,10 @@ export function AssignmentsTab({
                     </SelectTrigger>
                     <SelectContent>
                       {tasks
-                        .filter((t) => !assignLocationId || t.locationId === assignLocationId)
+                        .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
                         .map((t) => (
                           <SelectItem key={t.id} value={t.id}>
-                            {t.name}
+                            {t.name} {t.locationId ? `(${locations.find(l => l.id === t.locationId)?.name})` : '(No location)'}
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -653,7 +657,7 @@ export function AssignmentsTab({
               <Button
                 onClick={handleBulkAssignment}
                 className="w-full bg-primary hover:bg-primary/90"
-                disabled={!assignLocationId || !assignTaskId}
+                disabled={!assignTaskId}
               >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Assign {selectedVolunteers.length} Volunteer(s)
@@ -699,7 +703,7 @@ export function AssignmentsTab({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="assign-location">Location</Label>
+                    <Label htmlFor="assign-location">Location (optional)</Label>
                     <Select value={assignLocationId || undefined} onValueChange={setAssignLocationId}>
                       <SelectTrigger id="assign-location">
                         <SelectValue placeholder="Select location" />
@@ -721,10 +725,10 @@ export function AssignmentsTab({
                       </SelectTrigger>
                       <SelectContent>
                         {tasks
-                          .filter((t) => !assignLocationId || t.locationId === assignLocationId)
+                          .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
                           .map((t) => (
                             <SelectItem key={t.id} value={t.id}>
-                              {t.name}
+                              {t.name} {t.locationId ? `(${locations.find(l => l.id === t.locationId)?.name})` : '(No location)'}
                             </SelectItem>
                           ))}
                       </SelectContent>
