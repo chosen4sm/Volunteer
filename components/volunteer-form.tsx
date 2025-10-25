@@ -386,9 +386,11 @@ export function VolunteerForm() {
                             ? currentQuestion.options 
                             : formConfig.teams.map(team => ({ id: team, label: team }));
                           
-                          return options.length <= 5 ? (
-                            // Large buttons for 5 or fewer options
-                            <div className="space-y-4">
+                          const useButtons = options.length <= 5 || currentQuestion.id === "jamat-khane";
+                          
+                          return useButtons ? (
+                            // Large buttons (for ≤5 options OR jamat-khane)
+                            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                               {options.map((opt) => (
                                 <motion.div
                                   key={opt.id}
@@ -400,7 +402,7 @@ export function VolunteerForm() {
                                   }`}
                                   onClick={() => handleAnswerChange(opt.id)}
                                 >
-                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                                     (formAnswers[currentQuestion.id] as string) === opt.id
                                       ? "border-primary bg-primary"
                                       : "border-muted-foreground"
@@ -414,7 +416,7 @@ export function VolunteerForm() {
                               ))}
                             </div>
                           ) : (
-                            // Dropdown for more than 5 options
+                            // Dropdown for other questions with >5 options
                             <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
                               <SelectTrigger className="h-14 px-4 text-lg border-2">
                                 <SelectValue placeholder="Select an option" />

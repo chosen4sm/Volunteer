@@ -34,6 +34,7 @@ import {
   type Task,
   type Assignment,
 } from "@/lib/db";
+import { populateJamatKhaneOptions } from "@/lib/seeder";
 import { OverviewTab } from "@/components/dashboard/overview-tab";
 import { LocationsTab } from "@/components/dashboard/locations-tab";
 import { AssignmentsTab } from "@/components/dashboard/assignments-tab";
@@ -55,6 +56,7 @@ export default function DashboardPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isSeedingHalls, setIsSeedingHalls] = useState(false);
   const [isNuking, setIsNuking] = useState(false);
+  const [isPopulatingJamatOptions, setIsPopulatingJamatOptions] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -290,6 +292,29 @@ export default function DashboardPage() {
       });
     } finally {
       setIsNuking(false);
+    }
+  };
+
+  const handlePopulateJamatOptions = async () => {
+    if (isPopulatingJamatOptions) return;
+    
+    setIsPopulatingJamatOptions(true);
+    toast.info("Adding Jamat Khane options...", {
+      description: "Populating the jamat-khane question with locations.",
+    });
+
+    try {
+      await populateJamatKhaneOptions();
+      toast.success("Jamat Khane options added!", {
+        description: "The jamat-khane question now has all Jamat locations.",
+      });
+    } catch (error) {
+      console.error("Error populating jamat options:", error);
+      toast.error("Failed to add options", {
+        description: "Check console for details.",
+      });
+    } finally {
+      setIsPopulatingJamatOptions(false);
     }
   };
 
@@ -538,6 +563,15 @@ export default function DashboardPage() {
                     >
                       <Trash2 className="w-4 h-4" />
                       {isNuking ? "Nuking..." : "Nuke Volunteers Only"}
+                    </Button>
+                    <Button
+                      onClick={handlePopulateJamatOptions}
+                      disabled={isPopulatingJamatOptions}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      {isPopulatingJamatOptions ? "Populating..." : "Populate Jamat Khane Options"}
                     </Button>
                   </div>
 
