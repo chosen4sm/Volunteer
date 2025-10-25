@@ -355,9 +355,6 @@ export function VolunteerForm() {
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      if (currentQuestion.id === "email") {
-                        checkExistingVolunteer();
-                      }
                       handleNext();
                     }}
                   >
@@ -372,9 +369,6 @@ export function VolunteerForm() {
                       className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && validateCurrentAnswer()) {
-                          if (currentQuestion.id === "email") {
-                            checkExistingVolunteer();
-                          }
                           handleNext();
                         }
                       }}
