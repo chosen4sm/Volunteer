@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -135,6 +135,7 @@ export function FormConfigTab() {
       toast.error("ID and label are required");
       return;
     }
+    if (!editedConfig) return;
     setEditedConfig({
       ...editedConfig,
       questions: [...editedConfig.questions, { id, label, type, placeholder: placeholder || undefined, required }],

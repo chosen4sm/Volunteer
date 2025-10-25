@@ -10,13 +10,6 @@ import { getVolunteerByEmail, getVolunteerByPhone, updateVolunteer } from "@/lib
 import { getFormConfig, type FormConfig } from "@/lib/config";
 import { CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface ShiftData {
   [key: string]: string[];
