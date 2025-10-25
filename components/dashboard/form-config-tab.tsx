@@ -406,7 +406,7 @@ export function FormConfigTab() {
                             newQuestions[idx].label = e.target.value;
                             setEditedConfig({ ...editedConfig, questions: newQuestions });
                           }}
-                          className="text-lg h-12 px-4 border-2"
+                          className="text-xl h-14 px-4 border-2"
                           placeholder="Question label"
                         />
                       </div>
@@ -420,12 +420,12 @@ export function FormConfigTab() {
                             setEditedConfig({ ...editedConfig, questions: newQuestions });
                           }}
                         >
-                          <SelectTrigger className="text-lg h-12 px-4 border-2">
+                          <SelectTrigger className="text-xl h-14 px-4 border-2">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             {QUESTION_TYPES.map((type) => (
-                              <SelectItem key={type} value={type} className="text-base">
+                              <SelectItem key={type} value={type} className="text-lg">
                                 {type}
                               </SelectItem>
                             ))}
@@ -441,7 +441,7 @@ export function FormConfigTab() {
                             newQuestions[idx].placeholder = e.target.value || undefined;
                             setEditedConfig({ ...editedConfig, questions: newQuestions });
                           }}
-                          className="text-lg h-12 px-4 border-2"
+                          className="text-xl h-14 px-4 border-2"
                           placeholder="Help text"
                         />
                       </div>
@@ -602,7 +602,7 @@ function QuestionAddForm({ onAdd }: { onAdd: (question: FormQuestion) => void })
             value={id}
             onChange={(e) => setId(e.target.value)}
             placeholder="e.g., company"
-            className="text-lg h-12 px-4 border-2"
+            className="text-xl h-14 px-4 border-2"
           />
         </div>
         <div>
@@ -611,18 +611,18 @@ function QuestionAddForm({ onAdd }: { onAdd: (question: FormQuestion) => void })
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g., Company name?"
-            className="text-lg h-12 px-4 border-2"
+            className="text-xl h-14 px-4 border-2"
           />
         </div>
         <div>
           <Label className="text-sm font-semibold mb-2 block">Type</Label>
           <Select value={type} onValueChange={(value) => setType(value as FormQuestion["type"])}>
-            <SelectTrigger className="text-lg h-12 px-4 border-2">
+            <SelectTrigger className="text-xl h-14 px-4 border-2">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {QUESTION_TYPES.map((t) => (
-                <SelectItem key={t} value={t} className="text-base">
+                <SelectItem key={t} value={t} className="text-lg">
                   {t}
                 </SelectItem>
               ))}
@@ -635,7 +635,7 @@ function QuestionAddForm({ onAdd }: { onAdd: (question: FormQuestion) => void })
             value={placeholder}
             onChange={(e) => setPlaceholder(e.target.value)}
             placeholder="Help text"
-            className="text-lg h-12 px-4 border-2"
+            className="text-xl h-14 px-4 border-2"
           />
         </div>
       </div>
