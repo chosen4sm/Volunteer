@@ -7,13 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Settings, Plus, Trash2, Database, AlertTriangle, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
@@ -412,25 +405,25 @@ export function FormConfigTab() {
                       </div>
                       <div>
                         <Label className="text-sm font-semibold mb-2 block">Type</Label>
-                        <Select
-                          value={question.type}
-                          onValueChange={(value) => {
-                            const newQuestions = [...editedConfig.questions];
-                            newQuestions[idx].type = value as FormQuestion["type"];
-                            setEditedConfig({ ...editedConfig, questions: newQuestions });
-                          }}
-                        >
-                          <SelectTrigger className="text-xl h-14 px-4 border-2">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {QUESTION_TYPES.map((type) => (
-                              <SelectItem key={type} value={type} className="text-lg">
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="grid grid-cols-2 gap-2">
+                          {QUESTION_TYPES.map((t) => (
+                            <button
+                              key={t}
+                              onClick={() => {
+                                const newQuestions = [...editedConfig.questions];
+                                newQuestions[idx].type = t;
+                                setEditedConfig({ ...editedConfig, questions: newQuestions });
+                              }}
+                              className={`p-3 rounded-lg border-2 font-semibold text-sm transition-all ${
+                                question.type === t
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-muted text-muted-foreground hover:border-primary hover:bg-muted/80"
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div>
                         <Label className="text-sm font-semibold mb-2 block">Placeholder</Label>
@@ -616,18 +609,21 @@ function QuestionAddForm({ onAdd }: { onAdd: (question: FormQuestion) => void })
         </div>
         <div>
           <Label className="text-sm font-semibold mb-2 block">Type</Label>
-          <Select value={type} onValueChange={(value) => setType(value as FormQuestion["type"])}>
-            <SelectTrigger className="text-xl h-14 px-4 border-2">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {QUESTION_TYPES.map((t) => (
-                <SelectItem key={t} value={t} className="text-lg">
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-2 gap-2">
+            {QUESTION_TYPES.map((t) => (
+              <button
+                key={t}
+                onClick={() => setType(t)}
+                className={`p-3 rounded-lg border-2 font-semibold text-sm transition-all ${
+                  type === t
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-muted text-muted-foreground hover:border-primary hover:bg-muted/80"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <Label className="text-sm font-semibold mb-2 block">Placeholder</Label>
