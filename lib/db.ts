@@ -128,7 +128,7 @@ export async function getTasks(locationId?: string): Promise<Task[]> {
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Task));
 }
 
-export async function createTask(data: Omit<Task, "id" | "createdAt">): Promise<string> {
+export async function createTask(data: Partial<Omit<Task, "id" | "createdAt">>): Promise<string> {
   const docRef = await addDoc(collection(db, "tasks"), {
     ...data,
     createdAt: Timestamp.now(),

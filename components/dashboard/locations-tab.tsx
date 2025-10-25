@@ -100,18 +100,24 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
     }
     try {
       if (editingTask) {
-        await updateTask(editingTask.id, {
+        const updateData: any = {
           name: taskName,
           description: taskDescription,
-          locationId: taskLocationId || undefined,
-        });
+        };
+        if (taskLocationId) {
+          updateData.locationId = taskLocationId;
+        }
+        await updateTask(editingTask.id, updateData);
         toast.success("Task updated");
       } else {
-        await createTask({
+        const createData: any = {
           name: taskName,
           description: taskDescription,
-          locationId: taskLocationId || undefined,
-        });
+        };
+        if (taskLocationId) {
+          createData.locationId = taskLocationId;
+        }
+        await createTask(createData);
         toast.success("Task created");
       }
       setTaskDialogOpen(false);
