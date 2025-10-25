@@ -198,3 +198,15 @@ export async function nukeAllData(): Promise<void> {
     await Promise.all(deletePromises);
   }
 }
+
+export async function nukeVolunteersAndAssignments(): Promise<void> {
+  const collections = ["volunteers", "assignments"];
+  
+  for (const collectionName of collections) {
+    const snapshot = await getDocs(collection(db, collectionName));
+    const deletePromises = snapshot.docs.map((document) => 
+      deleteDoc(doc(db, collectionName, document.id))
+    );
+    await Promise.all(deletePromises);
+  }
+}

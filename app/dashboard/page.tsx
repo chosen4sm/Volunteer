@@ -27,6 +27,7 @@ import {
   getTasks,
   getAssignments,
   nukeAllData,
+  nukeVolunteersAndAssignments,
   createLocation,
   type Volunteer,
   type Location,
@@ -255,6 +256,37 @@ export default function DashboardPage() {
       console.error("Error nuking data:", error);
       toast.error("Nuke failed", {
         description: "Failed to delete all data. Check console for details.",
+      });
+    } finally {
+      setIsNuking(false);
+    }
+  };
+
+  const handleNukeVolunteersOnly = async () => {
+    if (isNuking) return;
+
+    const confirmed = confirm(
+      "⚠️ WARNING: This will permanently delete ALL volunteers and their assignments from the database. Locations and tasks will be preserved. This action CANNOT be undone. Are you sure?"
+    );
+
+    if (!confirmed) return;
+
+    setIsNuking(true);
+    toast.info("Nuking volunteers...", {
+      description: "Deleting all volunteers and assignments. Please wait.",
+    });
+
+    try {
+      await nukeVolunteersAndAssignments();
+      await fetchAllData();
+
+      toast.success("Volunteers nuked!", {
+        description: "All volunteers and assignments have been deleted.",
+      });
+    } catch (error) {
+      console.error("Error nuking volunteers:", error);
+      toast.error("Nuke failed", {
+        description: "Failed to delete volunteers. Check console for details.",
       });
     } finally {
       setIsNuking(false);
@@ -497,6 +529,15 @@ export default function DashboardPage() {
                     >
                       <Trash2 className="w-4 h-4" />
                       {isNuking ? "Nuking..." : "Nuke All Data"}
+                    </Button>
+                    <Button
+                      onClick={handleNukeVolunteersOnly}
+                      disabled={isNuking}
+                      variant="destructive"
+                      className="gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {isNuking ? "Nuking..." : "Nuke Volunteers Only"}
                     </Button>
                   </div>
 
