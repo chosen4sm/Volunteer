@@ -7,10 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Settings, Plus, Trash2, Database, AlertTriangle, Check } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Settings, Plus, Trash2, Database, AlertTriangle, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
-import { getFormConfig, invalidateConfigCache, type FormConfig } from "@/lib/config";
+import { getFormConfig, invalidateConfigCache, type FormConfig, type FormQuestion } from "@/lib/config";
 import { seedFormConfig, updateFormConfig } from "@/lib/seeder";
+
+const QUESTION_TYPES = ["text", "tel", "email", "select", "checkbox-multi", "shifts"] as const;
 
 export function FormConfigTab() {
   const [config, setConfig] = useState<FormConfig | null>(null);
@@ -308,6 +318,147 @@ export function FormConfigTab() {
         </CardContent>
       </Card>
 
+      {/* Questions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Form Questions</CardTitle>
+          <CardDescription>Add, edit, or remove form questions</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            {editedConfig.questions.map((question, idx) => (
+              <div
+                key={question.id}
+                className="p-4 rounded-lg border bg-muted/30 space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="font-medium">{question.label}</div>
+                    <div className="text-sm text-muted-foreground space-y-1 mt-1">
+                      <div>ID: {question.id}</div>
+                      <div>Type: <Badge className="ml-1">{question.type}</Badge></div>
+                      {question.required && <div>Required: Yes</div>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {idx > 0 && (
+                      <button
+                        onClick={() => {
+                          const newQuestions = [...editedConfig.questions];
+                          [newQuestions[idx], newQuestions[idx - 1]] = [newQuestions[idx - 1], newQuestions[idx]];
+                          setEditedConfig({ ...editedConfig, questions: newQuestions });
+                        }}
+                        className="text-muted-foreground hover:text-foreground p-1"
+                        title="Move up"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                    )}
+                    {idx < editedConfig.questions.length - 1 && (
+                      <button
+                        onClick={() => {
+                          const newQuestions = [...editedConfig.questions];
+                          [newQuestions[idx], newQuestions[idx + 1]] = [newQuestions[idx + 1], newQuestions[idx]];
+                          setEditedConfig({ ...editedConfig, questions: newQuestions });
+                        }}
+                        className="text-muted-foreground hover:text-foreground p-1"
+                        title="Move down"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        const newQuestions = editedConfig.questions.filter((_, i) => i !== idx);
+                        setEditedConfig({ ...editedConfig, questions: newQuestions });
+                      }}
+                      className="text-destructive hover:opacity-70 p-1"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Edit question fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t">
+                  <div>
+                    <Label className="text-xs">Label</Label>
+                    <Input
+                      value={question.label}
+                      onChange={(e) => {
+                        const newQuestions = [...editedConfig.questions];
+                        newQuestions[idx].label = e.target.value;
+                        setEditedConfig({ ...editedConfig, questions: newQuestions });
+                      }}
+                      className="text-sm"
+                      placeholder="Question label"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Type</Label>
+                    <Select
+                      value={question.type}
+                      onValueChange={(value) => {
+                        const newQuestions = [...editedConfig.questions];
+                        newQuestions[idx].type = value as FormQuestion["type"];
+                        setEditedConfig({ ...editedConfig, questions: newQuestions });
+                      }}
+                    >
+                      <SelectTrigger className="text-sm h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {QUESTION_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Placeholder</Label>
+                    <Input
+                      value={question.placeholder || ""}
+                      onChange={(e) => {
+                        const newQuestions = [...editedConfig.questions];
+                        newQuestions[idx].placeholder = e.target.value || undefined;
+                        setEditedConfig({ ...editedConfig, questions: newQuestions });
+                      }}
+                      className="text-sm"
+                      placeholder="Help text"
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        checked={question.required}
+                        onCheckedChange={(checked) => {
+                          const newQuestions = [...editedConfig.questions];
+                          newQuestions[idx].required = checked as boolean;
+                          setEditedConfig({ ...editedConfig, questions: newQuestions });
+                        }}
+                        id={`required-${idx}`}
+                      />
+                      <Label htmlFor={`required-${idx}`} className="text-xs cursor-pointer">
+                        Required
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <QuestionAddForm onAdd={(q) => {
+            setEditedConfig({
+              ...editedConfig,
+              questions: [...editedConfig.questions, q],
+            });
+          }} />
+        </CardContent>
+      </Card>
+
       {/* Action Buttons */}
       <div className="flex gap-3 sticky bottom-4">
         <Button
@@ -392,6 +543,85 @@ function ExperienceAddForm({ onAdd }: { onAdd: (id: string, label: string) => vo
       <Button onClick={handleAdd} size="sm" variant="outline" className="w-full gap-2">
         <Plus className="w-4 h-4" />
         Add Experience
+      </Button>
+    </div>
+  );
+}
+
+function QuestionAddForm({ onAdd }: { onAdd: (question: FormQuestion) => void }) {
+  const [id, setId] = useState("");
+  const [label, setLabel] = useState("");
+  const [type, setType] = useState<FormQuestion["type"]>("text");
+  const [placeholder, setPlaceholder] = useState("");
+  const [required, setRequired] = useState(true);
+
+  const handleAdd = () => {
+    if (!id.trim() || !label.trim()) {
+      toast.error("ID and label are required");
+      return;
+    }
+    onAdd({
+      id,
+      label,
+      type,
+      placeholder: placeholder || undefined,
+      required,
+    });
+    setId("");
+    setLabel("");
+    setType("text");
+    setPlaceholder("");
+    setRequired(true);
+  };
+
+  return (
+    <div className="space-y-3 p-4 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5">
+      <h3 className="text-sm font-semibold">Add New Question</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <Input
+          value={id}
+          onChange={(e) => setId(e.target.value)}
+          placeholder="ID (e.g., company)"
+          className="text-sm"
+        />
+        <Input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Label (e.g., Company name)"
+          className="text-sm"
+        />
+        <Select value={type} onValueChange={(value) => setType(value as FormQuestion["type"])}>
+          <SelectTrigger className="text-sm h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {QUESTION_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {t}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          value={placeholder}
+          onChange={(e) => setPlaceholder(e.target.value)}
+          placeholder="Placeholder text"
+          className="text-sm"
+        />
+      </div>
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          checked={required}
+          onCheckedChange={(checked) => setRequired(checked as boolean)}
+          id="new-question-required"
+        />
+        <Label htmlFor="new-question-required" className="text-sm cursor-pointer">
+          Required
+        </Label>
+      </div>
+      <Button onClick={handleAdd} size="sm" className="w-full gap-2">
+        <Plus className="w-4 h-4" />
+        Add Question
       </Button>
     </div>
   );
