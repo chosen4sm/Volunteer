@@ -30,6 +30,7 @@ export function FormConfigTab() {
   const [customOptions, setCustomOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [newOptionId, setNewOptionId] = useState("");
   const [newOptionLabel, setNewOptionLabel] = useState("");
+  const [optionsSource, setOptionsSource] = useState<"custom" | "teams" | "experiences">("custom");
 
   useEffect(() => {
     fetchConfig();
@@ -148,9 +149,15 @@ export function FormConfigTab() {
       required 
     };
     
-    // Add custom options for select/checkbox-multi if provided
-    if ((type === "select" || type === "checkbox-multi") && customOptions.length > 0) {
-      newQuestion.options = customOptions;
+    // Add options based on source
+    if (type === "select" || type === "checkbox-multi") {
+      if (optionsSource === "teams") {
+        newQuestion.optionsFrom = "teams";
+      } else if (optionsSource === "experiences") {
+        newQuestion.optionsFrom = "experiences";
+      } else if (customOptions.length > 0) {
+        newQuestion.options = customOptions;
+      }
     }
     
     setEditedConfig({
@@ -165,6 +172,7 @@ export function FormConfigTab() {
     setCustomOptions([]);
     setNewOptionId("");
     setNewOptionLabel("");
+    setOptionsSource("custom");
   };
 
   if (isLoading) {
@@ -533,49 +541,94 @@ export function FormConfigTab() {
                     {(question.type === "select" || question.type === "checkbox-multi") && (
                       <div className="pt-3 border-t space-y-2">
                         <Label className="text-xs text-muted-foreground">Options</Label>
-                        <div className="space-y-2">
-                          {question.options?.map((opt, optIdx) => (
-                            <div key={optIdx} className="flex items-center gap-2">
-                              <Input value={opt.id} disabled className="h-8 text-xs flex-1" />
-                              <Input value={opt.label} disabled className="h-8 text-xs flex-1" />
-                              <Button
-                                onClick={() => {
-                                  const newQuestions = [...editedConfig.questions];
-                                  newQuestions[idx].options = question.options?.filter((_, i) => i !== optIdx);
-                                  setEditedConfig({ ...editedConfig, questions: newQuestions });
-                                }}
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-destructive"
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
+                        
+                        {question.optionsFrom ? (
+                          <div className="space-y-2">
+                            <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded">
+                              Options loaded from: <span className="font-semibold">{question.optionsFrom === "teams" ? "Teams" : "Experiences"}</span>
                             </div>
-                          ))}
-                          <div className="flex gap-2">
-                            <Input placeholder="ID" id={`opt-id-${idx}`} className="h-8 text-xs flex-1" />
-                            <Input placeholder="Label" id={`opt-label-${idx}`} className="h-8 text-xs flex-1" />
+                            {question.optionsFrom === "teams" ? (
+                              editedConfig.teams.length > 0 ? (
+                                editedConfig.teams.map((team) => (
+                                  <div key={team} className="flex items-center gap-2 p-2 bg-muted/20 rounded">
+                                    <Input value={team} disabled className="h-8 text-xs flex-1" />
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-xs text-muted-foreground">No teams configured</p>
+                              )
+                            ) : question.optionsFrom === "experiences" ? (
+                              editedConfig.experiences.length > 0 ? (
+                                editedConfig.experiences.map((exp) => (
+                                  <div key={exp.id} className="flex items-center gap-2 p-2 bg-muted/20 rounded">
+                                    <Input value={exp.id} disabled className="h-8 text-xs flex-1" />
+                                    <Input value={exp.label} disabled className="h-8 text-xs flex-1" />
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-xs text-muted-foreground">No experiences configured</p>
+                              )
+                            ) : null}
                             <Button
                               onClick={() => {
-                                const idInput = document.getElementById(`opt-id-${idx}`) as HTMLInputElement;
-                                const labelInput = document.getElementById(`opt-label-${idx}`) as HTMLInputElement;
-                                if (!idInput?.value.trim() || !labelInput?.value.trim()) {
-                                  toast.error("Both ID and label required");
-                                  return;
-                                }
                                 const newQuestions = [...editedConfig.questions];
-                                newQuestions[idx].options = [...(question.options || []), { id: idInput.value, label: labelInput.value }];
+                                delete newQuestions[idx].optionsFrom;
+                                newQuestions[idx].options = [];
                                 setEditedConfig({ ...editedConfig, questions: newQuestions });
-                                idInput.value = "";
-                                labelInput.value = "";
+                                toast.info("Switched to custom options");
                               }}
                               size="sm"
-                              className="h-8"
+                              variant="outline"
+                              className="w-full h-8 text-xs"
                             >
-                              <Plus className="w-3 h-3" />
+                              Switch to Custom Options
                             </Button>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {question.options?.map((opt, optIdx) => (
+                              <div key={optIdx} className="flex items-center gap-2">
+                                <Input value={opt.id} disabled className="h-8 text-xs flex-1" />
+                                <Input value={opt.label} disabled className="h-8 text-xs flex-1" />
+                                <Button
+                                  onClick={() => {
+                                    const newQuestions = [...editedConfig.questions];
+                                    newQuestions[idx].options = question.options?.filter((_, i) => i !== optIdx);
+                                    setEditedConfig({ ...editedConfig, questions: newQuestions });
+                                  }}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-destructive"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                            <div className="flex gap-2">
+                              <Input placeholder="ID" id={`opt-id-${idx}`} className="h-8 text-xs flex-1" />
+                              <Input placeholder="Label" id={`opt-label-${idx}`} className="h-8 text-xs flex-1" />
+                              <Button
+                                onClick={() => {
+                                  const idInput = document.getElementById(`opt-id-${idx}`) as HTMLInputElement;
+                                  const labelInput = document.getElementById(`opt-label-${idx}`) as HTMLInputElement;
+                                  if (!idInput?.value.trim() || !labelInput?.value.trim()) {
+                                    toast.error("Both ID and label required");
+                                    return;
+                                  }
+                                  const newQuestions = [...editedConfig.questions];
+                                  newQuestions[idx].options = [...(question.options || []), { id: idInput.value, label: labelInput.value }];
+                                  setEditedConfig({ ...editedConfig, questions: newQuestions });
+                                  idInput.value = "";
+                                  labelInput.value = "";
+                                }}
+                                size="sm"
+                                className="h-8"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -614,52 +667,68 @@ export function FormConfigTab() {
 
                 {(type === "select" || type === "checkbox-multi") && (
                   <div className="space-y-2 p-3 bg-muted/30 rounded-lg">
-                    <Label className="text-xs text-muted-foreground">Options</Label>
-                    <div className="space-y-2">
-                      {customOptions.map((opt, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <Input value={opt.id} disabled className="h-8 text-xs flex-1" />
-                          <Input value={opt.label} disabled className="h-8 text-xs flex-1" />
+                    <Label className="text-xs text-muted-foreground">Options Source</Label>
+                    <select
+                      value={optionsSource}
+                      onChange={(e) => setOptionsSource(e.target.value as "custom" | "teams" | "experiences")}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="custom">Custom Options</option>
+                      <option value="teams">From Teams</option>
+                      <option value="experiences">From Experiences</option>
+                    </select>
+
+                    {optionsSource === "custom" ? (
+                      <div className="space-y-2 mt-2">
+                        {customOptions.map((opt, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <Input value={opt.id} disabled className="h-8 text-xs flex-1" />
+                            <Input value={opt.label} disabled className="h-8 text-xs flex-1" />
+                            <Button
+                              onClick={() => setCustomOptions(customOptions.filter((_, i) => i !== idx))}
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        <div className="flex gap-2">
+                          <Input
+                            value={newOptionId}
+                            onChange={(e) => setNewOptionId(e.target.value)}
+                            placeholder="ID"
+                            className="h-8 text-xs flex-1"
+                          />
+                          <Input
+                            value={newOptionLabel}
+                            onChange={(e) => setNewOptionLabel(e.target.value)}
+                            placeholder="Label"
+                            className="h-8 text-xs flex-1"
+                          />
                           <Button
-                            onClick={() => setCustomOptions(customOptions.filter((_, i) => i !== idx))}
+                            onClick={() => {
+                              if (!newOptionId.trim() || !newOptionLabel.trim()) {
+                                toast.error("Both ID and label required");
+                                return;
+                              }
+                              setCustomOptions([...customOptions, { id: newOptionId, label: newOptionLabel }]);
+                              setNewOptionId("");
+                              setNewOptionLabel("");
+                            }}
                             size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-destructive"
+                            className="h-8"
                           >
-                            <X className="w-3 h-3" />
+                            <Plus className="w-3 h-3" />
                           </Button>
                         </div>
-                      ))}
-                      <div className="flex gap-2">
-                        <Input
-                          value={newOptionId}
-                          onChange={(e) => setNewOptionId(e.target.value)}
-                          placeholder="ID"
-                          className="h-8 text-xs flex-1"
-                        />
-                        <Input
-                          value={newOptionLabel}
-                          onChange={(e) => setNewOptionLabel(e.target.value)}
-                          placeholder="Label"
-                          className="h-8 text-xs flex-1"
-                        />
-                        <Button
-                          onClick={() => {
-                            if (!newOptionId.trim() || !newOptionLabel.trim()) {
-                              toast.error("Both ID and label required");
-                              return;
-                            }
-                            setCustomOptions([...customOptions, { id: newOptionId, label: newOptionLabel }]);
-                            setNewOptionId("");
-                            setNewOptionLabel("");
-                          }}
-                          size="sm"
-                          className="h-8"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-muted-foreground p-2 bg-muted/20 rounded">
+                        Options will be loaded from: <span className="font-semibold">{optionsSource === "teams" ? "Teams" : "Experiences"}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
