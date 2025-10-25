@@ -497,6 +497,69 @@ export function FormConfigTab() {
                           </Label>
                         </div>
                       </div>
+                      
+                      {/* Custom Options for Select/Checkbox-Multi */}
+                      {(question.type === "select" || question.type === "checkbox-multi") && (
+                        <div className="col-span-2 space-y-2 p-3 bg-muted/50 rounded-lg border-2 border-dashed">
+                          <h4 className="font-semibold text-sm">Options</h4>
+                          {question.options && question.options.length > 0 ? (
+                            <div className="space-y-2">
+                              {question.options.map((opt, optIdx) => (
+                                <div key={optIdx} className="flex items-center justify-between bg-background p-2 rounded border text-sm">
+                                  <div>
+                                    <span className="font-semibold">{opt.id}</span> → {opt.label}
+                                  </div>
+                                  <Button
+                                    onClick={() => {
+                                      const newQuestions = [...editedConfig.questions];
+                                      newQuestions[idx].options = question.options?.filter((_, i) => i !== optIdx);
+                                      setEditedConfig({ ...editedConfig, questions: newQuestions });
+                                    }}
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:bg-destructive/10 h-6 w-6 p-0"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">No custom options yet</p>
+                          )}
+                          <div className="flex gap-2 pt-2">
+                            <Input
+                              placeholder="ID"
+                              id={`opt-id-${idx}`}
+                              className="text-xs h-8 px-2 border-2 flex-1"
+                            />
+                            <Input
+                              placeholder="Label"
+                              id={`opt-label-${idx}`}
+                              className="text-xs h-8 px-2 border-2 flex-1"
+                            />
+                            <Button
+                              onClick={() => {
+                                const idInput = document.getElementById(`opt-id-${idx}`) as HTMLInputElement;
+                                const labelInput = document.getElementById(`opt-label-${idx}`) as HTMLInputElement;
+                                if (!idInput?.value.trim() || !labelInput?.value.trim()) {
+                                  toast.error("Both ID and label required");
+                                  return;
+                                }
+                                const newQuestions = [...editedConfig.questions];
+                                newQuestions[idx].options = [...(question.options || []), { id: idInput.value, label: labelInput.value }];
+                                setEditedConfig({ ...editedConfig, questions: newQuestions });
+                                idInput.value = "";
+                                labelInput.value = "";
+                              }}
+                              size="sm"
+                              className="h-8"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
