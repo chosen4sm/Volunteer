@@ -55,6 +55,7 @@ export function AssignmentsTab({
   const [filterShift, setFilterShift] = useState<string>("");
   const [filterCount, setFilterCount] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filterExperience, setFilterExperience] = useState<string>("");
 
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignVolunteerId, setAssignVolunteerId] = useState("");
@@ -97,15 +98,18 @@ export function AssignmentsTab({
             .includes(searchQuery.toLowerCase())
         : true;
 
-      if (!filterDay && !filterShift) return matchesSearch;
+      if (!filterDay && !filterShift && !filterExperience) return matchesSearch;
 
       const shiftData = volunteer.shifts || {};
       const dayShifts = shiftData[filterDay] || [];
 
       const matchesDay = filterDay ? dayShifts.length > 0 : true;
       const matchesShift = filterShift ? dayShifts.includes(filterShift) : true;
+      const matchesExperience = filterExperience
+        ? (volunteer.experiences || []).includes(filterExperience)
+        : true;
 
-      return matchesSearch && matchesDay && matchesShift;
+      return matchesSearch && matchesDay && matchesShift && matchesExperience;
     });
 
     const count = parseInt(filterCount);
@@ -399,6 +403,21 @@ export function AssignmentsTab({
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="experience-assign">Experience</Label>
+              <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
+                <SelectTrigger id="experience-assign">
+                  <SelectValue placeholder="All experiences" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formConfig.experiences.map((exp) => (
+                    <SelectItem key={exp.id} value={exp.id}>
+                      {exp.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label className="invisible">Actions</Label>
               <Button
                 onClick={() => {
@@ -406,6 +425,7 @@ export function AssignmentsTab({
                   setFilterDay("");
                   setFilterShift("");
                   setFilterCount("");
+                  setFilterExperience("");
                 }}
                 variant="outline"
                 className="w-full"
@@ -486,6 +506,11 @@ export function AssignmentsTab({
                             {volunteer.team && (
                               <div className="text-xs text-muted-foreground">
                                 {volunteer.team}
+                              </div>
+                            )}
+                            {volunteer.experiences && volunteer.experiences.length > 0 && (
+                              <div className="text-xs text-muted-foreground">
+                                Exps: {volunteer.experiences.map(exp => formConfig.experiences.find(e => e.id === exp)?.label).join(", ")}
                               </div>
                             )}
                           </div>

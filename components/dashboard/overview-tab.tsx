@@ -31,6 +31,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
   const [filterShift, setFilterShift] = useState<string>("");
   const [filterCount, setFilterCount] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filterExperience, setFilterExperience] = useState<string>("");
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -65,15 +66,18 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             .includes(searchQuery.toLowerCase())
         : true;
 
-      if (!filterDay && !filterShift) return matchesSearch;
+      if (!filterDay && !filterShift && !filterExperience) return matchesSearch;
 
       const shiftData = volunteer.shifts || {};
       const dayShifts = shiftData[filterDay] || [];
 
       const matchesDay = filterDay ? dayShifts.length > 0 : true;
       const matchesShift = filterShift ? dayShifts.includes(filterShift) : true;
+      const matchesExperience = filterExperience
+        ? (volunteer.experiences || []).includes(filterExperience)
+        : true;
 
-      return matchesSearch && matchesDay && matchesShift;
+      return matchesSearch && matchesDay && matchesShift && matchesExperience;
     });
 
     const count = parseInt(filterCount);
@@ -269,6 +273,21 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="experience">Experience</Label>
+              <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
+                <SelectTrigger id="experience">
+                  <SelectValue placeholder="All experiences" />
+                </SelectTrigger>
+                <SelectContent>
+                  {formConfig.experiences.map((exp) => (
+                    <SelectItem key={exp.id} value={exp.id}>
+                      {exp.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label className="invisible">Actions</Label>
               <Button
                 onClick={() => {
@@ -276,6 +295,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                   setFilterDay("");
                   setFilterShift("");
                   setFilterCount("");
+                  setFilterExperience("");
                 }}
                 variant="outline"
                 className="w-full"
@@ -333,6 +353,12 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                             {volunteer.team && (
                               <div className="text-sm text-muted-foreground">
                                 <span className="font-medium">Team:</span> {volunteer.team}
+                              </div>
+                            )}
+                            {volunteer.experiences && volunteer.experiences.length > 0 && (
+                              <div className="text-sm text-muted-foreground">
+                                <span className="font-medium">Experience:</span>{" "}
+                                {volunteer.experiences.map((exp) => formConfig.experiences.find(e => e.id === exp)?.label).join(", ")}
                               </div>
                             )}
                           </div>
