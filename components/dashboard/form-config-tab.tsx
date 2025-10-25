@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Settings, Plus, Trash2, Database, AlertTriangle, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Plus, Trash2, Database, AlertTriangle, Check, ChevronDown, ChevronUp, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { getFormConfig, invalidateConfigCache, type FormConfig, type FormQuestion } from "@/lib/config";
 import { seedFormConfig, updateFormConfig } from "@/lib/seeder";
@@ -202,238 +202,234 @@ export function FormConfigTab() {
     );
   }
 
-  const tabs = [
-    { id: "teams", label: "Teams", count: editedConfig.teams.length },
-    { id: "experiences", label: "Experiences", count: editedConfig.experiences.length },
-    { id: "days", label: "Days & Dates", count: editedConfig.days.length },
-    { id: "shifts", label: "Shifts", count: editedConfig.shifts.length },
-    { id: "questions", label: "Questions", count: editedConfig.questions.length },
-  ];
+  const hasChanges = JSON.stringify(config) !== JSON.stringify(editedConfig);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 pb-6">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Settings className="w-6 h-6" />
             Form Configuration
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Edit form options and questions. Changes sync instantly.
+            Manage form options and questions
           </p>
         </div>
-        <Button
-          onClick={handleSeedConfig}
-          disabled={isSeeding}
-          variant="outline"
-          size="sm"
-          className="gap-2 self-start sm:self-auto"
-        >
-          <Database className="w-4 h-4" />
-          {isSeeding ? "Seeding..." : "Re-seed Defaults"}
-        </Button>
+        <div className="flex gap-2">
+          {hasChanges && (
+            <>
+              <Button onClick={handleResetChanges} variant="outline" size="sm" className="gap-2">
+                <X className="w-4 h-4" />
+                Discard
+              </Button>
+              <Button onClick={handleSaveConfig} disabled={isSaving} size="sm" className="gap-2">
+                <Save className="w-4 h-4" />
+                {isSaving ? "Saving..." : "Save All"}
+              </Button>
+            </>
+          )}
+          <Button onClick={handleSeedConfig} disabled={isSeeding} variant="outline" size="sm" className="gap-2">
+            <Database className="w-4 h-4" />
+            {isSeeding ? "Seeding..." : "Reset Defaults"}
+          </Button>
+        </div>
       </div>
 
-      {/* Tabs */}
+      <div className="grid grid-cols-5 gap-2">
+        {[
+          { id: "teams", label: "Teams", count: editedConfig.teams.length },
+          { id: "experiences", label: "Experiences", count: editedConfig.experiences.length },
+          { id: "days", label: "Days", count: editedConfig.days.length },
+          { id: "shifts", label: "Shifts", count: editedConfig.shifts.length },
+          { id: "questions", label: "Questions", count: editedConfig.questions.length },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`p-4 rounded-lg border-2 transition-all text-left ${
+              activeTab === tab.id
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/50"
+            }`}
+          >
+            <div className="text-2xl font-bold">{tab.count}</div>
+            <div className="text-sm text-muted-foreground">{tab.label}</div>
+          </button>
+        ))}
+      </div>
+
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap gap-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === tab.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                {tab.label}
-                <Badge variant="outline" className="ml-2 text-xs">
-                  {tab.count}
-                </Badge>
-              </button>
-            ))}
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-6 min-h-96">
-          {/* Teams Tab */}
+        <CardContent className="p-6">
           {activeTab === "teams" && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-3">Team Options</h3>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {editedConfig.teams.map((team) => (
-                    <Badge key={team} variant="secondary" className="pl-3 py-2">
-                      {team}
-                      <button
-                        onClick={() => removeTeam(team)}
-                        className="ml-2 hover:opacity-70"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
+            <div className="space-y-6">
+              <div className="flex gap-3">
+                <Input
+                  placeholder="Add new team..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const value = e.currentTarget.value;
+                      if (value.trim()) {
+                        addTeam(value);
+                        e.currentTarget.value = "";
+                      }
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={(e) => {
+                    const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                    if (input.value.trim()) {
+                      addTeam(input.value);
+                      input.value = "";
+                    }
+                  }}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Team
+                </Button>
               </div>
-              <TeamAddForm onAdd={addTeam} />
+              <div className="flex flex-wrap gap-2">
+                {editedConfig.teams.map((team) => (
+                  <Badge key={team} variant="secondary" className="px-3 py-2 text-sm">
+                    {team}
+                    <button onClick={() => removeTeam(team)} className="ml-2 hover:text-destructive">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Experiences Tab */}
           {activeTab === "experiences" && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-3">Experience Options</h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto mb-4">
-                  {editedConfig.experiences.map((exp) => (
-                    <div
-                      key={exp.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
-                    >
-                      <div>
-                        <p className="font-medium">{exp.label}</p>
-                        <p className="text-xs text-muted-foreground">ID: {exp.id}</p>
-                      </div>
-                      <button
-                        onClick={() => removeExperience(exp.id)}
-                        className="text-destructive hover:opacity-70"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  placeholder="ID (e.g., tech)"
+                  id="exp-id"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const labelInput = document.getElementById("exp-label") as HTMLInputElement;
+                      labelInput?.focus();
+                    }
+                  }}
+                />
+                <Input
+                  placeholder="Label (e.g., Tech Support)"
+                  id="exp-label"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      const idInput = document.getElementById("exp-id") as HTMLInputElement;
+                      const labelInput = e.currentTarget;
+                      if (idInput.value.trim() && labelInput.value.trim()) {
+                        addExperience(idInput.value, labelInput.value);
+                        idInput.value = "";
+                        labelInput.value = "";
+                        idInput.focus();
+                      }
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                onClick={() => {
+                  const idInput = document.getElementById("exp-id") as HTMLInputElement;
+                  const labelInput = document.getElementById("exp-label") as HTMLInputElement;
+                  if (idInput.value.trim() && labelInput.value.trim()) {
+                    addExperience(idInput.value, labelInput.value);
+                    idInput.value = "";
+                    labelInput.value = "";
+                  }
+                }}
+                className="w-full gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Experience
+              </Button>
+              <div className="space-y-2">
+                {editedConfig.experiences.map((exp) => (
+                  <div key={exp.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div>
+                      <p className="font-medium">{exp.label}</p>
+                      <p className="text-xs text-muted-foreground">{exp.id}</p>
                     </div>
-                  ))}
-                </div>
+                    <Button
+                      onClick={() => removeExperience(exp.id)}
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-              <ExperienceAddForm onAdd={addExperience} />
             </div>
           )}
 
-          {/* Days Tab */}
           {activeTab === "days" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold mb-3">Days</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {editedConfig.days.map((day, idx) => (
-                      <Input
-                        key={idx}
-                        value={day}
-                        onChange={(e) => {
-                          const newDays = [...editedConfig.days];
-                          newDays[idx] = e.target.value;
-                          setEditedConfig({ ...editedConfig, days: newDays });
-                        }}
-                        placeholder={`Day ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-3">Dates</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {editedConfig.dayDates.map((date, idx) => (
-                      <Input
-                        key={idx}
-                        value={date}
-                        onChange={(e) => {
-                          const newDates = [...editedConfig.dayDates];
-                          newDates[idx] = e.target.value;
-                          setEditedConfig({ ...editedConfig, dayDates: newDates });
-                        }}
-                        placeholder={`Date ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                ⚠️ Keep days and dates in sync - same number of items
-              </p>
-            </div>
-          )}
-
-          {/* Shifts Tab */}
-          {activeTab === "shifts" && (
-            <div className="space-y-4">
-              <h3 className="font-semibold">Shift Times</h3>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {editedConfig.shifts.map((shift, idx) => (
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label className="font-semibold">Days</Label>
+                {editedConfig.days.map((day, idx) => (
                   <Input
                     key={idx}
-                    value={shift}
+                    value={day}
                     onChange={(e) => {
-                      const newShifts = [...editedConfig.shifts];
-                      newShifts[idx] = e.target.value;
-                      setEditedConfig({ ...editedConfig, shifts: newShifts });
+                      const newDays = [...editedConfig.days];
+                      newDays[idx] = e.target.value;
+                      setEditedConfig({ ...editedConfig, days: newDays });
                     }}
-                    placeholder={`Shift ${idx + 1}`}
+                    placeholder={`Day ${idx + 1}`}
+                  />
+                ))}
+              </div>
+              <div className="space-y-3">
+                <Label className="font-semibold">Dates</Label>
+                {editedConfig.dayDates.map((date, idx) => (
+                  <Input
+                    key={idx}
+                    value={date}
+                    onChange={(e) => {
+                      const newDates = [...editedConfig.dayDates];
+                      newDates[idx] = e.target.value;
+                      setEditedConfig({ ...editedConfig, dayDates: newDates });
+                    }}
+                    placeholder={`Date ${idx + 1}`}
                   />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Questions Tab */}
+          {activeTab === "shifts" && (
+            <div className="space-y-3">
+              <Label className="font-semibold">Shift Times</Label>
+              {editedConfig.shifts.map((shift, idx) => (
+                <Input
+                  key={idx}
+                  value={shift}
+                  onChange={(e) => {
+                    const newShifts = [...editedConfig.shifts];
+                    newShifts[idx] = e.target.value;
+                    setEditedConfig({ ...editedConfig, shifts: newShifts });
+                  }}
+                  placeholder={`Shift ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+
           {activeTab === "questions" && (
             <div className="space-y-4">
-              <h3 className="font-semibold mb-3">Form Questions</h3>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-3">
                 {editedConfig.questions.map((question, idx) => (
-                  <div
-                    key={question.id}
-                    className="p-4 rounded-lg border-2 bg-muted/50 space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-lg">{question.label}</p>
-                        <p className="text-sm text-muted-foreground">ID: {question.id}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {idx > 0 && (
-                          <button
-                            onClick={() => {
-                              const newQuestions = [...editedConfig.questions];
-                              [newQuestions[idx], newQuestions[idx - 1]] = [newQuestions[idx - 1], newQuestions[idx]];
-                              setEditedConfig({ ...editedConfig, questions: newQuestions });
-                            }}
-                            className="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded"
-                            title="Move up"
-                          >
-                            <ChevronUp className="w-5 h-5" />
-                          </button>
-                        )}
-                        {idx < editedConfig.questions.length - 1 && (
-                          <button
-                            onClick={() => {
-                              const newQuestions = [...editedConfig.questions];
-                              [newQuestions[idx], newQuestions[idx + 1]] = [newQuestions[idx + 1], newQuestions[idx]];
-                              setEditedConfig({ ...editedConfig, questions: newQuestions });
-                            }}
-                            className="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded"
-                            title="Move down"
-                          >
-                            <ChevronDown className="w-5 h-5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            const newQuestions = editedConfig.questions.filter((_, i) => i !== idx);
-                            setEditedConfig({ ...editedConfig, questions: newQuestions });
-                          }}
-                          className="text-destructive hover:opacity-70 p-2 hover:bg-destructive/10 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t-2">
-                      <div>
-                        <Label className="text-sm font-semibold mb-2 block">Label</Label>
+                  <div key={question.id} className="p-4 rounded-lg border-2 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
                         <Input
                           value={question.label}
                           onChange={(e) => {
@@ -441,34 +437,71 @@ export function FormConfigTab() {
                             newQuestions[idx].label = e.target.value;
                             setEditedConfig({ ...editedConfig, questions: newQuestions });
                           }}
-                          className="text-xl h-14 px-4 border-2"
+                          className="text-lg font-semibold border-0 p-0 h-auto focus-visible:ring-0"
                           placeholder="Question label"
                         />
+                        <p className="text-xs text-muted-foreground mt-1">{question.id}</p>
                       </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          onClick={() => {
+                            const newQuestions = [...editedConfig.questions];
+                            [newQuestions[idx], newQuestions[idx - 1]] = [newQuestions[idx - 1], newQuestions[idx]];
+                            setEditedConfig({ ...editedConfig, questions: newQuestions });
+                          }}
+                          disabled={idx === 0}
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const newQuestions = [...editedConfig.questions];
+                            [newQuestions[idx], newQuestions[idx + 1]] = [newQuestions[idx + 1], newQuestions[idx]];
+                            setEditedConfig({ ...editedConfig, questions: newQuestions });
+                          }}
+                          disabled={idx === editedConfig.questions.length - 1}
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const newQuestions = editedConfig.questions.filter((_, i) => i !== idx);
+                            setEditedConfig({ ...editedConfig, questions: newQuestions });
+                          }}
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <Label className="text-sm font-semibold mb-2 block">Type</Label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <Label className="text-xs text-muted-foreground">Type</Label>
+                        <select
+                          value={question.type}
+                          onChange={(e) => {
+                            const newQuestions = [...editedConfig.questions];
+                            newQuestions[idx].type = e.target.value as FormQuestion["type"];
+                            setEditedConfig({ ...editedConfig, questions: newQuestions });
+                          }}
+                          className="w-full mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+                        >
                           {QUESTION_TYPES.map((t) => (
-                            <button
-                              key={t}
-                              onClick={() => {
-                                const newQuestions = [...editedConfig.questions];
-                                newQuestions[idx].type = t;
-                                setEditedConfig({ ...editedConfig, questions: newQuestions });
-                              }}
-                              className={`p-3 rounded-lg border-2 font-semibold text-sm transition-all ${
-                                question.type === t
-                                  ? "border-primary bg-primary text-primary-foreground"
-                                  : "border-border bg-muted text-muted-foreground hover:border-primary hover:bg-muted/80"
-                              }`}
-                            >
-                              {t}
-                            </button>
+                            <option key={t} value={t}>{t}</option>
                           ))}
-                        </div>
+                        </select>
                       </div>
-                      <div>
-                        <Label className="text-sm font-semibold mb-2 block">Placeholder</Label>
+                      <div className="col-span-2">
+                        <Label className="text-xs text-muted-foreground">Placeholder</Label>
                         <Input
                           value={question.placeholder || ""}
                           onChange={(e) => {
@@ -476,68 +509,52 @@ export function FormConfigTab() {
                             newQuestions[idx].placeholder = e.target.value || undefined;
                             setEditedConfig({ ...editedConfig, questions: newQuestions });
                           }}
-                          className="text-xl h-14 px-4 border-2"
-                          placeholder="Help text"
+                          className="mt-1 h-9"
+                          placeholder="Optional help text"
                         />
                       </div>
-                      <div className="flex items-end gap-2">
-                        <div className="flex items-center space-x-3 p-3 rounded-lg border-2 flex-1">
-                          <Checkbox
-                            checked={question.required}
-                            onCheckedChange={(checked) => {
-                              const newQuestions = [...editedConfig.questions];
-                              newQuestions[idx].required = checked as boolean;
-                              setEditedConfig({ ...editedConfig, questions: newQuestions });
-                            }}
-                            id={`required-${idx}`}
-                            className="w-5 h-5"
-                          />
-                          <Label htmlFor={`required-${idx}`} className="text-base cursor-pointer font-semibold">
-                            Required
-                          </Label>
-                        </div>
-                      </div>
-                      
-                      {/* Custom Options for Select/Checkbox-Multi */}
-                      {(question.type === "select" || question.type === "checkbox-multi") && (
-                        <div className="col-span-2 space-y-2 p-3 bg-muted/50 rounded-lg border-2 border-dashed">
-                          <h4 className="font-semibold text-sm">Options</h4>
-                          {question.options && question.options.length > 0 ? (
-                            <div className="space-y-2">
-                              {question.options.map((opt, optIdx) => (
-                                <div key={optIdx} className="flex items-center justify-between bg-background p-2 rounded border text-sm">
-                                  <div>
-                                    <span className="font-semibold">{opt.id}</span> → {opt.label}
-                                  </div>
-                                  <Button
-                                    onClick={() => {
-                                      const newQuestions = [...editedConfig.questions];
-                                      newQuestions[idx].options = question.options?.filter((_, i) => i !== optIdx);
-                                      setEditedConfig({ ...editedConfig, questions: newQuestions });
-                                    }}
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-destructive hover:bg-destructive/10 h-6 w-6 p-0"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              ))}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={question.required}
+                        onCheckedChange={(checked) => {
+                          const newQuestions = [...editedConfig.questions];
+                          newQuestions[idx].required = checked as boolean;
+                          setEditedConfig({ ...editedConfig, questions: newQuestions });
+                        }}
+                        id={`required-${idx}`}
+                      />
+                      <Label htmlFor={`required-${idx}`} className="text-sm cursor-pointer">
+                        Required field
+                      </Label>
+                    </div>
+
+                    {(question.type === "select" || question.type === "checkbox-multi") && (
+                      <div className="pt-3 border-t space-y-2">
+                        <Label className="text-xs text-muted-foreground">Options</Label>
+                        <div className="space-y-2">
+                          {question.options?.map((opt, optIdx) => (
+                            <div key={optIdx} className="flex items-center gap-2">
+                              <Input value={opt.id} disabled className="h-8 text-xs flex-1" />
+                              <Input value={opt.label} disabled className="h-8 text-xs flex-1" />
+                              <Button
+                                onClick={() => {
+                                  const newQuestions = [...editedConfig.questions];
+                                  newQuestions[idx].options = question.options?.filter((_, i) => i !== optIdx);
+                                  setEditedConfig({ ...editedConfig, questions: newQuestions });
+                                }}
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-destructive"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
                             </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground italic">No custom options yet</p>
-                          )}
-                          <div className="flex gap-2 pt-2">
-                            <Input
-                              placeholder="ID"
-                              id={`opt-id-${idx}`}
-                              className="text-xs h-8 px-2 border-2 flex-1"
-                            />
-                            <Input
-                              placeholder="Label"
-                              id={`opt-label-${idx}`}
-                              className="text-xs h-8 px-2 border-2 flex-1"
-                            />
+                          ))}
+                          <div className="flex gap-2">
+                            <Input placeholder="ID" id={`opt-id-${idx}`} className="h-8 text-xs flex-1" />
+                            <Input placeholder="Label" id={`opt-label-${idx}`} className="h-8 text-xs flex-1" />
                             <Button
                               onClick={() => {
                                 const idInput = document.getElementById(`opt-id-${idx}`) as HTMLInputElement;
@@ -559,230 +576,113 @@ export function FormConfigTab() {
                             </Button>
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Add New Question Form */}
-      <Card className="border-2 border-dashed border-primary/50 bg-primary/5">
-        <CardHeader className="pb-3">
-          <h3 className="text-lg font-bold">Add New Question</h3>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-sm font-semibold mb-2 block">ID</Label>
-              <Input
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                placeholder="e.g., company"
-                className="text-xl h-14 px-4 border-2"
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-semibold mb-2 block">Label</Label>
-              <Input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="e.g., Company name?"
-                className="text-xl h-14 px-4 border-2"
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-semibold mb-2 block">Type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {QUESTION_TYPES.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setType(t)}
-                    className={`p-3 rounded-lg border-2 font-semibold text-sm transition-all ${
-                      type === t
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-muted text-muted-foreground hover:border-primary hover:bg-muted/80"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm font-semibold mb-2 block">Placeholder</Label>
-              <Input
-                value={placeholder}
-                onChange={(e) => setPlaceholder(e.target.value)}
-                placeholder="Help text"
-                className="text-xl h-14 px-4 border-2"
-              />
-            </div>
-          </div>
-          
-          {/* Custom Options for Select/Checkbox-Multi */}
-          {(type === "select" || type === "checkbox-multi") && (
-            <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-2 border-dashed">
-              <div>
-                <h4 className="font-semibold mb-3">Add Options</h4>
-                <div className="flex gap-2 mb-3">
-                  <Input
-                    value={newOptionId}
-                    onChange={(e) => setNewOptionId(e.target.value)}
-                    placeholder="Option ID (e.g., option1)"
-                    className="text-base h-10 px-3 border-2 flex-1"
-                  />
-                  <Input
-                    value={newOptionLabel}
-                    onChange={(e) => setNewOptionLabel(e.target.value)}
-                    placeholder="Option Label (e.g., Option 1)"
-                    className="text-base h-10 px-3 border-2 flex-1"
-                  />
-                  <Button
-                    onClick={() => {
-                      if (!newOptionId.trim() || !newOptionLabel.trim()) {
-                        toast.error("Both ID and label required");
-                        return;
-                      }
-                      setCustomOptions([...customOptions, { id: newOptionId, label: newOptionLabel }]);
-                      setNewOptionId("");
-                      setNewOptionLabel("");
-                    }}
-                    size="sm"
-                    className="h-10"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
+              <div className="pt-4 border-t-2 border-dashed space-y-4">
+                <h4 className="font-semibold">Add New Question</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="ID (e.g., phone)" />
+                  <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label (e.g., Phone number)" />
                 </div>
-                {customOptions.length > 0 && (
-                  <div className="space-y-2">
-                    {customOptions.map((opt, idx) => (
-                      <div key={idx} className="flex items-center justify-between bg-background p-2 rounded border">
-                        <div className="text-sm">
-                          <span className="font-semibold">{opt.id}</span> → {opt.label}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Type</Label>
+                    <select
+                      value={type}
+                      onChange={(e) => setType(e.target.value as FormQuestion["type"])}
+                      className="w-full mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      {QUESTION_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs text-muted-foreground">Placeholder</Label>
+                    <Input
+                      value={placeholder}
+                      onChange={(e) => setPlaceholder(e.target.value)}
+                      placeholder="Optional help text"
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                </div>
+
+                {(type === "select" || type === "checkbox-multi") && (
+                  <div className="space-y-2 p-3 bg-muted/30 rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Options</Label>
+                    <div className="space-y-2">
+                      {customOptions.map((opt, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Input value={opt.id} disabled className="h-8 text-xs flex-1" />
+                          <Input value={opt.label} disabled className="h-8 text-xs flex-1" />
+                          <Button
+                            onClick={() => setCustomOptions(customOptions.filter((_, i) => i !== idx))}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-destructive"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
                         </div>
+                      ))}
+                      <div className="flex gap-2">
+                        <Input
+                          value={newOptionId}
+                          onChange={(e) => setNewOptionId(e.target.value)}
+                          placeholder="ID"
+                          className="h-8 text-xs flex-1"
+                        />
+                        <Input
+                          value={newOptionLabel}
+                          onChange={(e) => setNewOptionLabel(e.target.value)}
+                          placeholder="Label"
+                          className="h-8 text-xs flex-1"
+                        />
                         <Button
-                          onClick={() => setCustomOptions(customOptions.filter((_, i) => i !== idx))}
+                          onClick={() => {
+                            if (!newOptionId.trim() || !newOptionLabel.trim()) {
+                              toast.error("Both ID and label required");
+                              return;
+                            }
+                            setCustomOptions([...customOptions, { id: newOptionId, label: newOptionLabel }]);
+                            setNewOptionId("");
+                            setNewOptionLabel("");
+                          }}
                           size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:bg-destructive/10"
+                          className="h-8"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Plus className="w-3 h-3" />
                         </Button>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 )}
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={required}
+                    onCheckedChange={(checked) => setRequired(checked as boolean)}
+                    id="new-required"
+                  />
+                  <Label htmlFor="new-required" className="text-sm cursor-pointer">
+                    Required field
+                  </Label>
+                </div>
+
+                <Button onClick={handleAdd} className="w-full gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Question
+                </Button>
               </div>
             </div>
           )}
-          
-          <div className="flex items-center space-x-3 p-4 rounded-lg border-2 bg-background">
-            <Checkbox
-              checked={required}
-              onCheckedChange={(checked) => setRequired(checked as boolean)}
-              id="new-question-required"
-              className="w-5 h-5"
-            />
-            <Label htmlFor="new-question-required" className="text-base cursor-pointer font-semibold">
-              Required
-            </Label>
-          </div>
-          <Button onClick={handleAdd} size="lg" className="w-full text-lg h-12 gap-2">
-            <Plus className="w-5 h-5" />
-            Add Question
-          </Button>
         </CardContent>
       </Card>
-
-      {/* Action Buttons */}
-      <div className="flex gap-3 sticky bottom-4">
-        <Button
-          onClick={handleSaveConfig}
-          disabled={isSaving || JSON.stringify(config) === JSON.stringify(editedConfig)}
-          size="lg"
-          className="gap-2"
-        >
-          <Check className="w-4 h-4" />
-          {isSaving ? "Saving..." : "Save Changes"}
-        </Button>
-        <Button
-          onClick={handleResetChanges}
-          disabled={JSON.stringify(config) === JSON.stringify(editedConfig)}
-          variant="outline"
-          size="lg"
-        >
-          Discard Changes
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function TeamAddForm({ onAdd }: { onAdd: (team: string) => void }) {
-  const [value, setValue] = useState("");
-
-  const handleAdd = () => {
-    onAdd(value);
-    setValue("");
-  };
-
-  return (
-    <div className="flex gap-2">
-      <Input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="Add new team (e.g., Audio)"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            handleAdd();
-          }
-        }}
-      />
-      <Button onClick={handleAdd} size="sm" variant="outline" className="gap-2">
-        <Plus className="w-4 h-4" />
-        Add
-      </Button>
-    </div>
-  );
-}
-
-function ExperienceAddForm({ onAdd }: { onAdd: (id: string, label: string) => void }) {
-  const [id, setId] = useState("");
-  const [label, setLabel] = useState("");
-
-  const handleAdd = () => {
-    onAdd(id, label);
-    setId("");
-    setLabel("");
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Input
-          value={id}
-          onChange={(e) => setId(e.target.value)}
-          placeholder="ID (e.g., catering)"
-        />
-        <Input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Label (e.g., Catering)"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleAdd();
-            }
-          }}
-        />
-      </div>
-      <Button onClick={handleAdd} size="sm" variant="outline" className="w-full gap-2">
-        <Plus className="w-4 h-4" />
-        Add Experience
-      </Button>
     </div>
   );
 }
