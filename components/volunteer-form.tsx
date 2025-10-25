@@ -418,7 +418,7 @@ export function VolunteerForm() {
                           ) : (
                             // Dropdown for other questions with >5 options
                             <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
-                              <SelectTrigger className="h-14 px-4 text-lg border-2">
+                              <SelectTrigger size="lg" className="border-2">
                                 <SelectValue placeholder="Select an option" />
                               </SelectTrigger>
                               <SelectContent>
