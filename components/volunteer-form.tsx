@@ -203,6 +203,73 @@ export function VolunteerForm() {
     });
   };
 
+  const isShiftDisabled = (shift: string): boolean => {
+    const day = formConfig.days[currentDayIndex];
+    const dayShifts = shiftData[day] || [];
+    const isSelected = dayShifts.includes(shift);
+    
+    // If already selected, allow toggling off
+    if (isSelected) return false;
+    
+    const dayIndex = currentDayIndex;
+    const shiftIndex = formConfig.shifts.indexOf(shift);
+    
+    // Check for 2 consecutive shifts already selected
+    const twoShiftsBack = shiftIndex >= 2 ? formConfig.shifts[shiftIndex - 2] : null;
+    const oneShiftBack = shiftIndex > 0 ? formConfig.shifts[shiftIndex - 1] : null;
+    const oneShiftForward = shiftIndex < formConfig.shifts.length - 1 ? formConfig.shifts[shiftIndex + 1] : null;
+    const twoShiftsForward = shiftIndex <= formConfig.shifts.length - 3 ? formConfig.shifts[shiftIndex + 2] : null;
+    
+    // Block if 2 consecutive shifts before would be taken
+    if (twoShiftsBack && oneShiftBack && dayShifts.includes(twoShiftsBack) && dayShifts.includes(oneShiftBack)) {
+      return true;
+    }
+    
+    // Block if 2 consecutive shifts after would be taken
+    if (oneShiftForward && twoShiftsForward && dayShifts.includes(oneShiftForward) && dayShifts.includes(twoShiftsForward)) {
+      return true;
+    }
+    
+    // Check for consecutive shifts across day boundaries
+    if (shiftIndex === 0 && dayIndex > 0) {
+      const prevDay = formConfig.days[dayIndex - 1];
+      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
+      const secondLastShift = formConfig.shifts[formConfig.shifts.length - 2];
+      if (shiftData[prevDay]?.includes(lastShift) && shiftData[prevDay]?.includes(secondLastShift)) {
+        return true;
+      }
+    }
+    
+    if (shiftIndex === 1 && dayIndex > 0) {
+      const prevDay = formConfig.days[dayIndex - 1];
+      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
+      const firstShift = formConfig.shifts[0];
+      if (shiftData[prevDay]?.includes(lastShift) && dayShifts.includes(firstShift)) {
+        return true;
+      }
+    }
+    
+    if (shiftIndex === formConfig.shifts.length - 1 && dayIndex < formConfig.days.length - 1) {
+      const nextDay = formConfig.days[dayIndex + 1];
+      const firstShift = formConfig.shifts[0];
+      const secondShift = formConfig.shifts[1];
+      if (shiftData[nextDay]?.includes(firstShift) && shiftData[nextDay]?.includes(secondShift)) {
+        return true;
+      }
+    }
+    
+    if (shiftIndex === formConfig.shifts.length - 2 && dayIndex < formConfig.days.length - 1) {
+      const nextDay = formConfig.days[dayIndex + 1];
+      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
+      const firstShift = formConfig.shifts[0];
+      if (dayShifts.includes(lastShift) && shiftData[nextDay]?.includes(firstShift)) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
+
   const handleShiftToggle = (shift: string) => {
     const day = formConfig.days[currentDayIndex];
     const dayShifts = shiftData[day] || [];
@@ -213,6 +280,12 @@ export function VolunteerForm() {
         [day]: dayShifts.filter((s) => s !== shift),
       });
     } else {
+      if (isShiftDisabled(shift)) {
+        toast.error("Maximum 2 consecutive shifts", {
+          description: "You need a break after working 2 consecutive shifts.",
+        });
+        return;
+      }
       setShiftData({
         ...shiftData,
         [day]: [...dayShifts, shift],
@@ -392,24 +465,32 @@ export function VolunteerForm() {
                   <p className="text-lg text-muted-foreground">Select all shifts you&apos;re available (or skip if unavailable)</p>
                 </div>
                 <div className="space-y-4">
-                  {formConfig.shifts.map((shift) => (
-                    <motion.div
-                      key={shift}
-                      whileHover={{ scale: 1.02 }}
-                      className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                        shiftData[formConfig.days[currentDayIndex]]?.includes(shift)
-                          ? "border-primary bg-accent"
-                          : "border-border bg-background/50 hover:border-primary hover:bg-accent"
-                      }`}
-                      onClick={() => handleShiftToggle(shift)}
-                    >
-                      <Checkbox
-                        checked={shiftData[formConfig.days[currentDayIndex]]?.includes(shift) || false}
-                        className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
-                      />
-                      <span className="text-xl font-medium">{shift}</span>
-                    </motion.div>
-                  ))}
+                  {formConfig.shifts.map((shift) => {
+                    const disabled = isShiftDisabled(shift);
+                    return (
+                      <motion.div
+                        key={shift}
+                        whileHover={disabled ? {} : { scale: 1.02 }}
+                        className={`flex items-center space-x-4 p-5 rounded-xl border-2 transition-all ${
+                          disabled
+                            ? "border-muted bg-muted/30 cursor-not-allowed opacity-50"
+                            : "border-border bg-background/50 hover:border-primary hover:bg-accent cursor-pointer"
+                        } ${
+                          shiftData[formConfig.days[currentDayIndex]]?.includes(shift)
+                            ? "border-primary bg-accent opacity-100"
+                            : ""
+                        }`}
+                        onClick={() => !disabled && handleShiftToggle(shift)}
+                      >
+                        <Checkbox
+                          checked={shiftData[formConfig.days[currentDayIndex]]?.includes(shift) || false}
+                          disabled={disabled}
+                          className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                        />
+                        <span className="text-xl font-medium">{shift}</span>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
