@@ -22,6 +22,11 @@ export function FormConfigTab() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [editedConfig, setEditedConfig] = useState<FormConfig | null>(null);
   const [activeTab, setActiveTab] = useState("teams");
+  const [id, setId] = useState("");
+  const [label, setLabel] = useState("");
+  const [type, setType] = useState<FormQuestion["type"]>("text");
+  const [placeholder, setPlaceholder] = useState("");
+  const [required, setRequired] = useState(true);
 
   useEffect(() => {
     fetchConfig();
@@ -123,6 +128,22 @@ export function FormConfigTab() {
       ...editedConfig,
       experiences: editedConfig.experiences.filter((e) => e.id !== id),
     });
+  };
+
+  const handleAdd = () => {
+    if (!id.trim() || !label.trim()) {
+      toast.error("ID and label are required");
+      return;
+    }
+    setEditedConfig({
+      ...editedConfig,
+      questions: [...editedConfig.questions, { id, label, type, placeholder: placeholder || undefined, required }],
+    });
+    setId("");
+    setLabel("");
+    setType("text");
+    setPlaceholder("");
+    setRequired(true);
   };
 
   if (isLoading) {
@@ -339,7 +360,7 @@ export function FormConfigTab() {
           {activeTab === "questions" && (
             <div className="space-y-4">
               <h3 className="font-semibold mb-3">Form Questions</h3>
-              <div className="space-y-3 max-h-96 overflow-y-auto mb-4">
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 {editedConfig.questions.map((question, idx) => (
                   <div
                     key={question.id}
@@ -459,14 +480,79 @@ export function FormConfigTab() {
                   </div>
                 ))}
               </div>
-              <QuestionAddForm onAdd={(q) => {
-                setEditedConfig({
-                  ...editedConfig,
-                  questions: [...editedConfig.questions, q],
-                });
-              }} />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Add New Question Form */}
+      <Card className="border-2 border-dashed border-primary/50 bg-primary/5">
+        <CardHeader className="pb-3">
+          <h3 className="text-lg font-bold">Add New Question</h3>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-sm font-semibold mb-2 block">ID</Label>
+              <Input
+                value={id}
+                onChange={(e) => setId(e.target.value)}
+                placeholder="e.g., company"
+                className="text-xl h-14 px-4 border-2"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-semibold mb-2 block">Label</Label>
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="e.g., Company name?"
+                className="text-xl h-14 px-4 border-2"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-semibold mb-2 block">Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {QUESTION_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setType(t)}
+                    className={`p-3 rounded-lg border-2 font-semibold text-sm transition-all ${
+                      type === t
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-muted text-muted-foreground hover:border-primary hover:bg-muted/80"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-semibold mb-2 block">Placeholder</Label>
+              <Input
+                value={placeholder}
+                onChange={(e) => setPlaceholder(e.target.value)}
+                placeholder="Help text"
+                className="text-xl h-14 px-4 border-2"
+              />
+            </div>
+          </div>
+          <div className="flex items-center space-x-3 p-4 rounded-lg border-2 bg-background">
+            <Checkbox
+              checked={required}
+              onCheckedChange={(checked) => setRequired(checked as boolean)}
+              id="new-question-required"
+              className="w-5 h-5"
+            />
+            <Label htmlFor="new-question-required" className="text-base cursor-pointer font-semibold">
+              Required
+            </Label>
+          </div>
+          <Button onClick={handleAdd} size="lg" className="w-full text-lg h-12 gap-2">
+            <Plus className="w-5 h-5" />
+            Add Question
+          </Button>
         </CardContent>
       </Card>
 
@@ -554,101 +640,6 @@ function ExperienceAddForm({ onAdd }: { onAdd: (id: string, label: string) => vo
       <Button onClick={handleAdd} size="sm" variant="outline" className="w-full gap-2">
         <Plus className="w-4 h-4" />
         Add Experience
-      </Button>
-    </div>
-  );
-}
-
-function QuestionAddForm({ onAdd }: { onAdd: (question: FormQuestion) => void }) {
-  const [id, setId] = useState("");
-  const [label, setLabel] = useState("");
-  const [type, setType] = useState<FormQuestion["type"]>("text");
-  const [placeholder, setPlaceholder] = useState("");
-  const [required, setRequired] = useState(true);
-
-  const handleAdd = () => {
-    if (!id.trim() || !label.trim()) {
-      toast.error("ID and label are required");
-      return;
-    }
-    onAdd({
-      id,
-      label,
-      type,
-      placeholder: placeholder || undefined,
-      required,
-    });
-    setId("");
-    setLabel("");
-    setType("text");
-    setPlaceholder("");
-    setRequired(true);
-  };
-
-  return (
-    <div className="space-y-4 p-6 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5">
-      <h3 className="text-lg font-bold">Add New Question</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <Label className="text-sm font-semibold mb-2 block">ID</Label>
-          <Input
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            placeholder="e.g., company"
-            className="text-xl h-14 px-4 border-2"
-          />
-        </div>
-        <div>
-          <Label className="text-sm font-semibold mb-2 block">Label</Label>
-          <Input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="e.g., Company name?"
-            className="text-xl h-14 px-4 border-2"
-          />
-        </div>
-        <div>
-          <Label className="text-sm font-semibold mb-2 block">Type</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {QUESTION_TYPES.map((t) => (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                className={`p-3 rounded-lg border-2 font-semibold text-sm transition-all ${
-                  type === t
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-muted text-muted-foreground hover:border-primary hover:bg-muted/80"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <Label className="text-sm font-semibold mb-2 block">Placeholder</Label>
-          <Input
-            value={placeholder}
-            onChange={(e) => setPlaceholder(e.target.value)}
-            placeholder="Help text"
-            className="text-xl h-14 px-4 border-2"
-          />
-        </div>
-      </div>
-      <div className="flex items-center space-x-3 p-4 rounded-lg border-2 bg-background">
-        <Checkbox
-          checked={required}
-          onCheckedChange={(checked) => setRequired(checked as boolean)}
-          id="new-question-required"
-          className="w-5 h-5"
-        />
-        <Label htmlFor="new-question-required" className="text-base cursor-pointer font-semibold">
-          Required
-        </Label>
-      </div>
-      <Button onClick={handleAdd} size="lg" className="w-full text-lg h-12 gap-2">
-        <Plus className="w-5 h-5" />
-        Add Question
       </Button>
     </div>
   );
