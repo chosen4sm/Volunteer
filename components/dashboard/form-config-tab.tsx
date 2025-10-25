@@ -8,6 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Settings, Plus, Trash2, Database, AlertTriangle, ChevronDown, ChevronUp, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { getFormConfig, invalidateConfigCache, type FormConfig, type FormQuestion } from "@/lib/config";
@@ -494,19 +501,23 @@ export function FormConfigTab() {
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <Label className="text-xs text-muted-foreground">Type</Label>
-                        <select
+                        <Select
                           value={question.type}
-                          onChange={(e) => {
+                          onValueChange={(val) => {
                             const newQuestions = [...editedConfig.questions];
-                            newQuestions[idx].type = e.target.value as FormQuestion["type"];
+                            newQuestions[idx].type = val as FormQuestion["type"];
                             setEditedConfig({ ...editedConfig, questions: newQuestions });
                           }}
-                          className="w-full mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
                         >
-                          {QUESTION_TYPES.map((t) => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
+                          <SelectTrigger className="w-full mt-1 h-9" size="sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {QUESTION_TYPES.map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="col-span-2">
                         <Label className="text-xs text-muted-foreground">Placeholder</Label>
@@ -644,15 +655,16 @@ export function FormConfigTab() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs text-muted-foreground">Type</Label>
-                    <select
-                      value={type}
-                      onChange={(e) => setType(e.target.value as FormQuestion["type"])}
-                      className="w-full mt-1 h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      {QUESTION_TYPES.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
+                    <Select value={type} onValueChange={(val) => setType(val as FormQuestion["type"])}>
+                      <SelectTrigger className="w-full mt-1 h-9" size="sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {QUESTION_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="col-span-2">
                     <Label className="text-xs text-muted-foreground">Placeholder</Label>
@@ -668,15 +680,19 @@ export function FormConfigTab() {
                 {(type === "select" || type === "checkbox-multi") && (
                   <div className="space-y-2 p-3 bg-muted/30 rounded-lg">
                     <Label className="text-xs text-muted-foreground">Options Source</Label>
-                    <select
+                    <Select
                       value={optionsSource}
-                      onChange={(e) => setOptionsSource(e.target.value as "custom" | "teams" | "experiences")}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                      onValueChange={(val) => setOptionsSource(val as "custom" | "teams" | "experiences")}
                     >
-                      <option value="custom">Custom Options</option>
-                      <option value="teams">From Teams</option>
-                      <option value="experiences">From Experiences</option>
-                    </select>
+                      <SelectTrigger className="w-full h-9" size="sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="custom">Custom Options</SelectItem>
+                        <SelectItem value="teams">From Teams</SelectItem>
+                        <SelectItem value="experiences">From Experiences</SelectItem>
+                      </SelectContent>
+                    </Select>
 
                     {optionsSource === "custom" ? (
                       <div className="space-y-2 mt-2">
