@@ -8,6 +8,12 @@ service cloud.firestore {
              get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.admin == true;
     }
     
+    // Form configuration (public read, admin write only)
+    match /form-config/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
     // User profiles
     match /profiles/{userId} {
       // Users can read their own profile

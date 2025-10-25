@@ -1,87 +1,104 @@
 # Quick Configuration Changes
 
+**Configuration is now in Firebase!** 🎉
+
+No more code changes needed. Just update the `form-config/main` document in Firestore and changes take effect immediately.
+
+## Where to Make Changes
+
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Navigate to **Firestore Database** → **form-config** → **main**
+3. Edit the fields
+
+---
+
 ## Most Common Updates
 
 ### ➕ Add New Experience
-**File:** `/lib/config.ts`
 
-```typescript
-experiences: [
-  { id: "construction", label: "Construction" },
-  { id: "decor", label: "Decor" },
-  { id: "your-id", label: "Your Label" },  // ← Add here
-],
+Update the `experiences` array:
+
+```json
+"experiences": [
+  { "id": "construction", "label": "Construction" },
+  { "id": "decor", "label": "Decor" },
+  { "id": "your-id", "label": "Your Label" }
+]
 ```
 
 ---
 
 ### ➕ Add New Team
-**File:** `/lib/config.ts`
 
-```typescript
-teams: ["IV", "PMP", "Your Team"],  // ← Add here
+Update the `teams` array:
+
+```json
+"teams": ["IV", "PMP", "Your Team"]
 ```
 
 ---
 
 ### 📅 Update Event Dates
-**File:** `/lib/config.ts`
 
-```typescript
-days: ["Friday", "Saturday", "Sunday"],  // ← Update days
-dayDates: ["Nov 7th", "Nov 8th", "Nov 9th"],  // ← Update dates (MUST match count)
+Update both `days` and `dayDates` (MUST have same count):
+
+```json
+"days": ["Friday", "Saturday", "Sunday"],
+"dayDates": ["Nov 7th", "Nov 8th", "Nov 9th"]
 ```
 
 ---
 
 ### ⏰ Change Shift Hours
-**File:** `/lib/config.ts`
 
-```typescript
-shifts: [
+Update the `shifts` array:
+
+```json
+"shifts": [
   "12am-6am",
   "6am-12pm",
   "12pm-6pm",
-  "6pm-12am",
-  // Add or remove shifts here
-],
+  "6pm-12am"
+]
 ```
 
 ---
 
-## How to Test Your Changes
+## How to See Changes
 
-1. **Form page:** Navigate to `/` and go through all questions
-2. **Dashboard:** Navigate to `/dashboard` to see volunteers
+✅ **New users**: See changes immediately when they load the form  
+✅ **Existing users**: See changes after they reload the page  
 
-Both should reflect your config changes immediately.
+---
+
+## Reference: Current Firebase Document
+
+**Collection**: `form-config`  
+**Document ID**: `main`
+
+```json
+{
+  "days": ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"],
+  "dayDates": ["November 7th", "November 8th", "November 9th", "November 10th", "November 11th"],
+  "shifts": ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"],
+  "teams": ["IV", "PMP"],
+  "experiences": [
+    { "id": "construction", "label": "Construction" },
+    { "id": "decor", "label": "Decor" }
+  ]
+}
+```
 
 ---
 
 ## Pro Tips
 
-✅ **Always keep days and dayDates in sync** - same number of items  
-✅ **Use lowercase with hyphens for experience IDs** - e.g., `"event-setup"` not `"Event Setup"`  
-✅ **Label is what users see** - make it friendly!  
-✅ **Changes take effect immediately** - no rebuild needed in dev mode
+✅ **No deployment needed** - Changes are instant  
+✅ **Firebase Console is easiest** - Use the UI to edit  
+✅ **Always sync days/dayDates** - Same number of items  
+✅ **Use lowercase IDs** - e.g., `"event-setup"` not `"Event Setup"`  
+✅ **Document ID is always "main"** - Don't create other docs
 
 ---
 
-## Reference: Current Config
-
-```typescript
-export const FORM_CONFIG = {
-  days: ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"],
-  dayDates: ["November 7th", "November 8th", "November 9th", "November 10th", "November 11th"],
-  shifts: ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"],
-  teams: ["IV", "PMP"],
-  experiences: [
-    { id: "construction", label: "Construction" },
-    { id: "decor", label: "Decor" },
-  ],
-};
-```
-
----
-
-See `CONFIG_GUIDE.md` for more detailed information.
+See `CONFIG_GUIDE.md` for detailed documentation.

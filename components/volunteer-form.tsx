@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { submitVolunteerForm } from "@/lib/utils";
 import { getVolunteerByEmail, getVolunteerByPhone, updateVolunteer } from "@/lib/db";
-import { FORM_CONFIG } from "@/lib/config";
+import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
 import { CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,13 +15,8 @@ interface ShiftData {
   [key: string]: string[];
 }
 
-const DAYS = FORM_CONFIG.days;
-const DAY_DATES = FORM_CONFIG.dayDates;
-const SHIFTS = FORM_CONFIG.shifts;
-const TEAMS = FORM_CONFIG.teams;
-const EXPERIENCES = FORM_CONFIG.experiences;
-
 export function VolunteerForm() {
+  const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +41,18 @@ export function VolunteerForm() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const config = await getFormConfig();
+        setFormConfig(config);
+      } catch (error) {
+        console.error("Error fetching form config:", error);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  useEffect(() => {
     if (inputRef.current && currentQuestion < 4 && currentQuestion !== 3) {
       setTimeout(() => {
         inputRef.current?.focus();
@@ -56,16 +63,16 @@ export function VolunteerForm() {
   const handleNext = () => {
     if (currentQuestion < 5) {
       setCurrentQuestion(currentQuestion + 1);
-    } else if (currentQuestion === 5 && currentDayIndex < DAYS.length - 1) {
+    } else if (currentQuestion === 5 && currentDayIndex < formConfig.days.length - 1) {
       setCurrentDayIndex(currentDayIndex + 1);
-    } else if (currentQuestion === 5 && currentDayIndex === DAYS.length - 1) {
+    } else if (currentQuestion === 5 && currentDayIndex === formConfig.days.length - 1) {
       setCurrentQuestion(6);
     }
   };
 
   const handleBack = () => {
     if (currentQuestion === 6) {
-      setCurrentDayIndex(DAYS.length - 1);
+      setCurrentDayIndex(formConfig.days.length - 1);
       setCurrentQuestion(5);
     } else if (currentQuestion === 5 && currentDayIndex > 0) {
       setCurrentDayIndex(currentDayIndex - 1);
@@ -98,13 +105,13 @@ export function VolunteerForm() {
     
     if (isSelected) return false;
     
-    const dayIndex = DAYS.indexOf(day);
-    const shiftIndex = SHIFTS.indexOf(shift);
+    const dayIndex = formConfig.days.indexOf(day);
+    const shiftIndex = formConfig.shifts.indexOf(shift);
     
-    const twoShiftsBack = shiftIndex >= 2 ? SHIFTS[shiftIndex - 2] : null;
-    const oneShiftBack = shiftIndex > 0 ? SHIFTS[shiftIndex - 1] : null;
-    const oneShiftForward = shiftIndex < SHIFTS.length - 1 ? SHIFTS[shiftIndex + 1] : null;
-    const twoShiftsForward = shiftIndex <= SHIFTS.length - 3 ? SHIFTS[shiftIndex + 2] : null;
+    const twoShiftsBack = shiftIndex >= 2 ? formConfig.shifts[shiftIndex - 2] : null;
+    const oneShiftBack = shiftIndex > 0 ? formConfig.shifts[shiftIndex - 1] : null;
+    const oneShiftForward = shiftIndex < formConfig.shifts.length - 1 ? formConfig.shifts[shiftIndex + 1] : null;
+    const twoShiftsForward = shiftIndex <= formConfig.shifts.length - 3 ? formConfig.shifts[shiftIndex + 2] : null;
     
     if (twoShiftsBack && oneShiftBack && dayShifts.includes(twoShiftsBack) && dayShifts.includes(oneShiftBack)) {
       return true;
@@ -115,36 +122,36 @@ export function VolunteerForm() {
     }
     
     if (shiftIndex === 0 && dayIndex > 0) {
-      const prevDay = DAYS[dayIndex - 1];
-      const lastShift = SHIFTS[SHIFTS.length - 1];
-      const secondLastShift = SHIFTS[SHIFTS.length - 2];
+      const prevDay = formConfig.days[dayIndex - 1];
+      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
+      const secondLastShift = formConfig.shifts[formConfig.shifts.length - 2];
       if (shiftData[prevDay]?.includes(lastShift) && shiftData[prevDay]?.includes(secondLastShift)) {
         return true;
       }
     }
     
     if (shiftIndex === 1 && dayIndex > 0) {
-      const prevDay = DAYS[dayIndex - 1];
-      const lastShift = SHIFTS[SHIFTS.length - 1];
-      const firstShift = SHIFTS[0];
+      const prevDay = formConfig.days[dayIndex - 1];
+      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
+      const firstShift = formConfig.shifts[0];
       if (shiftData[prevDay]?.includes(lastShift) && dayShifts.includes(firstShift)) {
         return true;
       }
     }
     
-    if (shiftIndex === SHIFTS.length - 1 && dayIndex < DAYS.length - 1) {
-      const nextDay = DAYS[dayIndex + 1];
-      const firstShift = SHIFTS[0];
-      const secondShift = SHIFTS[1];
+    if (shiftIndex === formConfig.shifts.length - 1 && dayIndex < formConfig.days.length - 1) {
+      const nextDay = formConfig.days[dayIndex + 1];
+      const firstShift = formConfig.shifts[0];
+      const secondShift = formConfig.shifts[1];
       if (shiftData[nextDay]?.includes(firstShift) && shiftData[nextDay]?.includes(secondShift)) {
         return true;
       }
     }
     
-    if (shiftIndex === SHIFTS.length - 2 && dayIndex < DAYS.length - 1) {
-      const nextDay = DAYS[dayIndex + 1];
-      const lastShift = SHIFTS[SHIFTS.length - 1];
-      const firstShift = SHIFTS[0];
+    if (shiftIndex === formConfig.shifts.length - 2 && dayIndex < formConfig.days.length - 1) {
+      const nextDay = formConfig.days[dayIndex + 1];
+      const lastShift = formConfig.shifts[formConfig.shifts.length - 1];
+      const firstShift = formConfig.shifts[0];
       if (dayShifts.includes(lastShift) && shiftData[nextDay]?.includes(firstShift)) {
         return true;
       }
@@ -281,7 +288,7 @@ export function VolunteerForm() {
         className="fixed top-0 left-0 h-1 bg-primary z-50"
         initial={{ width: "0%" }}
         animate={{
-          width: `${((currentQuestion + (currentQuestion === 5 ? currentDayIndex / DAYS.length : 0)) / 7) * 100}%`,
+          width: `${((currentQuestion + (currentQuestion === 5 ? currentDayIndex / formConfig.days.length : 0)) / 7) * 100}%`,
         }}
         transition={{ duration: 0.3 }}
       />
@@ -436,7 +443,7 @@ export function VolunteerForm() {
                   </p>
                 </div>
                 <div className="space-y-4">
-                  {TEAMS.map((teamOption) => (
+                  {formConfig.teams.map((teamOption) => (
                     <motion.div
                       key={teamOption}
                       whileHover={{ scale: 1.02 }}
@@ -482,7 +489,7 @@ export function VolunteerForm() {
                   </p>
                 </div>
                 <div className="space-y-4">
-                  {EXPERIENCES.map((exp) => (
+                  {formConfig.experiences.map((exp) => (
                     <motion.div
                       key={exp.id}
                       whileHover={{ scale: 1.02 }}
@@ -522,15 +529,15 @@ export function VolunteerForm() {
               >
                 <div className="space-y-4">
                   <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
-                    {DAYS[currentDayIndex]}, {DAY_DATES[currentDayIndex]}
+                    {formConfig.days[currentDayIndex]}, {formConfig.dayDates[currentDayIndex]}
                   </h1>
                   <p className="text-lg text-muted-foreground">
                     Select all shifts you&apos;re available (or skip if unavailable)
                   </p>
                 </div>
                 <div className="space-y-4">
-                  {SHIFTS.map((shift) => {
-                    const disabled = isShiftDisabled(DAYS[currentDayIndex], shift);
+                  {formConfig.shifts.map((shift) => {
+                    const disabled = isShiftDisabled(formConfig.days[currentDayIndex], shift);
                     return (
                       <motion.div
                         key={shift}
@@ -540,10 +547,10 @@ export function VolunteerForm() {
                             ? "border-muted bg-muted/30 cursor-not-allowed opacity-50"
                             : "border-border bg-background/50 hover:border-primary hover:bg-accent cursor-pointer"
                         }`}
-                        onClick={() => handleShiftToggle(DAYS[currentDayIndex], shift)}
+                        onClick={() => handleShiftToggle(formConfig.days[currentDayIndex], shift)}
                       >
                         <Checkbox
-                          checked={shiftData[DAYS[currentDayIndex]]?.includes(shift) || false}
+                          checked={shiftData[formConfig.days[currentDayIndex]]?.includes(shift) || false}
                           disabled={disabled}
                           className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
                         />
@@ -590,12 +597,12 @@ export function VolunteerForm() {
                   {experiences.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-muted-foreground text-sm">Experience</p>
-                      <p>{EXPERIENCES.filter(e => experiences.includes(e.id)).map(e => e.label).join(", ")}</p>
+                      <p>{formConfig.experiences.filter(e => experiences.includes(e.id)).map(e => e.label).join(", ")}</p>
                     </div>
                   )}
                   <div className="space-y-2">
                     <p className="text-muted-foreground text-sm">Availability</p>
-                    {DAYS.map((day) => (
+                    {formConfig.days.map((day) => (
                       <div key={day}>
                         {shiftData[day]?.length > 0 && (
                           <p>

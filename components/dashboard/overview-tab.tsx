@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Users } from "lucide-react";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
-import { FORM_CONFIG } from "@/lib/config";
+import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
 
 interface OverviewTabProps {
   volunteers: Volunteer[];
@@ -25,14 +25,27 @@ interface OverviewTabProps {
   assignments: Assignment[];
 }
 
-const DAYS = FORM_CONFIG.days;
-const SHIFTS = FORM_CONFIG.shifts;
-
 export function OverviewTab({ volunteers, locations, tasks, assignments }: OverviewTabProps) {
+  const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [filterDay, setFilterDay] = useState<string>("");
   const [filterShift, setFilterShift] = useState<string>("");
   const [filterCount, setFilterCount] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const config = await getFormConfig();
+        setFormConfig(config);
+      } catch (error) {
+        console.error("Error fetching form config:", error);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  const DAYS = formConfig.days;
+  const SHIFTS = formConfig.shifts;
 
   const getInitials = (name?: string) => {
     const parts = name?.split(" ") || [];

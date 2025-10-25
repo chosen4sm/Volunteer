@@ -33,7 +33,7 @@ import {
   type Task,
   type Assignment,
 } from "@/lib/db";
-import { FORM_CONFIG } from "@/lib/config";
+import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
 
 interface AssignmentsTabProps {
   volunteers: Volunteer[];
@@ -43,9 +43,6 @@ interface AssignmentsTabProps {
   onDataChange: () => void;
 }
 
-const DAYS = FORM_CONFIG.days;
-const SHIFTS = FORM_CONFIG.shifts;
-
 export function AssignmentsTab({
   volunteers,
   locations,
@@ -53,6 +50,7 @@ export function AssignmentsTab({
   assignments,
   onDataChange,
 }: AssignmentsTabProps) {
+  const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [filterDay, setFilterDay] = useState<string>("");
   const [filterShift, setFilterShift] = useState<string>("");
   const [filterCount, setFilterCount] = useState<string>("");
@@ -65,6 +63,21 @@ export function AssignmentsTab({
   const [assignShift, setAssignShift] = useState("");
   const [assignDay, setAssignDay] = useState("");
   const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const config = await getFormConfig();
+        setFormConfig(config);
+      } catch (error) {
+        console.error("Error fetching form config:", error);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  const DAYS = formConfig.days;
+  const SHIFTS = formConfig.shifts;
 
   const getInitials = (name?: string) => {
     const parts = name?.split(" ") || [];
