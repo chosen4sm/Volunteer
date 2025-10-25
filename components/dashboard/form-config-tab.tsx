@@ -350,14 +350,14 @@ export function FormConfigTab() {
                 {editedConfig.questions.map((question, idx) => (
                   <div
                     key={question.id}
-                    className="p-3 rounded-lg border bg-muted/50 space-y-2"
+                    className="p-4 rounded-lg border-2 bg-muted/50 space-y-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{question.label}</p>
-                        <p className="text-xs text-muted-foreground">ID: {question.id}</p>
+                        <p className="font-bold text-lg">{question.label}</p>
+                        <p className="text-sm text-muted-foreground">ID: {question.id}</p>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         {idx > 0 && (
                           <button
                             onClick={() => {
@@ -365,10 +365,10 @@ export function FormConfigTab() {
                               [newQuestions[idx], newQuestions[idx - 1]] = [newQuestions[idx - 1], newQuestions[idx]];
                               setEditedConfig({ ...editedConfig, questions: newQuestions });
                             }}
-                            className="text-muted-foreground hover:text-foreground p-1"
+                            className="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded"
                             title="Move up"
                           >
-                            <ChevronUp className="w-4 h-4" />
+                            <ChevronUp className="w-5 h-5" />
                           </button>
                         )}
                         {idx < editedConfig.questions.length - 1 && (
@@ -378,10 +378,10 @@ export function FormConfigTab() {
                               [newQuestions[idx], newQuestions[idx + 1]] = [newQuestions[idx + 1], newQuestions[idx]];
                               setEditedConfig({ ...editedConfig, questions: newQuestions });
                             }}
-                            className="text-muted-foreground hover:text-foreground p-1"
+                            className="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded"
                             title="Move down"
                           >
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown className="w-5 h-5" />
                           </button>
                         )}
                         <button
@@ -389,21 +389,79 @@ export function FormConfigTab() {
                             const newQuestions = editedConfig.questions.filter((_, i) => i !== idx);
                             setEditedConfig({ ...editedConfig, questions: newQuestions });
                           }}
-                          className="text-destructive hover:opacity-70 p-1"
+                          className="text-destructive hover:opacity-70 p-2 hover:bg-destructive/10 rounded"
                           title="Delete"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t-2">
                       <div>
-                        <span className="text-muted-foreground">Type:</span>
-                        <Badge className="ml-1">{question.type}</Badge>
+                        <Label className="text-sm font-semibold mb-2 block">Label</Label>
+                        <Input
+                          value={question.label}
+                          onChange={(e) => {
+                            const newQuestions = [...editedConfig.questions];
+                            newQuestions[idx].label = e.target.value;
+                            setEditedConfig({ ...editedConfig, questions: newQuestions });
+                          }}
+                          className="text-lg h-12 px-4 border-2"
+                          placeholder="Question label"
+                        />
                       </div>
-                      {question.required && (
-                        <div className="text-chart-2">Required: Yes</div>
-                      )}
+                      <div>
+                        <Label className="text-sm font-semibold mb-2 block">Type</Label>
+                        <Select
+                          value={question.type}
+                          onValueChange={(value) => {
+                            const newQuestions = [...editedConfig.questions];
+                            newQuestions[idx].type = value as FormQuestion["type"];
+                            setEditedConfig({ ...editedConfig, questions: newQuestions });
+                          }}
+                        >
+                          <SelectTrigger className="text-lg h-12 px-4 border-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {QUESTION_TYPES.map((type) => (
+                              <SelectItem key={type} value={type} className="text-base">
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-semibold mb-2 block">Placeholder</Label>
+                        <Input
+                          value={question.placeholder || ""}
+                          onChange={(e) => {
+                            const newQuestions = [...editedConfig.questions];
+                            newQuestions[idx].placeholder = e.target.value || undefined;
+                            setEditedConfig({ ...editedConfig, questions: newQuestions });
+                          }}
+                          className="text-lg h-12 px-4 border-2"
+                          placeholder="Help text"
+                        />
+                      </div>
+                      <div className="flex items-end gap-2">
+                        <div className="flex items-center space-x-3 p-3 rounded-lg border-2 flex-1">
+                          <Checkbox
+                            checked={question.required}
+                            onCheckedChange={(checked) => {
+                              const newQuestions = [...editedConfig.questions];
+                              newQuestions[idx].required = checked as boolean;
+                              setEditedConfig({ ...editedConfig, questions: newQuestions });
+                            }}
+                            id={`required-${idx}`}
+                            className="w-5 h-5"
+                          />
+                          <Label htmlFor={`required-${idx}`} className="text-base cursor-pointer font-semibold">
+                            Required
+                          </Label>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -535,52 +593,65 @@ function QuestionAddForm({ onAdd }: { onAdd: (question: FormQuestion) => void })
   };
 
   return (
-    <div className="space-y-3 p-4 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5">
-      <h3 className="text-sm font-semibold">Add New Question</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <Input
-          value={id}
-          onChange={(e) => setId(e.target.value)}
-          placeholder="ID (e.g., company)"
-          className="text-sm"
-        />
-        <Input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Label (e.g., Company name)"
-          className="text-sm"
-        />
-        <Select value={type} onValueChange={(value) => setType(value as FormQuestion["type"])}>
-          <SelectTrigger className="text-sm h-9">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {QUESTION_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          value={placeholder}
-          onChange={(e) => setPlaceholder(e.target.value)}
-          placeholder="Placeholder text"
-          className="text-sm"
-        />
+    <div className="space-y-4 p-6 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5">
+      <h3 className="text-lg font-bold">Add New Question</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <Label className="text-sm font-semibold mb-2 block">ID</Label>
+          <Input
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            placeholder="e.g., company"
+            className="text-lg h-12 px-4 border-2"
+          />
+        </div>
+        <div>
+          <Label className="text-sm font-semibold mb-2 block">Label</Label>
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="e.g., Company name?"
+            className="text-lg h-12 px-4 border-2"
+          />
+        </div>
+        <div>
+          <Label className="text-sm font-semibold mb-2 block">Type</Label>
+          <Select value={type} onValueChange={(value) => setType(value as FormQuestion["type"])}>
+            <SelectTrigger className="text-lg h-12 px-4 border-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {QUESTION_TYPES.map((t) => (
+                <SelectItem key={t} value={t} className="text-base">
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-sm font-semibold mb-2 block">Placeholder</Label>
+          <Input
+            value={placeholder}
+            onChange={(e) => setPlaceholder(e.target.value)}
+            placeholder="Help text"
+            className="text-lg h-12 px-4 border-2"
+          />
+        </div>
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-3 p-4 rounded-lg border-2 bg-background">
         <Checkbox
           checked={required}
           onCheckedChange={(checked) => setRequired(checked as boolean)}
           id="new-question-required"
+          className="w-5 h-5"
         />
-        <Label htmlFor="new-question-required" className="text-sm cursor-pointer">
+        <Label htmlFor="new-question-required" className="text-base cursor-pointer font-semibold">
           Required
         </Label>
       </div>
-      <Button onClick={handleAdd} size="sm" className="w-full gap-2">
-        <Plus className="w-4 h-4" />
+      <Button onClick={handleAdd} size="lg" className="w-full text-lg h-12 gap-2">
+        <Plus className="w-5 h-5" />
         Add Question
       </Button>
     </div>
