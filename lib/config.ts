@@ -8,6 +8,7 @@ export interface FormQuestion {
   placeholder?: string;
   required: boolean;
   optionsFrom?: "teams" | "experiences";
+  options?: Array<{ id: string; label: string }>; // Custom options for select/checkbox-multi
 }
 
 export interface FormConfig {

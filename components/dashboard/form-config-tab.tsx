@@ -27,6 +27,9 @@ export function FormConfigTab() {
   const [type, setType] = useState<FormQuestion["type"]>("text");
   const [placeholder, setPlaceholder] = useState("");
   const [required, setRequired] = useState(true);
+  const [customOptions, setCustomOptions] = useState<Array<{ id: string; label: string }>>([]);
+  const [newOptionId, setNewOptionId] = useState("");
+  const [newOptionLabel, setNewOptionLabel] = useState("");
 
   useEffect(() => {
     fetchConfig();
@@ -136,15 +139,32 @@ export function FormConfigTab() {
       return;
     }
     if (!editedConfig) return;
+    
+    const newQuestion: FormQuestion = { 
+      id, 
+      label, 
+      type, 
+      placeholder: placeholder || undefined, 
+      required 
+    };
+    
+    // Add custom options for select/checkbox-multi if provided
+    if ((type === "select" || type === "checkbox-multi") && customOptions.length > 0) {
+      newQuestion.options = customOptions;
+    }
+    
     setEditedConfig({
       ...editedConfig,
-      questions: [...editedConfig.questions, { id, label, type, placeholder: placeholder || undefined, required }],
+      questions: [...editedConfig.questions, newQuestion],
     });
     setId("");
     setLabel("");
     setType("text");
     setPlaceholder("");
     setRequired(true);
+    setCustomOptions([]);
+    setNewOptionId("");
+    setNewOptionLabel("");
   };
 
   if (isLoading) {
@@ -539,6 +559,64 @@ export function FormConfigTab() {
               />
             </div>
           </div>
+          
+          {/* Custom Options for Select/Checkbox-Multi */}
+          {(type === "select" || type === "checkbox-multi") && (
+            <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-2 border-dashed">
+              <div>
+                <h4 className="font-semibold mb-3">Add Options</h4>
+                <div className="flex gap-2 mb-3">
+                  <Input
+                    value={newOptionId}
+                    onChange={(e) => setNewOptionId(e.target.value)}
+                    placeholder="Option ID (e.g., option1)"
+                    className="text-base h-10 px-3 border-2 flex-1"
+                  />
+                  <Input
+                    value={newOptionLabel}
+                    onChange={(e) => setNewOptionLabel(e.target.value)}
+                    placeholder="Option Label (e.g., Option 1)"
+                    className="text-base h-10 px-3 border-2 flex-1"
+                  />
+                  <Button
+                    onClick={() => {
+                      if (!newOptionId.trim() || !newOptionLabel.trim()) {
+                        toast.error("Both ID and label required");
+                        return;
+                      }
+                      setCustomOptions([...customOptions, { id: newOptionId, label: newOptionLabel }]);
+                      setNewOptionId("");
+                      setNewOptionLabel("");
+                    }}
+                    size="sm"
+                    className="h-10"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {customOptions.length > 0 && (
+                  <div className="space-y-2">
+                    {customOptions.map((opt, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-background p-2 rounded border">
+                        <div className="text-sm">
+                          <span className="font-semibold">{opt.id}</span> → {opt.label}
+                        </div>
+                        <Button
+                          onClick={() => setCustomOptions(customOptions.filter((_, i) => i !== idx))}
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center space-x-3 p-4 rounded-lg border-2 bg-background">
             <Checkbox
               checked={required}

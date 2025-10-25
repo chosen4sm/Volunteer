@@ -379,50 +379,56 @@ export function VolunteerForm() {
                 {/* Select */}
                 {currentQuestion.type === "select" && (
                   <div className="space-y-4">
-                    {currentQuestion.optionsFrom === "teams" && (
+                    {(currentQuestion.optionsFrom === "teams" || currentQuestion.options) && (
                       <>
-                        {formConfig.teams.length <= 5 ? (
-                          // Large buttons for 5 or fewer options
-                          <div className="space-y-4">
-                            {formConfig.teams.map((team) => (
-                              <motion.div
-                                key={team}
-                                whileHover={{ scale: 1.02 }}
-                                className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                                  (formAnswers[currentQuestion.id] as string) === team
-                                    ? "border-primary bg-accent"
-                                    : "border-border bg-background/50 hover:border-primary hover:bg-accent"
-                                }`}
-                                onClick={() => handleAnswerChange(team)}
-                              >
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                                  (formAnswers[currentQuestion.id] as string) === team
-                                    ? "border-primary bg-primary"
-                                    : "border-muted-foreground"
-                                }`}>
-                                  {(formAnswers[currentQuestion.id] as string) === team && (
-                                    <div className="w-3 h-3 rounded-full bg-primary-foreground" />
-                                  )}
-                                </div>
-                                <span className="text-xl font-medium">{team}</span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        ) : (
-                          // Dropdown for more than 5 options
-                          <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
-                            <SelectTrigger className="h-14 px-4 text-lg border-2">
-                              <SelectValue placeholder="Select an option" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {formConfig.teams.map((team) => (
-                                <SelectItem key={team} value={team}>
-                                  {team}
-                                </SelectItem>
+                        {(() => {
+                          const options = currentQuestion.options 
+                            ? currentQuestion.options 
+                            : formConfig.teams.map(team => ({ id: team, label: team }));
+                          
+                          return options.length <= 5 ? (
+                            // Large buttons for 5 or fewer options
+                            <div className="space-y-4">
+                              {options.map((opt) => (
+                                <motion.div
+                                  key={opt.id}
+                                  whileHover={{ scale: 1.02 }}
+                                  className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                                    (formAnswers[currentQuestion.id] as string) === opt.id
+                                      ? "border-primary bg-accent"
+                                      : "border-border bg-background/50 hover:border-primary hover:bg-accent"
+                                  }`}
+                                  onClick={() => handleAnswerChange(opt.id)}
+                                >
+                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                                    (formAnswers[currentQuestion.id] as string) === opt.id
+                                      ? "border-primary bg-primary"
+                                      : "border-muted-foreground"
+                                  }`}>
+                                    {(formAnswers[currentQuestion.id] as string) === opt.id && (
+                                      <div className="w-3 h-3 rounded-full bg-primary-foreground" />
+                                    )}
+                                  </div>
+                                  <span className="text-xl font-medium">{opt.label}</span>
+                                </motion.div>
                               ))}
-                            </SelectContent>
-                          </Select>
-                        )}
+                            </div>
+                          ) : (
+                            // Dropdown for more than 5 options
+                            <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
+                              <SelectTrigger className="h-14 px-4 text-lg border-2">
+                                <SelectValue placeholder="Select an option" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {options.map((opt) => (
+                                  <SelectItem key={opt.id} value={opt.id}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
                       </>
                     )}
                   </div>
@@ -431,32 +437,37 @@ export function VolunteerForm() {
                 {/* Checkbox Multi */}
                 {currentQuestion.type === "checkbox-multi" && (
                   <div className="space-y-4">
-                    {currentQuestion.optionsFrom === "experiences"
-                      ? formConfig.experiences.map((exp) => (
-                          <motion.div
-                            key={exp.id}
-                            whileHover={{ scale: 1.02 }}
-                            className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                              (formAnswers[currentQuestion.id] as string[])?.includes(exp.id)
-                                ? "border-primary bg-accent"
-                                : "border-border bg-background/50 hover:border-primary hover:bg-accent"
-                            }`}
-                            onClick={() => {
-                              const current = (formAnswers[currentQuestion.id] as string[]) || [];
-                              if (current.includes(exp.id)) {
-                                handleAnswerChange(current.filter((e) => e !== exp.id));
-                              } else {
-                                handleAnswerChange([...current, exp.id]);
-                              }
-                            }}
-                          >
-                            <Checkbox
-                              checked={(formAnswers[currentQuestion.id] as string[])?.includes(exp.id) || false}
-                              className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
-                            />
-                            <span className="text-xl font-medium">{exp.label}</span>
-                          </motion.div>
-                        ))
+                    {(currentQuestion.optionsFrom === "experiences" || currentQuestion.options)
+                      ? (() => {
+                          const options = currentQuestion.options 
+                            ? currentQuestion.options 
+                            : formConfig.experiences;
+                          return options.map((opt) => (
+                            <motion.div
+                              key={opt.id}
+                              whileHover={{ scale: 1.02 }}
+                              className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                                (formAnswers[currentQuestion.id] as string[])?.includes(opt.id)
+                                  ? "border-primary bg-accent"
+                                  : "border-border bg-background/50 hover:border-primary hover:bg-accent"
+                              }`}
+                              onClick={() => {
+                                const current = (formAnswers[currentQuestion.id] as string[]) || [];
+                                if (current.includes(opt.id)) {
+                                  handleAnswerChange(current.filter((e) => e !== opt.id));
+                                } else {
+                                  handleAnswerChange([...current, opt.id]);
+                                }
+                              }}
+                            >
+                              <Checkbox
+                                checked={(formAnswers[currentQuestion.id] as string[])?.includes(opt.id) || false}
+                                className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+                              />
+                              <span className="text-xl font-medium">{opt.label}</span>
+                            </motion.div>
+                          ));
+                        })()
                       : null}
                   </div>
                 )}
