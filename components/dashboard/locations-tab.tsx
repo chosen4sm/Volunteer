@@ -49,7 +49,6 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
   const [locationDescription, setLocationDescription] = useState("");
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [taskLocationId, setTaskLocationId] = useState("");
 
   const handleCreateLocation = async () => {
     if (!locationName.trim()) {
@@ -104,8 +103,8 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
           name: taskName,
           description: taskDescription,
         };
-        if (taskLocationId) {
-          updateData.locationId = taskLocationId;
+        if (editingTask.locationId) {
+          updateData.locationId = editingTask.locationId;
         }
         await updateTask(editingTask.id, updateData);
         toast.success("Task updated");
@@ -114,16 +113,12 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
           name: taskName,
           description: taskDescription,
         };
-        if (taskLocationId) {
-          createData.locationId = taskLocationId;
-        }
         await createTask(createData);
         toast.success("Task created");
       }
       setTaskDialogOpen(false);
       setTaskName("");
       setTaskDescription("");
-      setTaskLocationId("");
       setEditingTask(null);
       onDataChange();
     } catch (error) {
@@ -155,7 +150,6 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
     setEditingTask(task);
     setTaskName(task.name);
     setTaskDescription(task.description || "");
-    setTaskLocationId(task.locationId || "");
     setTaskDialogOpen(true);
   };
 
@@ -263,7 +257,6 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     setEditingTask(null);
                     setTaskName("");
                     setTaskDescription("");
-                    setTaskLocationId("");
                   }}
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -276,21 +269,6 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                   <DialogDescription>Create a task and optionally link it to a location</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="task-location">Location (optional)</Label>
-                    <Select value={taskLocationId || undefined} onValueChange={setTaskLocationId}>
-                      <SelectTrigger id="task-location">
-                        <SelectValue placeholder="Select location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="task-name">Task Name</Label>
                     <Input
