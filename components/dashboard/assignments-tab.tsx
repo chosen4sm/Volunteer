@@ -62,6 +62,7 @@ export function AssignmentsTab({
   const [assignTaskId, setAssignTaskId] = useState("");
   const [assignShift, setAssignShift] = useState("");
   const [assignDay, setAssignDay] = useState("");
+  const [assignDescription, setAssignDescription] = useState("");
   const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
 
   useEffect(() => {
@@ -126,16 +127,17 @@ export function AssignmentsTab({
       return;
     }
     try {
-      const assignmentData: any = {
+      const assignmentData: Partial<Assignment> = {
         volunteerId: assignVolunteerId,
         taskId: assignTaskId,
         shift: assignShift || undefined,
         day: assignDay || undefined,
+        description: assignDescription || undefined,
       };
       if (assignLocationId) {
         assignmentData.locationId = assignLocationId;
       }
-      await createAssignment(assignmentData);
+      await createAssignment(assignmentData as Omit<Assignment, "id" | "createdAt">);
       toast.success("Volunteer assigned to task");
       setAssignmentDialogOpen(false);
       setAssignVolunteerId("");
@@ -143,6 +145,7 @@ export function AssignmentsTab({
       setAssignTaskId("");
       setAssignShift("");
       setAssignDay("");
+      setAssignDescription("");
       onDataChange();
     } catch (error) {
       console.error("Error creating assignment:", error);
@@ -169,16 +172,17 @@ export function AssignmentsTab({
     }
     try {
       const promises = selectedVolunteers.map((volunteerId) => {
-        const assignmentData: any = {
+        const assignmentData: Partial<Assignment> = {
           volunteerId,
           taskId: assignTaskId,
           shift: assignShift || undefined,
           day: assignDay || undefined,
+          description: assignDescription || undefined,
         };
         if (assignLocationId) {
           assignmentData.locationId = assignLocationId;
         }
-        return createAssignment(assignmentData);
+        return createAssignment(assignmentData as Omit<Assignment, "id" | "createdAt">);
       });
       await Promise.all(promises);
       toast.success(`${selectedVolunteers.length} volunteer(s) assigned to task`);
@@ -187,6 +191,7 @@ export function AssignmentsTab({
       setAssignTaskId("");
       setAssignShift("");
       setAssignDay("");
+      setAssignDescription("");
       onDataChange();
     } catch (error) {
       console.error("Error creating bulk assignments:", error);
@@ -584,6 +589,11 @@ export function AssignmentsTab({
                 </SelectContent>
               </Select>
             </div>
+            <Input
+              value={assignDescription}
+              onChange={(e) => setAssignDescription(e.target.value)}
+              placeholder="Description (optional) - e.g., Special instructions or notes"
+            />
             <Button onClick={handleBulkAssignment} className="w-full" disabled={!assignTaskId}>
               <UserPlus className="w-4 h-4 mr-2" />
               Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''}
@@ -689,6 +699,15 @@ export function AssignmentsTab({
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="assign-description">Description (optional)</Label>
+                    <Input
+                      id="assign-description"
+                      value={assignDescription}
+                      onChange={(e) => setAssignDescription(e.target.value)}
+                      placeholder="e.g., Special instructions or notes"
+                    />
+                  </div>
                   <Button onClick={handleCreateAssignment} className="w-full">
                     Create Assignment
                   </Button>
@@ -739,6 +758,9 @@ export function AssignmentsTab({
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm">{volunteer.name}</div>
                               <div className="text-xs text-muted-foreground">{scheduleText}</div>
+                              {assignment.description && (
+                                <div className="text-xs text-muted-foreground mt-1">{assignment.description}</div>
+                              )}
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <Button

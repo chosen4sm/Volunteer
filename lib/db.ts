@@ -30,6 +30,7 @@ export interface Location {
   id: string;
   name: string;
   description?: string;
+  address?: string;
   createdAt: Timestamp;
 }
 
@@ -48,6 +49,7 @@ export interface Assignment {
   taskId: string;
   shift?: string;
   day?: string;
+  description?: string;
   createdAt: Timestamp;
 }
 

@@ -19,7 +19,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Users, Edit2 } from "lucide-react";
@@ -236,9 +235,6 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                   .map((lead) => {
                     const leadTasks = lead.leadTaskIds 
                       ? tasks.filter(t => lead.leadTaskIds?.includes(t.id))
-                      : [];
-                    const leadLocations = leadTasks.length > 0 
-                      ? [...new Set(leadTasks.map(t => t.locationId).filter(Boolean))]
                       : [];
 
                     return (

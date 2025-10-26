@@ -40,6 +40,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
 
   const [locationName, setLocationName] = useState("");
   const [locationDescription, setLocationDescription] = useState("");
+  const [locationAddress, setLocationAddress] = useState("");
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
 
@@ -53,18 +54,21 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
         await updateLocation(editingLocation.id, {
           name: locationName,
           description: locationDescription,
+          address: locationAddress,
         });
         toast.success("Location updated");
       } else {
         await createLocation({
           name: locationName,
           description: locationDescription,
+          address: locationAddress,
         });
         toast.success("Location created");
       }
       setLocationDialogOpen(false);
       setLocationName("");
       setLocationDescription("");
+      setLocationAddress("");
       setEditingLocation(null);
       onDataChange();
     } catch (error) {
@@ -136,6 +140,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
     setEditingLocation(location);
     setLocationName(location.name);
     setLocationDescription(location.description || "");
+    setLocationAddress(location.address || "");
     setLocationDialogOpen(true);
   };
 
@@ -163,6 +168,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     setEditingLocation(null);
                     setLocationName("");
                     setLocationDescription("");
+                    setLocationAddress("");
                   }}
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -193,6 +199,15 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                       placeholder="e.g., Main event area"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="location-address">Address (optional)</Label>
+                    <Input
+                      id="location-address"
+                      value={locationAddress}
+                      onChange={(e) => setLocationAddress(e.target.value)}
+                      placeholder="e.g., 123 Main St, City, State"
+                    />
+                  </div>
                   <Button onClick={handleCreateLocation} className="w-full">
                     {editingLocation ? "Update" : "Create"} Location
                   </Button>
@@ -215,6 +230,9 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     <div className="font-medium">{location.name}</div>
                     {location.description && (
                       <div className="text-sm text-muted-foreground">{location.description}</div>
+                    )}
+                    {location.address && (
+                      <div className="text-sm text-muted-foreground mt-1">{location.address}</div>
                     )}
                     <div className="text-xs text-muted-foreground mt-1">
                       {tasks.filter((t) => t.locationId === location.id).length} tasks
