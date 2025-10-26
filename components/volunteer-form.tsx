@@ -127,7 +127,6 @@ export function VolunteerForm() {
         name: formAnswers.name as string,
         phone: formAnswers.phone as string,
         email: formAnswers.email as string,
-        team: formAnswers.team as string,
         experiences: (formAnswers.experience as string[]) || [],
         shifts: shiftData,
       };
@@ -178,7 +177,6 @@ export function VolunteerForm() {
           name: existing.name,
           phone: existing.phone,
           email: existing.email,
-          team: existing.team || "",
           experience: existing.experiences || [],
         }));
         setShiftData(existing.shifts || {});
@@ -381,66 +379,60 @@ export function VolunteerForm() {
                 )}
 
                 {/* Select */}
-                {currentQuestion.type === "select" && (
+                {currentQuestion.type === "select" && currentQuestion.options && (
                   <div className="space-y-4">
-                    {(currentQuestion.optionsFrom === "teams" || currentQuestion.options) && (
-                      <>
-                        {(() => {
-                          const options = currentQuestion.options 
-                            ? currentQuestion.options 
-                            : formConfig.teams.map(team => ({ id: team, label: team }));
-                          
-                          // Sort options alphabetically by label
-                          const sortedOptions = [...options].sort((a, b) => a.label.localeCompare(b.label));
-                          
-                          // Use large buttons if: ≤5 options OR has custom options from DB
-                          const useButtons = sortedOptions.length <= 5 || !!currentQuestion.options;
-                          
-                          return useButtons ? (
-                            // Large buttons (for ≤5 options OR custom options)
-                            <div className="space-y-4">
-                              {sortedOptions.map((opt) => (
-                                <motion.div
-                                  key={opt.id}
-                                  whileHover={{ scale: 1.02 }}
-                                  className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                                    (formAnswers[currentQuestion.id] as string) === opt.id
-                                      ? "border-primary bg-accent"
-                                      : "border-border bg-background/50 hover:border-primary hover:bg-accent"
-                                  }`}
-                                  onClick={() => handleAnswerChange(opt.id)}
-                                >
-                                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                    (formAnswers[currentQuestion.id] as string) === opt.id
-                                      ? "border-primary bg-primary"
-                                      : "border-muted-foreground"
-                                  }`}>
-                                    {(formAnswers[currentQuestion.id] as string) === opt.id && (
-                                      <div className="w-3 h-3 rounded-full bg-primary-foreground" />
-                                    )}
-                                  </div>
-                                  <span className="text-xl font-medium">{opt.label}</span>
-                                </motion.div>
-                              ))}
-                            </div>
-                          ) : (
-                            // Dropdown for predefined options with >5 items
-                            <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
-                              <SelectTrigger size="lg" className="border-2">
-                                <SelectValue placeholder="Select an option" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {sortedOptions.map((opt) => (
-                                  <SelectItem key={opt.id} value={opt.id}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          );
-                        })()}
-                      </>
-                    )}
+                    {(() => {
+                      const options = currentQuestion.options;
+                      
+                      // Sort options alphabetically by label
+                      const sortedOptions = [...options].sort((a, b) => a.label.localeCompare(b.label));
+                      
+                      // Use large buttons if ≤5 options
+                      const useButtons = sortedOptions.length <= 5;
+                      
+                      return useButtons ? (
+                        // Large buttons (for ≤5 options)
+                        <div className="space-y-4">
+                          {sortedOptions.map((opt) => (
+                            <motion.div
+                              key={opt.id}
+                              whileHover={{ scale: 1.02 }}
+                              className={`flex items-center space-x-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                                (formAnswers[currentQuestion.id] as string) === opt.id
+                                  ? "border-primary bg-accent"
+                                  : "border-border bg-background/50 hover:border-primary hover:bg-accent"
+                              }`}
+                              onClick={() => handleAnswerChange(opt.id)}
+                            >
+                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                (formAnswers[currentQuestion.id] as string) === opt.id
+                                  ? "border-primary bg-primary"
+                                  : "border-muted-foreground"
+                              }`}>
+                                {(formAnswers[currentQuestion.id] as string) === opt.id && (
+                                  <div className="w-3 h-3 rounded-full bg-primary-foreground" />
+                                )}
+                              </div>
+                              <span className="text-xl font-medium">{opt.label}</span>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        // Dropdown for >5 options
+                        <Select value={(formAnswers[currentQuestion.id] as string) || ""} onValueChange={handleAnswerChange}>
+                          <SelectTrigger size="lg" className="border-2">
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {sortedOptions.map((opt) => (
+                              <SelectItem key={opt.id} value={opt.id}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
                   </div>
                 )}
 

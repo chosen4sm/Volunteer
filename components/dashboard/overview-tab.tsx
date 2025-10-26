@@ -13,9 +13,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Users, Edit2 } from "lucide-react";
+import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
 import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
+import { updateVolunteer } from "@/lib/db";
 
 interface OverviewTabProps {
   volunteers: Volunteer[];
@@ -31,6 +42,10 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
   const [filterCount, setFilterCount] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterExperience, setFilterExperience] = useState<string>("");
+  const [updatingRoles, setUpdatingRoles] = useState<Set<string>>(new Set());
+  const [leadAssignmentDialog, setLeadAssignmentDialog] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadTasks, setSelectedLeadTasks] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -109,14 +124,6 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
     return allocation;
   };
 
-  const getTeamAllocation = () => {
-    const allocation: { [key: string]: number } = {};
-    formConfig.teams.forEach((team) => {
-      allocation[team] = volunteers.filter((v) => v.team === team).length;
-    });
-    return allocation;
-  };
-
   const getExperienceAllocation = () => {
     const allocation: { [key: string]: number } = {};
     formConfig.experiences.forEach((exp) => {
@@ -127,9 +134,46 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
     return allocation;
   };
 
+  const handleRoleChange = async (volunteerId: string, newRole: "volunteer" | "lead") => {
+    setUpdatingRoles((prev) => new Set(prev).add(volunteerId));
+    try {
+      await updateVolunteer(volunteerId, { role: newRole });
+      toast.success(newRole === "lead" ? "Assigned as lead" : "Assigned as volunteer");
+    } catch (error) {
+      console.error("Error updating role:", error);
+      toast.error("Failed to update role");
+    } finally {
+      setUpdatingRoles((prev) => {
+        const next = new Set(prev);
+        next.delete(volunteerId);
+        return next;
+      });
+    }
+  };
+
+  const handleSaveLeadTasks = async () => {
+    if (!selectedLeadId) return;
+    try {
+      await updateVolunteer(selectedLeadId, { leadTaskIds: selectedLeadTasks });
+      toast.success("Lead assignments updated");
+      setLeadAssignmentDialog(false);
+      setSelectedLeadId(null);
+      setSelectedLeadTasks([]);
+    } catch (error) {
+      console.error("Error updating lead tasks:", error);
+      toast.error("Failed to update lead assignments");
+    }
+  };
+
+  const handleOpenLeadDialog = (leadId: string) => {
+    const lead = volunteers.find(v => v.id === leadId);
+    setSelectedLeadId(leadId);
+    setSelectedLeadTasks(lead?.leadTaskIds || []);
+    setLeadAssignmentDialog(true);
+  };
+
   const shiftAllocation = getShiftAllocation();
   const taskAllocation = getTaskAllocation();
-  const teamAllocation = getTeamAllocation();
   const experienceAllocation = getExperienceAllocation();
 
   return (
@@ -167,11 +211,11 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Teams</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Leads</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{formConfig.teams.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Configured teams</p>
+            <div className="text-3xl font-bold">{volunteers.filter(v => v.role === "lead").length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Team leads assigned</p>
           </CardContent>
         </Card>
       </div>
@@ -179,18 +223,67 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
       <div className="grid gap-4 grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Teams Distribution</CardTitle>
-            <CardDescription>Volunteers per team</CardDescription>
+            <CardTitle className="text-lg">Leads</CardTitle>
+            <CardDescription>Team leads and their assignments</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              {formConfig.teams.map((team) => (
-                <div key={team} className="p-3 rounded-lg border">
-                  <div className="text-sm text-muted-foreground">{team}</div>
-                  <div className="text-2xl font-bold mt-1">{teamAllocation[team] || 0}</div>
-                </div>
-              ))}
-            </div>
+            {volunteers.filter(v => v.role === "lead").length === 0 ? (
+              <p className="text-sm text-muted-foreground">No leads assigned yet</p>
+            ) : (
+              <div className="space-y-3">
+                {volunteers
+                  .filter(v => v.role === "lead")
+                  .map((lead) => {
+                    const leadTasks = lead.leadTaskIds 
+                      ? tasks.filter(t => lead.leadTaskIds?.includes(t.id))
+                      : [];
+                    const leadLocations = leadTasks.length > 0 
+                      ? [...new Set(leadTasks.map(t => t.locationId).filter(Boolean))]
+                      : [];
+
+                    return (
+                      <div key={lead.id} className="p-3 rounded-lg border space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-sm">{lead.name}</div>
+                            {leadTasks.length > 0 && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {leadTasks.map(t => t.name).join(", ")}
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => handleOpenLeadDialog(lead.id)}
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-xs h-7"
+                            onClick={() => window.location.href = `tel:${lead.phone}`}
+                          >
+                            Call
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-xs h-7"
+                            onClick={() => window.location.href = `mailto:${lead.email}`}
+                          >
+                            Email
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -366,13 +459,13 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                       
                       <div className="flex-1 min-w-0 space-y-2">
                         <div>
-                          <div className="font-semibold">{volunteer.name}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-semibold">{volunteer.name}</div>
+                            {volunteer.role === "lead" && (
+                              <Badge variant="default" className="text-xs">Lead</Badge>
+                            )}
+                          </div>
                           <div className="text-sm text-muted-foreground">{volunteer.email} • {volunteer.phone}</div>
-                          {volunteer.team && (
-                            <div className="text-sm text-muted-foreground mt-1">
-                              Team: <span className="font-medium">{volunteer.team}</span>
-                            </div>
-                          )}
                         </div>
 
                         {volunteer.experiences && volunteer.experiences.length > 0 && (
@@ -398,6 +491,19 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                       </div>
 
                       <div className="flex flex-col gap-2 items-end">
+                        <Select 
+                          value={volunteer.role || "volunteer"}
+                          onValueChange={(value) => handleRoleChange(volunteer.id, value as "volunteer" | "lead")}
+                          disabled={updatingRoles.has(volunteer.id)}
+                        >
+                          <SelectTrigger className="w-32 text-xs h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="volunteer">Volunteer</SelectItem>
+                            <SelectItem value="lead">Lead</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <Badge variant="secondary">{totalShifts} shifts</Badge>
                         {volunteerAssignments.length > 0 && (
                           <Badge>{volunteerAssignments.length} tasks</Badge>
@@ -411,6 +517,51 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={leadAssignmentDialog} onOpenChange={setLeadAssignmentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Tasks to Lead</DialogTitle>
+            <DialogDescription>
+              Select which tasks this lead will be responsible for
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {tasks.map((task) => {
+                const location = locations.find(l => l.id === task.locationId);
+                return (
+                  <div key={task.id} className="flex items-start space-x-3">
+                    <Checkbox
+                      id={task.id}
+                      checked={selectedLeadTasks.includes(task.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedLeadTasks([...selectedLeadTasks, task.id]);
+                        } else {
+                          setSelectedLeadTasks(selectedLeadTasks.filter(id => id !== task.id));
+                        }
+                      }}
+                    />
+                    <label htmlFor={task.id} className="flex-1 cursor-pointer">
+                      <div className="text-sm font-medium">{task.name}</div>
+                      <div className="text-xs text-muted-foreground">{location?.name || "No location"}</div>
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setLeadAssignmentDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveLeadTasks}>
+                Save Assignments
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

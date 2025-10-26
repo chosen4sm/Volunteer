@@ -121,18 +121,21 @@ export function AssignmentsTab({
   })();
 
   const handleCreateAssignment = async () => {
-    if (!assignVolunteerId || !assignLocationId || !assignTaskId) {
-      toast.error("Please fill in all required fields");
+    if (!assignVolunteerId || !assignTaskId) {
+      toast.error("Please fill in volunteer and task");
       return;
     }
     try {
-      await createAssignment({
+      const assignmentData: any = {
         volunteerId: assignVolunteerId,
-        locationId: assignLocationId,
         taskId: assignTaskId,
-        shift: assignShift,
-        day: assignDay,
-      });
+        shift: assignShift || undefined,
+        day: assignDay || undefined,
+      };
+      if (assignLocationId) {
+        assignmentData.locationId = assignLocationId;
+      }
+      await createAssignment(assignmentData);
       toast.success("Volunteer assigned to task");
       setAssignmentDialogOpen(false);
       setAssignVolunteerId("");
@@ -160,20 +163,23 @@ export function AssignmentsTab({
   };
 
   const handleBulkAssignment = async () => {
-    if (selectedVolunteers.length === 0 || !assignLocationId || !assignTaskId) {
-      toast.error("Please select volunteers and fill in all required fields");
+    if (selectedVolunteers.length === 0 || !assignTaskId) {
+      toast.error("Please select volunteers and task");
       return;
     }
     try {
-      const promises = selectedVolunteers.map((volunteerId) =>
-        createAssignment({
+      const promises = selectedVolunteers.map((volunteerId) => {
+        const assignmentData: any = {
           volunteerId,
-          locationId: assignLocationId,
           taskId: assignTaskId,
-          shift: assignShift,
-          day: assignDay,
-        })
-      );
+          shift: assignShift || undefined,
+          day: assignDay || undefined,
+        };
+        if (assignLocationId) {
+          assignmentData.locationId = assignLocationId;
+        }
+        return createAssignment(assignmentData);
+      });
       await Promise.all(promises);
       toast.success(`${selectedVolunteers.length} volunteer(s) assigned to task`);
       setSelectedVolunteers([]);
@@ -310,7 +316,7 @@ export function AssignmentsTab({
     return consecutiveShifts.length > 0 ? consecutiveShifts : null;
   };
 
-  const sendToWhatsApp = (volunteer: Volunteer, task: Task, location: Location, assignment: Assignment) => {
+  const sendToWhatsApp = (volunteer: Volunteer, task: Task, location: Location | undefined, assignment: Assignment) => {
     const scheduleText = assignment.day && assignment.shift
       ? `${assignment.day} - ${assignment.shift}`
       : assignment.day
@@ -319,14 +325,18 @@ export function AssignmentsTab({
       ? assignment.shift
       : "No schedule specified";
 
-    const message = `✅ Assignment Confirmation
+    let message = `✅ Assignment Confirmation
 
 👤 *${volunteer.name}*
 📞 ${volunteer.phone}
 
-📍 Location: *${location.name}*
-🎯 Task: *${task.name}*
-📅 Schedule: *${scheduleText}*`;
+🎯 Task: *${task.name}*`;
+
+    if (location) {
+      message += `\n📍 Location: *${location.name}*`;
+    }
+
+    message += `\n📅 Schedule: *${scheduleText}*`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
@@ -458,11 +468,6 @@ export function AssignmentsTab({
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-sm">{volunteer.name}</div>
                             <div className="text-xs text-muted-foreground truncate">{volunteer.email}</div>
-                            {volunteer.team && (
-                              <div className="text-xs text-muted-foreground mt-0.5">
-                                Team: <span className="font-medium">{volunteer.team}</span>
-                              </div>
-                            )}
                           </div>
                           <Badge variant="secondary" className="shrink-0">{totalShifts}</Badge>
                         </div>
@@ -532,7 +537,7 @@ export function AssignmentsTab({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 grid-cols-2">
-              <Select value={assignLocationId || undefined} onValueChange={setAssignLocationId}>
+              <Select value={assignLocationId} onValueChange={(val) => setAssignLocationId(val || "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Location (optional)" />
                 </SelectTrigger>
@@ -542,7 +547,7 @@ export function AssignmentsTab({
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={assignTaskId || undefined} onValueChange={setAssignTaskId}>
+              <Select value={assignTaskId} onValueChange={setAssignTaskId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Task *" />
                 </SelectTrigger>
@@ -624,7 +629,7 @@ export function AssignmentsTab({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="assign-location">Location (optional)</Label>
-                    <Select value={assignLocationId || undefined} onValueChange={setAssignLocationId}>
+                    <Select value={assignLocationId} onValueChange={(val) => setAssignLocationId(val || "")}>
                       <SelectTrigger id="assign-location">
                         <SelectValue placeholder="Select location" />
                       </SelectTrigger>
@@ -639,7 +644,7 @@ export function AssignmentsTab({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="assign-task">Task</Label>
-                    <Select value={assignTaskId || undefined} onValueChange={setAssignTaskId}>
+                    <Select value={assignTaskId} onValueChange={setAssignTaskId}>
                       <SelectTrigger id="assign-task">
                         <SelectValue placeholder="Select task" />
                       </SelectTrigger>
@@ -739,7 +744,7 @@ export function AssignmentsTab({
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => sendToWhatsApp(volunteer, task, location!, assignment)}
+                                onClick={() => sendToWhatsApp(volunteer, task, location, assignment)}
                                 className="h-8 w-8 p-0 text-green-600 hover:text-green-600"
                                 title="Share to WhatsApp"
                               >

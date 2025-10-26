@@ -7,8 +7,8 @@ export interface FormQuestion {
   label: string;
   placeholder?: string;
   required: boolean;
-  optionsFrom?: "teams" | "experiences";
-  options?: Array<{ id: string; label: string }>; // Custom options for select/checkbox-multi
+  optionsFrom?: "experiences";
+  options?: Array<{ id: string; label: string }>;
 }
 
 export interface FormConfig {
@@ -24,7 +24,7 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
   days: ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"],
   dayDates: ["November 7th", "November 8th", "November 9th", "November 10th", "November 11th"],
   shifts: ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"],
-  teams: ["IV", "PMP"],
+  teams: ["Setup", "Registration", "Security", "Cleanup"],
   experiences: [
     { id: "construction", label: "Construction" },
     { id: "decor", label: "Decor" },
@@ -50,13 +50,6 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
       label: "Your email address?",
       placeholder: "name@example.com",
       required: true,
-    },
-    {
-      id: "team",
-      type: "select",
-      label: "What team are you part of?",
-      required: true,
-      optionsFrom: "teams",
     },
     {
       id: "experience",

@@ -19,6 +19,8 @@ export interface Volunteer {
   phone: string;
   email: string;
   team: string;
+  role?: "volunteer" | "lead";
+  leadTaskIds?: string[];
   experiences?: string[];
   shifts: { [key: string]: string[] };
   submittedAt: Timestamp;
@@ -42,7 +44,7 @@ export interface Task {
 export interface Assignment {
   id: string;
   volunteerId: string;
-  locationId: string;
+  locationId?: string;
   taskId: string;
   shift?: string;
   day?: string;

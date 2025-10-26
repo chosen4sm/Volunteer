@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -28,7 +27,7 @@ export function FormConfigTab() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [editedConfig, setEditedConfig] = useState<FormConfig | null>(null);
-  const [activeTab, setActiveTab] = useState("teams");
+  const [activeTab, setActiveTab] = useState("experiences");
   const [id, setId] = useState("");
   const [label, setLabel] = useState("");
   const [type, setType] = useState<FormQuestion["type"]>("text");
@@ -37,7 +36,7 @@ export function FormConfigTab() {
   const [customOptions, setCustomOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [newOptionId, setNewOptionId] = useState("");
   const [newOptionLabel, setNewOptionLabel] = useState("");
-  const [optionsSource, setOptionsSource] = useState<"custom" | "teams" | "experiences">("custom");
+  const [optionsSource, setOptionsSource] = useState<"custom" | "experiences">("custom");
 
   useEffect(() => {
     fetchConfig();
@@ -101,26 +100,6 @@ export function FormConfigTab() {
     }
   };
 
-  const addTeam = (newTeam: string) => {
-    if (!editedConfig || !newTeam.trim()) return;
-    if (editedConfig.teams.includes(newTeam)) {
-      toast.error("Team already exists");
-      return;
-    }
-    setEditedConfig({
-      ...editedConfig,
-      teams: [...editedConfig.teams, newTeam],
-    });
-  };
-
-  const removeTeam = (team: string) => {
-    if (!editedConfig) return;
-    setEditedConfig({
-      ...editedConfig,
-      teams: editedConfig.teams.filter((t) => t !== team),
-    });
-  };
-
   const addExperience = (id: string, label: string) => {
     if (!editedConfig || !id.trim() || !label.trim()) return;
     if (editedConfig.experiences.some((e) => e.id === id)) {
@@ -158,9 +137,7 @@ export function FormConfigTab() {
     
     // Add options based on source
     if (type === "select" || type === "checkbox-multi") {
-      if (optionsSource === "teams") {
-        newQuestion.optionsFrom = "teams";
-      } else if (optionsSource === "experiences") {
+      if (optionsSource === "experiences") {
         newQuestion.optionsFrom = "experiences";
       } else if (customOptions.length > 0) {
         newQuestion.options = customOptions;
@@ -251,9 +228,8 @@ export function FormConfigTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {[
-          { id: "teams", label: "Teams", count: editedConfig.teams.length },
           { id: "experiences", label: "Experiences", count: editedConfig.experiences.length },
           { id: "days", label: "Days", count: editedConfig.days.length },
           { id: "shifts", label: "Shifts", count: editedConfig.shifts.length },
@@ -276,49 +252,6 @@ export function FormConfigTab() {
 
       <Card>
         <CardContent className="p-6">
-          {activeTab === "teams" && (
-            <div className="space-y-6">
-              <div className="flex gap-3">
-                <Input
-                  placeholder="Add new team..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const value = e.currentTarget.value;
-                      if (value.trim()) {
-                        addTeam(value);
-                        e.currentTarget.value = "";
-                      }
-                    }
-                  }}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={(e) => {
-                    const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                    if (input.value.trim()) {
-                      addTeam(input.value);
-                      input.value = "";
-                    }
-                  }}
-                  className="gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Team
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {editedConfig.teams.map((team) => (
-                  <Badge key={team} variant="secondary" className="px-3 py-2 text-sm">
-                    {team}
-                    <button onClick={() => removeTeam(team)} className="ml-2 hover:text-destructive">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
           {activeTab === "experiences" && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-3">
@@ -556,30 +489,18 @@ export function FormConfigTab() {
                         {question.optionsFrom ? (
                           <div className="space-y-2">
                             <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded">
-                              Options loaded from: <span className="font-semibold">{question.optionsFrom === "teams" ? "Teams" : "Experiences"}</span>
+                              Options loaded from: <span className="font-semibold">Experiences</span>
                             </div>
-                            {question.optionsFrom === "teams" ? (
-                              editedConfig.teams.length > 0 ? (
-                                editedConfig.teams.map((team) => (
-                                  <div key={team} className="flex items-center gap-2 p-2 bg-muted/20 rounded">
-                                    <Input value={team} disabled className="h-8 text-xs flex-1" />
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-xs text-muted-foreground">No teams configured</p>
-                              )
-                            ) : question.optionsFrom === "experiences" ? (
-                              editedConfig.experiences.length > 0 ? (
-                                editedConfig.experiences.map((exp) => (
-                                  <div key={exp.id} className="flex items-center gap-2 p-2 bg-muted/20 rounded">
-                                    <Input value={exp.id} disabled className="h-8 text-xs flex-1" />
-                                    <Input value={exp.label} disabled className="h-8 text-xs flex-1" />
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-xs text-muted-foreground">No experiences configured</p>
-                              )
-                            ) : null}
+                            {editedConfig.experiences.length > 0 ? (
+                              editedConfig.experiences.map((exp) => (
+                                <div key={exp.id} className="flex items-center gap-2 p-2 bg-muted/20 rounded">
+                                  <Input value={exp.id} disabled className="h-8 text-xs flex-1" />
+                                  <Input value={exp.label} disabled className="h-8 text-xs flex-1" />
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-xs text-muted-foreground">No experiences configured</p>
+                            )}
                             <Button
                               onClick={() => {
                                 const newQuestions = [...editedConfig.questions];
@@ -682,14 +603,13 @@ export function FormConfigTab() {
                     <Label className="text-xs text-muted-foreground">Options Source</Label>
                     <Select
                       value={optionsSource}
-                      onValueChange={(val) => setOptionsSource(val as "custom" | "teams" | "experiences")}
+                      onValueChange={(val) => setOptionsSource(val as "custom" | "experiences")}
                     >
                       <SelectTrigger className="w-full h-9" size="sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="custom">Custom Options</SelectItem>
-                        <SelectItem value="teams">From Teams</SelectItem>
                         <SelectItem value="experiences">From Experiences</SelectItem>
                       </SelectContent>
                     </Select>
@@ -742,7 +662,7 @@ export function FormConfigTab() {
                       </div>
                     ) : (
                       <div className="mt-2 text-xs text-muted-foreground p-2 bg-muted/20 rounded">
-                        Options will be loaded from: <span className="font-semibold">{optionsSource === "teams" ? "Teams" : "Experiences"}</span>
+                        Options will be loaded from: <span className="font-semibold">Experiences</span>
                       </div>
                     )}
                   </div>
