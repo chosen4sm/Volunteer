@@ -36,6 +36,7 @@ export function VolunteerForm() {
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
   const [existingVolunteerId, setExistingVolunteerId] = useState<string | null>(null);
   const [showExistingMessage, setShowExistingMessage] = useState(false);
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -68,6 +69,32 @@ export function VolunteerForm() {
     }
   }, [currentQuestionIndex, formConfig]);
 
+  // Detect autofill
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    const onAnimationStart = (e: AnimationEvent) => {
+      if (e.animationName === 'onAutoFillStart') {
+        setIsAutoFilling(true);
+      }
+    };
+
+    const onAnimationEnd = (e: AnimationEvent) => {
+      if (e.animationName === 'onAutoFillCancel') {
+        setIsAutoFilling(false);
+      }
+    };
+
+    input.addEventListener('animationstart', onAnimationStart as EventListener);
+    input.addEventListener('animationend', onAnimationEnd as EventListener);
+
+    return () => {
+      input.removeEventListener('animationstart', onAnimationStart as EventListener);
+      input.removeEventListener('animationend', onAnimationEnd as EventListener);
+    };
+  }, [inputRef, currentQuestionIndex]);
+
   if (!formConfig) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -77,8 +104,22 @@ export function VolunteerForm() {
   }
 
   const currentQuestion = formConfig.questions[currentQuestionIndex];
-  const totalQuestions = formConfig.questions.length + (formConfig.days?.length || 0) + 1; // +1 for review
+  const shiftsQuestionIndex = formConfig.questions.findIndex(q => q.type === "shifts");
+  const totalQuestions = formConfig.questions.length + (shiftsQuestionIndex >= 0 ? formConfig.days.length - 1 : 0) + 1; // -1 because shifts question expands into days, +1 for review
   const isShiftsQuestion = currentQuestion?.type === "shifts";
+  
+  // Calculate current progress step accounting for expanded shifts
+  const getCurrentStep = () => {
+    if (shiftsQuestionIndex >= 0 && currentQuestionIndex > shiftsQuestionIndex) {
+      // After shifts: add all the days we went through
+      return currentQuestionIndex + formConfig.days.length - 1;
+    } else if (isShiftsQuestion) {
+      // During shifts: add current day index
+      return currentQuestionIndex + currentDayIndex;
+    }
+    // Before shifts or no shifts question
+    return currentQuestionIndex;
+  };
 
   const handleNext = () => {
     if (!currentQuestion?.required || validateCurrentAnswer()) {
@@ -164,16 +205,13 @@ export function VolunteerForm() {
           return;
         }
 
-        // Map by question type and label patterns
-        if (question.type === "checkbox-multi" && question.label.toLowerCase().includes("preference")) {
+        // Map by question label patterns
+        if (question.label.toLowerCase().includes("preference")) {
           // This is the experiences/preferences question
           submitData.experiences = Array.isArray(answer) ? answer : [answer];
-        } else if (question.type === "select" && question.label.toLowerCase().includes("jamat")) {
-          // This is the team/Jamat Khane question
-          submitData.team = typeof answer === "string" ? answer : answer;
-        } else if (question.type === "select" && question.label.toLowerCase().includes("skill")) {
-          // This is the special skill question
-          submitData.specialSkill = typeof answer === "string" ? answer : answer;
+        } else if (question.label.toLowerCase().includes("skill")) {
+          // Special skills - store as array or first value
+          submitData.specialSkill = Array.isArray(answer) ? answer[0] : answer;
         } else {
           // For any other fields, store them as-is if they're not undefined
           if (answer !== undefined && answer !== null) {
@@ -211,7 +249,8 @@ export function VolunteerForm() {
   };
 
   const checkExistingVolunteer = async (phone: string) => {
-    const email = formAnswers.email as string;
+    const emailQuestion = formConfig.questions.find(q => q.type === "email");
+    const email = emailQuestion ? (formAnswers[emailQuestion.id] as string) : "";
 
     if ((!phone || phone.length < 10) && (!email || !email.includes("@"))) return;
 
@@ -228,13 +267,35 @@ export function VolunteerForm() {
 
       if (existing) {
         setExistingVolunteerId(existing.id);
-        setFormAnswers((prev) => ({
-          ...prev,
-          name: existing.name,
-          phone: existing.phone,
-          email: existing.email,
-          experience: existing.experiences || [],
-        }));
+        
+        const updatedAnswers: Record<string, string | string[]> = { ...formAnswers };
+        const existingData = existing as unknown as Record<string, unknown>;
+        
+        // Simple mapping - iterate through all questions and map by type and label
+        formConfig.questions.forEach((question) => {
+          if (question.type === "text") {
+            updatedAnswers[question.id] = existing.name;
+          } else if (question.type === "tel") {
+            updatedAnswers[question.id] = existing.phone;
+          } else if (question.type === "email") {
+            updatedAnswers[question.id] = existing.email;
+          } else if (question.label.toLowerCase().includes("preference")) {
+            updatedAnswers[question.id] = existing.experiences || [];
+          } else if (question.label.toLowerCase().includes("jamat")) {
+            // Load Jamat Khane from any stored field
+            const jamatValue = existingData.jamatKhane || existingData[question.id];
+            if (jamatValue) {
+              updatedAnswers[question.id] = Array.isArray(jamatValue) ? jamatValue : [jamatValue];
+            }
+          } else if (question.label.toLowerCase().includes("skill")) {
+            const skillValue = existingData.specialSkill || existingData.skills || existingData[question.id];
+            if (skillValue) {
+              updatedAnswers[question.id] = Array.isArray(skillValue) ? skillValue : [skillValue];
+            }
+          }
+        });
+
+        setFormAnswers(updatedAnswers);
         setShiftData(existing.shifts || {});
         setShowExistingMessage(true);
         toast.info("Welcome back!", {
@@ -254,8 +315,8 @@ export function VolunteerForm() {
     
     let finalValue = value;
     
-    // Format phone on input
-    if (currentQuestion.id === "phone" && typeof value === "string") {
+    // Only format phone if NOT currently autofilling
+    if (currentQuestion.type === "tel" && typeof value === "string" && !isAutoFilling) {
       finalValue = formatPhone(value);
     }
     
@@ -264,7 +325,7 @@ export function VolunteerForm() {
       [currentQuestion.id]: finalValue,
     });
 
-    if (currentQuestion.id === "phone" && typeof finalValue === "string") {
+    if (currentQuestion.type === "tel" && typeof finalValue === "string") {
       const normalized = normalizePhone(finalValue);
       if (normalized.length >= 10) {
         checkExistingVolunteer(finalValue);
@@ -369,7 +430,7 @@ export function VolunteerForm() {
         className="fixed top-0 left-0 h-1 bg-primary z-50"
         initial={{ width: "0%" }}
         animate={{
-          width: `${((currentQuestionIndex + (isShiftsQuestion ? currentDayIndex / formConfig.days.length : 0)) / totalQuestions) * 100}%`,
+          width: `${(getCurrentStep() / totalQuestions) * 100}%`,
         }}
         transition={{ duration: 0.3 }}
       />
@@ -409,7 +470,7 @@ export function VolunteerForm() {
                   </h1>
                 </div>
 
-                {showExistingMessage && currentQuestion.id === "phone" && (
+                {showExistingMessage && currentQuestion.type === "tel" && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -427,14 +488,90 @@ export function VolunteerForm() {
                       handleNext();
                     }}
                   >
+                    {/* Hidden fields to help browser autofill detect all fields */}
+                    {currentQuestion.type !== "text" && (
+                      <input 
+                        type="text" 
+                        name="name" 
+                        autoComplete="name" 
+                        tabIndex={-1}
+                        style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}
+                        onChange={(e) => {
+                          const nameQuestion = formConfig.questions.find(q => q.type === "text");
+                          if (nameQuestion && e.target.value) {
+                            setFormAnswers(prev => ({ ...prev, [nameQuestion.id]: e.target.value }));
+                          }
+                        }}
+                      />
+                    )}
+                    {currentQuestion.type !== "tel" && (
+                      <input 
+                        type="tel" 
+                        name="tel" 
+                        autoComplete="tel-national" 
+                        tabIndex={-1}
+                        style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}
+                        onChange={(e) => {
+                          const phoneQuestion = formConfig.questions.find(q => q.type === "tel");
+                          if (phoneQuestion && e.target.value) {
+                            setIsAutoFilling(true);
+                            setFormAnswers(prev => ({ ...prev, [phoneQuestion.id]: e.target.value }));
+                            setTimeout(() => setIsAutoFilling(false), 500);
+                          }
+                        }}
+                      />
+                    )}
+                    {currentQuestion.type !== "email" && (
+                      <input 
+                        type="email" 
+                        name="email" 
+                        autoComplete="email" 
+                        tabIndex={-1}
+                        style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}
+                        onChange={(e) => {
+                          const emailQuestion = formConfig.questions.find(q => q.type === "email");
+                          if (emailQuestion && e.target.value) {
+                            setFormAnswers(prev => ({ ...prev, [emailQuestion.id]: e.target.value }));
+                          }
+                        }}
+                      />
+                    )}
                     <Input
                       ref={inputRef}
-                      type={currentQuestion.type}
-                      name={currentQuestion.id}
-                      value={currentQuestion.type === "tel" ? formatPhone((formAnswers[currentQuestion.id] as string) || "") : (formAnswers[currentQuestion.id] as string) || ""}
+                      type={currentQuestion.type === "tel" ? "tel" : currentQuestion.type === "email" ? "email" : "text"}
+                      name={currentQuestion.type === "email" ? "email" : currentQuestion.type === "tel" ? "tel" : "name"}
+                      id={currentQuestion.id}
+                      value={currentQuestion.type === "tel" ? (isAutoFilling ? (formAnswers[currentQuestion.id] as string) || "" : formatPhone((formAnswers[currentQuestion.id] as string) || "")) : (formAnswers[currentQuestion.id] as string) || ""}
                       onChange={(e) => handleAnswerChange(e.target.value)}
+                      onInput={(e) => {
+                        // Detect autofill on input
+                        const input = e.target as HTMLInputElement;
+                        if (input.matches(':-webkit-autofill') || input.matches(':autofill')) {
+                          setIsAutoFilling(true);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Format phone number when field loses focus (for autofill completion)
+                        if (currentQuestion.type === "tel" && e.target.value) {
+                          setIsAutoFilling(false);
+                          const cleaned = normalizePhone(e.target.value);
+                          const formatted = formatPhone(cleaned);
+                          setFormAnswers({
+                            ...formAnswers,
+                            [currentQuestion.id]: formatted,
+                          });
+                        }
+                      }}
                       placeholder={currentQuestion.placeholder || "Type your answer here..."}
-                      autoComplete={currentQuestion.type === "email" ? "email" : currentQuestion.type === "tel" ? "tel" : "name"}
+                      autoComplete={
+                        currentQuestion.type === "email" 
+                          ? "email" 
+                          : currentQuestion.type === "tel" 
+                          ? "tel-national" 
+                          : currentQuestion.label.toLowerCase().includes("full") || currentQuestion.label.toLowerCase().includes("name")
+                          ? "name"
+                          : "off"
+                      }
                       className="text-2xl h-14 px-4 rounded-lg border-2 border-muted-foreground/10 focus-visible:border-primary focus-visible:ring-0 transition-colors bg-background/50"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && validateCurrentAnswer()) {
@@ -471,7 +608,7 @@ export function VolunteerForm() {
                               }`}
                               onClick={() => handleAnswerChange(opt.id)}
                             >
-                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
                                 (formAnswers[currentQuestion.id] as string) === opt.id
                                   ? "border-primary bg-primary"
                                   : "border-muted-foreground"
@@ -613,12 +750,21 @@ export function VolunteerForm() {
                     const answer = formAnswers[q.id];
                     if (!answer || (Array.isArray(answer) && answer.length === 0)) return null;
 
-                    let displayValue = answer;
-                    if (q.type === "checkbox-multi" && Array.isArray(answer)) {
-                      displayValue = formConfig.experiences
-                        .filter((e) => answer.includes(e.id))
-                        .map((e) => e.label)
+                    let displayValue: string | string[] = answer;
+                    
+                    // Get the options to use for mapping
+                    const options = q.options || (q.optionsFrom === "experiences" ? formConfig.experiences : null);
+                    
+                    if (options && Array.isArray(answer)) {
+                      // Map array of IDs to labels
+                      displayValue = options
+                        .filter((opt) => answer.includes(opt.id))
+                        .map((opt) => opt.label)
                         .join(", ");
+                    } else if (options && typeof answer === "string") {
+                      // Map single ID to label
+                      const selected = options.find((opt) => opt.id === answer);
+                      displayValue = selected?.label || answer;
                     }
 
                     return (

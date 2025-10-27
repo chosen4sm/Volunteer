@@ -19,7 +19,6 @@ export interface Volunteer {
   name: string;
   phone: string;
   email: string;
-  team: string;
   role?: "volunteer" | "lead";
   leadTaskIds?: string[];
   experiences?: string[];

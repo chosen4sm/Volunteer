@@ -8,7 +8,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, "");
+  let digits = phone.replace(/\D/g, "");
+  // Remove leading 1 (US country code) if present and we have 11 digits
+  if (digits.length === 11 && digits.startsWith("1")) {
+    digits = digits.substring(1);
+  }
+  return digits;
 }
 
 export function formatPhone(phone: string): string {
@@ -24,7 +29,6 @@ export interface VolunteerFormData {
   name: string;
   phone: string;
   email: string;
-  team?: string;
   specialSkill?: string;
   experiences?: string[];
   shifts: Record<string, string[]>;

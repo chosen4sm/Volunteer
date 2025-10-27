@@ -15,7 +15,6 @@ export interface FormConfig {
   days: string[];
   dayDates: string[];
   shifts: string[];
-  teams: string[];
   experiences: Array<{ id: string; label: string }>;
   questions: FormQuestion[];
 }
@@ -24,7 +23,6 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
   days: ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"],
   dayDates: ["November 7th", "November 8th", "November 9th", "November 10th", "November 11th"],
   shifts: ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"],
-  teams: ["Setup", "Registration", "Security", "Cleanup"],
   experiences: [
     { id: "construction", label: "Construction" },
     { id: "decor", label: "Decor" },

@@ -161,14 +161,10 @@ export default function DashboardPage() {
           shiftData[day] = availableShifts;
         });
 
-        const allTeams = ["IV", "PMP", "Construction", "Decor"];
-        const teamData = allTeams[Math.floor(Math.random() * allTeams.length)];
-
         const volunteer = {
           name,
           email: `${emailName}${randomNum}@example.com`,
           phone: `${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
-          team: teamData,
           shifts: shiftData,
           submittedAt: Timestamp.fromDate(
             new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000))
