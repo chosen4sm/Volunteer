@@ -108,15 +108,30 @@ export function FormConfigTab() {
     try {
       const configWithGeneratedIds = {
         ...editedConfig,
-        questions: editedConfig.questions.map((q) => ({
-          ...q,
-          id: generateId(q.label),
-          placeholder: q.placeholder || generatePlaceholder(q.label, q.type),
-          options: q.options?.map((opt) => ({
-            ...opt,
-            id: generateId(opt.label),
-          })),
-        })),
+        questions: editedConfig.questions.map((q) => {
+          const updated: any = {
+            ...q,
+            id: generateId(q.label),
+            placeholder: q.placeholder || generatePlaceholder(q.label, q.type),
+          };
+          
+          if (q.options && q.options.length > 0) {
+            updated.options = q.options.map((opt) => ({
+              ...opt,
+              id: generateId(opt.label),
+            }));
+          } else {
+            delete updated.options;
+          }
+          
+          if (q.optionsFrom) {
+            updated.optionsFrom = q.optionsFrom;
+          } else {
+            delete updated.optionsFrom;
+          }
+          
+          return updated;
+        }),
         experiences: editedConfig.experiences.map((e) => ({
           ...e,
           id: generateId(e.label),
