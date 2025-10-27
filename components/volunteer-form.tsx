@@ -186,7 +186,7 @@ export function VolunteerForm() {
       // Build submit data dynamically from form answers
       const submitData: { [key: string]: string | string[] | Record<string, string[]> | undefined } = {
         name: name.trim(),
-        phone: phone.trim(),
+        phone: normalizePhone(phone.trim()),
         email: email.trim(),
         shifts: shiftData,
       };
