@@ -588,8 +588,16 @@ export function VolunteerForm() {
                     {(() => {
                       const options = currentQuestion.options;
                       
-                      // Sort options alphabetically by label
-                      const sortedOptions = [...options].sort((a, b) => a.label.localeCompare(b.label));
+                      // Sort options alphabetically, but move "none of the above" to bottom
+                      let sortedOptions = [...options].sort((a, b) => a.label.localeCompare(b.label));
+                      const noneOption = sortedOptions.find(opt => 
+                        opt.id.toLowerCase().includes("none") || 
+                        opt.label.toLowerCase().includes("none of the above")
+                      );
+                      if (noneOption) {
+                        sortedOptions = sortedOptions.filter(opt => opt.id !== noneOption.id);
+                        sortedOptions.push(noneOption);
+                      }
                       
                       // Use large buttons if ≤5 options
                       const useButtons = sortedOptions.length <= 5;
@@ -649,8 +657,16 @@ export function VolunteerForm() {
                             ? currentQuestion.options 
                             : formConfig.experiences;
                           
-                          // Sort options alphabetically by label
-                          const sortedOptions = [...options].sort((a, b) => a.label.localeCompare(b.label));
+                          // Sort options alphabetically, but move "none of the above" to bottom
+                          let sortedOptions = [...options].sort((a, b) => a.label.localeCompare(b.label));
+                          const noneOption = sortedOptions.find(opt => 
+                            opt.id.toLowerCase().includes("none") || 
+                            opt.label.toLowerCase().includes("none of the above")
+                          );
+                          if (noneOption) {
+                            sortedOptions = sortedOptions.filter(opt => opt.id !== noneOption.id);
+                            sortedOptions.push(noneOption);
+                          }
                           
                           return sortedOptions.map((opt) => (
                             <motion.div
