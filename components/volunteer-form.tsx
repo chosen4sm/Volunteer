@@ -375,7 +375,7 @@ export function VolunteerForm() {
                       ref={inputRef}
                       type={currentQuestion.type}
                       name={currentQuestion.id}
-                      value={currentQuestion.type === "tel" ? formatPhone(formAnswers[currentQuestion.id] as string) || "" : (formAnswers[currentQuestion.id] as string) || ""}
+                      value={currentQuestion.type === "tel" ? formatPhone((formAnswers[currentQuestion.id] as string) || "") : (formAnswers[currentQuestion.id] as string) || ""}
                       onChange={(e) => handleAnswerChange(e.target.value)}
                       placeholder={currentQuestion.placeholder || "Type your answer here..."}
                       autoComplete={currentQuestion.type === "email" ? "email" : currentQuestion.type === "tel" ? "tel" : "name"}

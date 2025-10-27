@@ -12,6 +12,7 @@ export function normalizePhone(phone: string): string {
 }
 
 export function formatPhone(phone: string): string {
+  if (!phone) return "";
   const normalized = normalizePhone(phone);
   if (normalized.length === 0) return "";
   if (normalized.length <= 3) return normalized;
