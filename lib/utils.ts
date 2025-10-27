@@ -24,12 +24,14 @@ export interface VolunteerFormData {
   name: string;
   phone: string;
   email: string;
+  team?: string;
+  specialSkill?: string;
   experiences?: string[];
   shifts: Record<string, string[]>;
   submittedAt: Timestamp;
 }
 
-export async function submitVolunteerForm(data: Omit<VolunteerFormData, "submittedAt">) {
+export async function submitVolunteerForm(data: Omit<VolunteerFormData, "submittedAt"> & Record<string, string | string[] | Record<string, string[]>>) {
   try {
     const volunteersRef = collection(db, "volunteers");
     const docRef = await addDoc(volunteersRef, {

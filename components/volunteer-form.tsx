@@ -123,21 +123,77 @@ export function VolunteerForm() {
     setIsLoading(true);
     setError(null);
     try {
-      const submitData = {
-        name: formAnswers.name as string,
-        phone: formAnswers.phone as string,
-        email: formAnswers.email as string,
-        experiences: (formAnswers.experience as string[]) || [],
+      // Find the questions by type instead of hardcoded IDs
+      const nameQuestion = formConfig.questions.find(q => q.type === "text");
+      const phoneQuestion = formConfig.questions.find(q => q.type === "tel");
+      const emailQuestion = formConfig.questions.find(q => q.type === "email");
+
+      const name = (nameQuestion ? formAnswers[nameQuestion.id] : formAnswers.name) as string;
+      const phone = (phoneQuestion ? formAnswers[phoneQuestion.id] : formAnswers.phone) as string;
+      const email = (emailQuestion ? formAnswers[emailQuestion.id] : formAnswers.email) as string;
+
+      if (!name || !name.trim()) {
+        throw new Error("Name is required");
+      }
+      if (!phone || !phone.trim()) {
+        throw new Error("Phone number is required");
+      }
+      if (!email || !email.trim()) {
+        throw new Error("Email is required");
+      }
+
+      // Build submit data dynamically from form answers
+      const submitData: { [key: string]: string | string[] | Record<string, string[]> | undefined } = {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
         shifts: shiftData,
       };
 
+      // Map form question IDs to submission field names and filter undefined values
+      formConfig.questions.forEach((question) => {
+        // Skip already-handled fields
+        if (question.type === "text" || question.type === "tel" || question.type === "email" || question.type === "shifts") {
+          return;
+        }
+
+        const answer = formAnswers[question.id];
+        
+        // Skip empty answers
+        if (!answer || (Array.isArray(answer) && answer.length === 0)) {
+          return;
+        }
+
+        // Map by question type and label patterns
+        if (question.type === "checkbox-multi" && question.label.toLowerCase().includes("preference")) {
+          // This is the experiences/preferences question
+          submitData.experiences = Array.isArray(answer) ? answer : [answer];
+        } else if (question.type === "select" && question.label.toLowerCase().includes("jamat")) {
+          // This is the team/Jamat Khane question
+          submitData.team = typeof answer === "string" ? answer : answer;
+        } else if (question.type === "select" && question.label.toLowerCase().includes("skill")) {
+          // This is the special skill question
+          submitData.specialSkill = typeof answer === "string" ? answer : answer;
+        } else {
+          // For any other fields, store them as-is if they're not undefined
+          if (answer !== undefined && answer !== null) {
+            submitData[question.id] = answer;
+          }
+        }
+      });
+
+      // Ensure experiences array is always present
+      if (!submitData.experiences) {
+        submitData.experiences = [];
+      }
+
       if (existingVolunteerId) {
-        await updateVolunteer(existingVolunteerId, submitData);
+        await updateVolunteer(existingVolunteerId, submitData as Parameters<typeof updateVolunteer>[1]);
         toast.success("Updated!", {
           description: "Your availability has been updated successfully.",
         });
       } else {
-        await submitVolunteerForm(submitData);
+        await submitVolunteerForm(submitData as Parameters<typeof submitVolunteerForm>[0]);
         toast.success("Thank you!", {
           description: "Your volunteer information has been submitted successfully.",
         });
@@ -648,7 +704,7 @@ export function VolunteerForm() {
           ) : (
             <Button
               onClick={handleSubmit}
-              disabled={isLoading}
+              disabled={isLoading || !formAnswers[formConfig.questions.find(q => q.type === "text")?.id || ""] || !formAnswers[formConfig.questions.find(q => q.type === "tel")?.id || ""] || !formAnswers[formConfig.questions.find(q => q.type === "email")?.id || ""]}
               size="lg"
               className="bg-primary hover:bg-primary/90 disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground text-base px-8 shadow-lg"
             >
