@@ -50,6 +50,22 @@ const generatePlaceholder = (label: string, type: FormQuestion["type"]): string 
   }
 };
 
+const cleanUndefinedValues = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(cleanUndefinedValues);
+  }
+  if (obj !== null && typeof obj === "object") {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = cleanUndefinedValues(value);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+};
+
 export function FormConfigTab() {
   const [config, setConfig] = useState<FormConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -138,9 +154,11 @@ export function FormConfigTab() {
         })),
       };
       
-      await updateFormConfig(configWithGeneratedIds);
+      const cleanConfig = cleanUndefinedValues(configWithGeneratedIds);
+      
+      await updateFormConfig(cleanConfig);
       invalidateConfigCache();
-      setConfig(JSON.parse(JSON.stringify(configWithGeneratedIds)));
+      setConfig(JSON.parse(JSON.stringify(cleanConfig)));
       toast.success("Config updated!", {
         description: "Form configuration has been saved to Firebase.",
       });
