@@ -245,9 +245,15 @@ export function FormConfigTab() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">Loading configuration...</p>
+      <Card className="border-2 border-chart-3/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5 animate-spin" />
+            Loading Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Please wait...</p>
         </CardContent>
       </Card>
     );

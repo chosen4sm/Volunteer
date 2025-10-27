@@ -322,6 +322,11 @@ export function AssignmentsTab({
   };
 
   const sendToWhatsApp = (volunteer: Volunteer, task: Task, location: Location | undefined, assignment: Assignment) => {
+    if (!volunteer?.phone || !volunteer?.name || !task?.name) {
+      toast.error("Missing volunteer or task information");
+      return;
+    }
+
     const scheduleText = assignment.day && assignment.shift
       ? `${assignment.day} - ${assignment.shift}`
       : assignment.day
@@ -559,11 +564,14 @@ export function AssignmentsTab({
                 <SelectContent>
                   {tasks
                     .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
-                    .map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} {t.locationId ? `(${locations.find(l => l.id === t.locationId)?.name})` : ''}
-                      </SelectItem>
-                    ))}
+                    .map((t) => {
+                      const locName = t.locationId ? locations.find(l => l.id === t.locationId)?.name : null;
+                      return (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name} {locName ? `(${locName})` : ''}
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
             </div>
@@ -661,11 +669,14 @@ export function AssignmentsTab({
                       <SelectContent>
                         {tasks
                           .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
-                          .map((t) => (
-                            <SelectItem key={t.id} value={t.id}>
-                              {t.name} {t.locationId ? `(${locations.find(l => l.id === t.locationId)?.name})` : '(No location)'}
-                            </SelectItem>
-                          ))}
+                          .map((t) => {
+                            const locName = t.locationId ? locations.find(l => l.id === t.locationId)?.name : null;
+                            return (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.name} {locName ? `(${locName})` : '(No location)'}
+                              </SelectItem>
+                            );
+                          })}
                       </SelectContent>
                     </Select>
                   </div>

@@ -123,10 +123,18 @@ export function VolunteerForm() {
     setIsLoading(true);
     setError(null);
     try {
+      const name = formAnswers.name as string;
+      const phone = formAnswers.phone as string;
+      const email = formAnswers.email as string;
+
+      if (!name?.trim() || !phone?.trim() || !email?.trim()) {
+        throw new Error("Please fill in all required fields");
+      }
+
       const submitData = {
-        name: formAnswers.name as string,
-        phone: formAnswers.phone as string,
-        email: formAnswers.email as string,
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
         experiences: (formAnswers.experience as string[]) || [],
         shifts: shiftData,
       };
@@ -415,7 +423,7 @@ export function VolunteerForm() {
                               }`}
                               onClick={() => handleAnswerChange(opt.id)}
                             >
-                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
                                 (formAnswers[currentQuestion.id] as string) === opt.id
                                   ? "border-primary bg-primary"
                                   : "border-muted-foreground"
