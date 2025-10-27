@@ -244,7 +244,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                             <div className="font-semibold text-sm">{lead.name}</div>
                             {leadTasks.length > 0 && (
                               <div className="text-xs text-muted-foreground mt-1">
-                                {leadTasks.map(t => t.name).filter(Boolean).join(", ") || "No tasks assigned"}
+                                {leadTasks.map(t => t.name).join(", ")}
                               </div>
                             )}
                           </div>
@@ -262,10 +262,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                             size="sm" 
                             variant="outline" 
                             className="text-xs h-7"
-                            onClick={() => {
-                              if (lead.phone) window.location.href = `tel:${lead.phone}`;
-                            }}
-                            disabled={!lead.phone}
+                            onClick={() => window.location.href = `tel:${lead.phone}`}
                           >
                             Call
                           </Button>
@@ -273,10 +270,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                             size="sm" 
                             variant="outline" 
                             className="text-xs h-7"
-                            onClick={() => {
-                              if (lead.email) window.location.href = `mailto:${lead.email}`;
-                            }}
-                            disabled={!lead.email}
+                            onClick={() => window.location.href = `mailto:${lead.email}`}
                           >
                             Email
                           </Button>
@@ -296,16 +290,12 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-2">
-              {formConfig.experiences && formConfig.experiences.length > 0 ? (
-                formConfig.experiences.map((exp) => (
-                  <div key={exp.id} className="p-3 rounded-lg border">
-                    <div className="text-sm text-muted-foreground">{exp.label || exp.id}</div>
-                    <div className="text-2xl font-bold mt-1">{experienceAllocation[exp.id] || 0}</div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground col-span-2">No experiences configured</p>
-              )}
+              {formConfig.experiences.map((exp) => (
+                <div key={exp.id} className="p-3 rounded-lg border">
+                  <div className="text-sm text-muted-foreground">{exp.label}</div>
+                  <div className="text-2xl font-bold mt-1">{experienceAllocation[exp.id] || 0}</div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
