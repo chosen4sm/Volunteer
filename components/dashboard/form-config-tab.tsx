@@ -21,6 +21,35 @@ import { seedFormConfig, updateFormConfig } from "@/lib/seeder";
 
 const QUESTION_TYPES = ["text", "tel", "email", "select", "checkbox-multi", "shifts"] as const;
 
+const generateId = (label: string): string => {
+  return label
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+};
+
+const generatePlaceholder = (label: string, type: FormQuestion["type"]): string => {
+  const lowerLabel = label.toLowerCase();
+  
+  switch (type) {
+    case "tel":
+      return `Enter your phone number`;
+    case "email":
+      return `Enter your email`;
+    case "select":
+      return `Select ${lowerLabel}`;
+    case "checkbox-multi":
+      return `Select ${lowerLabel}`;
+    case "text":
+    case "shifts":
+    default:
+      return `Enter ${lowerLabel}`;
+  }
+};
+
 export function FormConfigTab() {
   const [config, setConfig] = useState<FormConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,13 +57,11 @@ export function FormConfigTab() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [editedConfig, setEditedConfig] = useState<FormConfig | null>(null);
   const [activeTab, setActiveTab] = useState("experiences");
-  const [id, setId] = useState("");
   const [label, setLabel] = useState("");
   const [type, setType] = useState<FormQuestion["type"]>("text");
   const [placeholder, setPlaceholder] = useState("");
   const [required, setRequired] = useState(true);
   const [customOptions, setCustomOptions] = useState<Array<{ id: string; label: string }>>([]);
-  const [newOptionId, setNewOptionId] = useState("");
   const [newOptionLabel, setNewOptionLabel] = useState("");
   const [optionsSource, setOptionsSource] = useState<"custom" | "experiences">("custom");
 
@@ -79,9 +106,26 @@ export function FormConfigTab() {
 
     setIsSaving(true);
     try {
-      await updateFormConfig(editedConfig);
+      const configWithGeneratedIds = {
+        ...editedConfig,
+        questions: editedConfig.questions.map((q) => ({
+          ...q,
+          id: generateId(q.label),
+          placeholder: q.placeholder || generatePlaceholder(q.label, q.type),
+          options: q.options?.map((opt) => ({
+            ...opt,
+            id: generateId(opt.label),
+          })),
+        })),
+        experiences: editedConfig.experiences.map((e) => ({
+          ...e,
+          id: generateId(e.label),
+        })),
+      };
+      
+      await updateFormConfig(configWithGeneratedIds);
       invalidateConfigCache();
-      setConfig(JSON.parse(JSON.stringify(editedConfig)));
+      setConfig(JSON.parse(JSON.stringify(configWithGeneratedIds)));
       toast.success("Config updated!", {
         description: "Form configuration has been saved to Firebase.",
       });
@@ -100,10 +144,11 @@ export function FormConfigTab() {
     }
   };
 
-  const addExperience = (id: string, label: string) => {
-    if (!editedConfig || !id.trim() || !label.trim()) return;
+  const addExperience = (label: string) => {
+    if (!editedConfig || !label.trim()) return;
+    const id = generateId(label);
     if (editedConfig.experiences.some((e) => e.id === id)) {
-      toast.error("Experience ID already exists");
+      toast.error("Experience already exists");
       return;
     }
     setEditedConfig({
@@ -121,26 +166,34 @@ export function FormConfigTab() {
   };
 
   const handleAdd = () => {
-    if (!id.trim() || !label.trim()) {
-      toast.error("ID and label are required");
+    if (!label.trim()) {
+      toast.error("Label is required");
       return;
     }
     if (!editedConfig) return;
     
+    const newId = generateId(label);
+    if (editedConfig.questions.some((q) => q.id === newId)) {
+      toast.error("A question with this label already exists");
+      return;
+    }
+    
     const newQuestion: FormQuestion = { 
-      id, 
+      id: newId,
       label, 
       type, 
-      placeholder: placeholder || undefined, 
+      placeholder: placeholder || generatePlaceholder(label, type),
       required 
     };
     
-    // Add options based on source
     if (type === "select" || type === "checkbox-multi") {
       if (optionsSource === "experiences") {
         newQuestion.optionsFrom = "experiences";
       } else if (customOptions.length > 0) {
-        newQuestion.options = customOptions;
+        newQuestion.options = customOptions.map((opt) => ({
+          ...opt,
+          id: generateId(opt.label),
+        }));
       }
     }
     
@@ -148,13 +201,11 @@ export function FormConfigTab() {
       ...editedConfig,
       questions: [...editedConfig.questions, newQuestion],
     });
-    setId("");
     setLabel("");
     setType("text");
     setPlaceholder("");
     setRequired(true);
     setCustomOptions([]);
-    setNewOptionId("");
     setNewOptionLabel("");
     setOptionsSource("custom");
   };
@@ -273,7 +324,7 @@ export function FormConfigTab() {
                       const idInput = document.getElementById("exp-id") as HTMLInputElement;
                       const labelInput = e.currentTarget;
                       if (idInput.value.trim() && labelInput.value.trim()) {
-                        addExperience(idInput.value, labelInput.value);
+                        addExperience(labelInput.value);
                         idInput.value = "";
                         labelInput.value = "";
                         idInput.focus();
@@ -287,7 +338,7 @@ export function FormConfigTab() {
                   const idInput = document.getElementById("exp-id") as HTMLInputElement;
                   const labelInput = document.getElementById("exp-label") as HTMLInputElement;
                   if (idInput.value.trim() && labelInput.value.trim()) {
-                    addExperience(idInput.value, labelInput.value);
+                    addExperience(labelInput.value);
                     idInput.value = "";
                     labelInput.value = "";
                   }
@@ -494,7 +545,6 @@ export function FormConfigTab() {
                             {editedConfig.experiences.length > 0 ? (
                               editedConfig.experiences.map((exp) => (
                                 <div key={exp.id} className="flex items-center gap-2 p-2 bg-muted/20 rounded">
-                                  <Input value={exp.id} disabled className="h-8 text-xs flex-1" />
                                   <Input value={exp.label} disabled className="h-8 text-xs flex-1" />
                                 </div>
                               ))
@@ -520,7 +570,6 @@ export function FormConfigTab() {
                           <div className="space-y-2">
                             {question.options?.map((opt, optIdx) => (
                               <div key={optIdx} className="flex items-center gap-2">
-                                <Input value={opt.id} disabled className="h-8 text-xs flex-1" />
                                 <Input value={opt.label} disabled className="h-8 text-xs flex-1" />
                                 <Button
                                   onClick={() => {
@@ -537,20 +586,17 @@ export function FormConfigTab() {
                               </div>
                             ))}
                             <div className="flex gap-2">
-                              <Input placeholder="ID" id={`opt-id-${idx}`} className="h-8 text-xs flex-1" />
-                              <Input placeholder="Label" id={`opt-label-${idx}`} className="h-8 text-xs flex-1" />
+                              <Input placeholder="Label (e.g., Python)" id={`opt-label-${idx}`} className="h-8 text-xs flex-1" />
                               <Button
                                 onClick={() => {
-                                  const idInput = document.getElementById(`opt-id-${idx}`) as HTMLInputElement;
                                   const labelInput = document.getElementById(`opt-label-${idx}`) as HTMLInputElement;
-                                  if (!idInput?.value.trim() || !labelInput?.value.trim()) {
-                                    toast.error("Both ID and label required");
+                                  if (!labelInput?.value.trim()) {
+                                    toast.error("Label is required");
                                     return;
                                   }
                                   const newQuestions = [...editedConfig.questions];
-                                  newQuestions[idx].options = [...(question.options || []), { id: idInput.value, label: labelInput.value }];
+                                  newQuestions[idx].options = [...(question.options || []), { id: generateId(labelInput.value), label: labelInput.value }];
                                   setEditedConfig({ ...editedConfig, questions: newQuestions });
-                                  idInput.value = "";
                                   labelInput.value = "";
                                 }}
                                 size="sm"
@@ -570,7 +616,6 @@ export function FormConfigTab() {
               <div className="pt-4 border-t-2 border-dashed space-y-4">
                 <h4 className="font-semibold">Add New Question</h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <Input value={id} onChange={(e) => setId(e.target.value)} placeholder="ID (e.g., phone)" />
                   <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label (e.g., Phone number)" />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -632,12 +677,6 @@ export function FormConfigTab() {
                         ))}
                         <div className="flex gap-2">
                           <Input
-                            value={newOptionId}
-                            onChange={(e) => setNewOptionId(e.target.value)}
-                            placeholder="ID"
-                            className="h-8 text-xs flex-1"
-                          />
-                          <Input
                             value={newOptionLabel}
                             onChange={(e) => setNewOptionLabel(e.target.value)}
                             placeholder="Label"
@@ -645,12 +684,11 @@ export function FormConfigTab() {
                           />
                           <Button
                             onClick={() => {
-                              if (!newOptionId.trim() || !newOptionLabel.trim()) {
-                                toast.error("Both ID and label required");
+                              if (!newOptionLabel.trim()) {
+                                toast.error("Label is required");
                                 return;
                               }
-                              setCustomOptions([...customOptions, { id: newOptionId, label: newOptionLabel }]);
-                              setNewOptionId("");
+                              setCustomOptions([...customOptions, { id: generateId(newOptionLabel), label: newOptionLabel }]);
                               setNewOptionLabel("");
                             }}
                             size="sm"
