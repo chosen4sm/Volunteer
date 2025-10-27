@@ -7,6 +7,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
+export function formatPhone(phone: string): string {
+  const normalized = normalizePhone(phone);
+  if (normalized.length === 0) return "";
+  if (normalized.length <= 3) return normalized;
+  if (normalized.length <= 6) return `(${normalized.slice(0, 3)}) ${normalized.slice(3)}`;
+  return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6, 10)}`;
+}
+
 export interface VolunteerFormData {
   name: string;
   phone: string;

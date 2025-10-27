@@ -50,12 +50,12 @@ const generatePlaceholder = (label: string, type: FormQuestion["type"]): string 
   }
 };
 
-const cleanUndefinedValues = (obj: any): any => {
+const cleanUndefinedValues = (obj: unknown): unknown => {
   if (Array.isArray(obj)) {
     return obj.map(cleanUndefinedValues);
   }
   if (obj !== null && typeof obj === "object") {
-    const cleaned: any = {};
+    const cleaned: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
       if (value !== undefined) {
         cleaned[key] = cleanUndefinedValues(value);
@@ -125,7 +125,7 @@ export function FormConfigTab() {
       const configWithGeneratedIds = {
         ...editedConfig,
         questions: editedConfig.questions.map((q) => {
-          const updated: any = {
+          const updated: Record<string, unknown> = {
             ...q,
             id: generateId(q.label),
             placeholder: q.placeholder || generatePlaceholder(q.label, q.type),
@@ -154,7 +154,7 @@ export function FormConfigTab() {
         })),
       };
       
-      const cleanConfig = cleanUndefinedValues(configWithGeneratedIds);
+      const cleanConfig = cleanUndefinedValues(configWithGeneratedIds) as FormConfig;
       
       await updateFormConfig(cleanConfig);
       invalidateConfigCache();

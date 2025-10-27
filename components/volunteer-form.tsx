@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { submitVolunteerForm } from "@/lib/utils";
+import { submitVolunteerForm, normalizePhone, formatPhone } from "@/lib/utils";
 import { getVolunteerByEmail, getVolunteerByPhone, updateVolunteer } from "@/lib/db";
 import { getFormConfig, type FormConfig } from "@/lib/config";
 import { CheckCircle, ArrowRight, ArrowLeft } from "lucide-react";
@@ -195,13 +195,24 @@ export function VolunteerForm() {
 
   const handleAnswerChange = (value: string | string[]) => {
     if (!currentQuestion) return;
+    
+    let finalValue = value;
+    
+    // Format phone on input
+    if (currentQuestion.id === "phone" && typeof value === "string") {
+      finalValue = formatPhone(value);
+    }
+    
     setFormAnswers({
       ...formAnswers,
-      [currentQuestion.id]: value,
+      [currentQuestion.id]: finalValue,
     });
 
-    if (currentQuestion.id === "phone" && typeof value === "string" && value.length >= 10) {
-      checkExistingVolunteer(value);
+    if (currentQuestion.id === "phone" && typeof finalValue === "string") {
+      const normalized = normalizePhone(finalValue);
+      if (normalized.length >= 10) {
+        checkExistingVolunteer(finalValue);
+      }
     }
   };
 
@@ -364,7 +375,7 @@ export function VolunteerForm() {
                       ref={inputRef}
                       type={currentQuestion.type}
                       name={currentQuestion.id}
-                      value={(formAnswers[currentQuestion.id] as string) || ""}
+                      value={currentQuestion.type === "tel" ? formatPhone(formAnswers[currentQuestion.id] as string) || "" : (formAnswers[currentQuestion.id] as string) || ""}
                       onChange={(e) => handleAnswerChange(e.target.value)}
                       placeholder={currentQuestion.placeholder || "Type your answer here..."}
                       autoComplete={currentQuestion.type === "email" ? "email" : currentQuestion.type === "tel" ? "tel" : "name"}

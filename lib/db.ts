@@ -12,6 +12,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { normalizePhone } from "./utils";
 
 export interface Volunteer {
   id: string;
@@ -79,11 +80,15 @@ export async function getVolunteerByEmail(email: string): Promise<Volunteer | nu
 }
 
 export async function getVolunteerByPhone(phone: string): Promise<Volunteer | null> {
-  const q = query(collection(db, "volunteers"), where("phone", "==", phone.trim()));
+  const normalizedPhone = normalizePhone(phone);
+  const q = query(collection(db, "volunteers"));
   const snapshot = await getDocs(q);
-  if (!snapshot.empty) {
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() } as Volunteer;
+  
+  for (const doc of snapshot.docs) {
+    const volunteerPhone = doc.data().phone;
+    if (normalizePhone(volunteerPhone) === normalizedPhone) {
+      return { id: doc.id, ...doc.data() } as Volunteer;
+    }
   }
   return null;
 }
