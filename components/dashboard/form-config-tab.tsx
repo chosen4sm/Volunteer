@@ -307,27 +307,15 @@ export function FormConfigTab() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-3">
                 <Input
-                  placeholder="ID (e.g., tech)"
-                  id="exp-id"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const labelInput = document.getElementById("exp-label") as HTMLInputElement;
-                      labelInput?.focus();
-                    }
-                  }}
-                />
-                <Input
                   placeholder="Label (e.g., Tech Support)"
                   id="exp-label"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      const idInput = document.getElementById("exp-id") as HTMLInputElement;
                       const labelInput = e.currentTarget;
-                      if (idInput.value.trim() && labelInput.value.trim()) {
+                      if (labelInput.value.trim()) {
                         addExperience(labelInput.value);
-                        idInput.value = "";
                         labelInput.value = "";
-                        idInput.focus();
+                        labelInput.focus();
                       }
                     }
                   }}
@@ -335,11 +323,9 @@ export function FormConfigTab() {
               </div>
               <Button
                 onClick={() => {
-                  const idInput = document.getElementById("exp-id") as HTMLInputElement;
                   const labelInput = document.getElementById("exp-label") as HTMLInputElement;
-                  if (idInput.value.trim() && labelInput.value.trim()) {
+                  if (labelInput.value.trim()) {
                     addExperience(labelInput.value);
-                    idInput.value = "";
                     labelInput.value = "";
                   }
                 }}
@@ -663,7 +649,6 @@ export function FormConfigTab() {
                       <div className="space-y-2 mt-2">
                         {customOptions.map((opt, idx) => (
                           <div key={idx} className="flex items-center gap-2">
-                            <Input value={opt.id} disabled className="h-8 text-xs flex-1" />
                             <Input value={opt.label} disabled className="h-8 text-xs flex-1" />
                             <Button
                               onClick={() => setCustomOptions(customOptions.filter((_, i) => i !== idx))}
