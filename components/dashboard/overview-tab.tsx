@@ -139,6 +139,18 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
 
   const handleExportVolunteers = () => {
     try {
+      const baseFields = ["id", "name", "email", "phone", "role", "experiences", "ageRange", "shifts", "submittedAt", "leadTaskIds"];
+      
+      const allExtraFields = new Set<string>();
+      volunteers.forEach(v => {
+        const volunteerData = v as unknown as Record<string, unknown>;
+        Object.keys(volunteerData).forEach(key => {
+          if (!baseFields.includes(key)) {
+            allExtraFields.add(key);
+          }
+        });
+      });
+
       const headers = [
         "Name",
         "Email",
@@ -154,10 +166,9 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
         headers.push(`${day} Shifts`);
       });
 
-      formConfig.questions.forEach(q => {
-        if (!["text", "tel", "email", "shifts"].includes(q.type)) {
-          headers.push(q.label);
-        }
+      Array.from(allExtraFields).sort().forEach(fieldId => {
+        const question = formConfig.questions.find(q => q.id === fieldId);
+        headers.push(question?.label || fieldId);
       });
 
       const rows = volunteers.map(volunteer => {
@@ -184,23 +195,22 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
           row.push(dayShifts.join("; "));
         });
 
-        formConfig.questions.forEach(q => {
-          if (!["text", "tel", "email", "shifts"].includes(q.type)) {
-            const volunteerData = volunteer as unknown as Record<string, unknown>;
-            const value = volunteerData[q.id];
-            
-            if (Array.isArray(value)) {
-              const labels = value.map(v => {
-                const option = q.options?.find(opt => opt.id === v);
-                return option?.label || v;
-              });
-              row.push(labels.join("; "));
-            } else if (typeof value === "string") {
-              const option = q.options?.find(opt => opt.id === value);
-              row.push(option?.label || value);
-            } else {
-              row.push("");
-            }
+        Array.from(allExtraFields).sort().forEach(fieldId => {
+          const volunteerData = volunteer as unknown as Record<string, unknown>;
+          const value = volunteerData[fieldId];
+          const question = formConfig.questions.find(q => q.id === fieldId);
+          
+          if (Array.isArray(value)) {
+            const labels = value.map(v => {
+              const option = question?.options?.find(opt => opt.id === v);
+              return option?.label || v;
+            });
+            row.push(labels.join("; "));
+          } else if (typeof value === "string") {
+            const option = question?.options?.find(opt => opt.id === value);
+            row.push(option?.label || value);
+          } else {
+            row.push("");
           }
         });
 
