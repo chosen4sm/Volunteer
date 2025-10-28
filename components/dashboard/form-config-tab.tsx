@@ -14,10 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings, Plus, Trash2, Database, AlertTriangle, ChevronDown, ChevronUp, Save, X } from "lucide-react";
+import { Settings, Plus, Trash2, Database, AlertTriangle, ChevronDown, ChevronUp, Save, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { getFormConfig, invalidateConfigCache, type FormConfig, type FormQuestion } from "@/lib/config";
 import { seedFormConfig, updateFormConfig } from "@/lib/seeder";
+import { migrateJamatKhaneField } from "@/lib/db";
 
 const QUESTION_TYPES = ["text", "tel", "email", "select", "checkbox-multi", "shifts"] as const;
 
@@ -71,6 +72,7 @@ export function FormConfigTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
   const [editedConfig, setEditedConfig] = useState<FormConfig | null>(null);
   const [activeTab, setActiveTab] = useState("experiences");
   const [label, setLabel] = useState("");
@@ -114,6 +116,27 @@ export function FormConfigTab() {
       toast.error("Failed to seed config");
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const handleMigrateJamatKhane = async () => {
+    if (isMigrating) return;
+    
+    if (!confirm("This will migrate 'select-your-primary-jamat-khane' field to 'jamatKhane' for all volunteers. Continue?")) {
+      return;
+    }
+
+    setIsMigrating(true);
+    try {
+      const result = await migrateJamatKhaneField();
+      toast.success("Migration complete!", {
+        description: `Migrated: ${result.success}, Skipped: ${result.skipped}, Errors: ${result.errors}`,
+      });
+    } catch (error) {
+      console.error("Error migrating field:", error);
+      toast.error("Migration failed");
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -308,6 +331,10 @@ export function FormConfigTab() {
           <Button onClick={handleSeedConfig} disabled={isSeeding} variant="outline" size="sm" className="gap-2">
             <Database className="w-4 h-4" />
             {isSeeding ? "Seeding..." : "Reset Defaults"}
+          </Button>
+          <Button onClick={handleMigrateJamatKhane} disabled={isMigrating} variant="outline" size="sm" className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            {isMigrating ? "Migrating..." : "Migrate Jamat Field"}
           </Button>
         </div>
       </div>

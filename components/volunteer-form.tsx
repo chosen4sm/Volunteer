@@ -214,6 +214,8 @@ export function VolunteerForm() {
           submitData.specialSkill = Array.isArray(answer) ? answer[0] : answer;
         } else if (question.label.toLowerCase().includes("age")) {
           submitData.ageRange = Array.isArray(answer) ? answer : [answer];
+        } else if (question.label.toLowerCase().includes("jamat")) {
+          submitData.jamatKhane = Array.isArray(answer) ? answer : [answer];
         } else {
           // For any other fields, store them as-is if they're not undefined
           if (answer !== undefined && answer !== null) {

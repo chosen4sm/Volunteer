@@ -23,6 +23,7 @@ export interface Volunteer {
   leadTaskIds?: string[];
   experiences?: string[];
   ageRange?: string[];
+  jamatKhane?: string[];
   shifts: { [key: string]: string[] };
   submittedAt: Timestamp;
 }
@@ -228,4 +229,34 @@ export async function nukeVolunteersAndAssignments(): Promise<void> {
     );
     await Promise.all(deletePromises);
   }
+}
+
+export async function migrateJamatKhaneField(): Promise<{ success: number; skipped: number; errors: number }> {
+  const volunteers = await getVolunteers();
+  let success = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  for (const volunteer of volunteers) {
+    try {
+      const volunteerData = volunteer as unknown as Record<string, unknown>;
+      const oldFieldValue = volunteerData["select-your-primary-jamat-khane"];
+      
+      if (oldFieldValue && !volunteer.jamatKhane) {
+        const docRef = doc(db, "volunteers", volunteer.id);
+        await updateDoc(docRef, {
+          jamatKhane: oldFieldValue,
+          "select-your-primary-jamat-khane": null
+        });
+        success++;
+      } else {
+        skipped++;
+      }
+    } catch (error) {
+      console.error(`Error migrating volunteer ${volunteer.id}:`, error);
+      errors++;
+    }
+  }
+
+  return { success, skipped, errors };
 }
