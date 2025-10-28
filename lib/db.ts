@@ -22,6 +22,7 @@ export interface Volunteer {
   role?: "volunteer" | "lead";
   leadTaskIds?: string[];
   experiences?: string[];
+  ageRange?: string[];
   shifts: { [key: string]: string[] };
   submittedAt: Timestamp;
 }

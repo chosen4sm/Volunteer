@@ -477,14 +477,19 @@ export function AssignmentsTab({
                           <Badge variant="secondary" className="shrink-0">{totalShifts}</Badge>
                         </div>
 
-                        {volunteer.experiences && volunteer.experiences.length > 0 && (
-                          <div className="flex gap-1 flex-wrap mt-2">
-                            {volunteer.experiences.map((exp) => {
-                              const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
-                              return expLabel ? <Badge key={exp} variant="outline" className="text-xs">{expLabel}</Badge> : null;
-                            })}
-                          </div>
-                        )}
+                        <div className="flex gap-1 flex-wrap mt-2">
+                          {volunteer.ageRange && volunteer.ageRange.length > 0 && (() => {
+                            const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+                            return volunteer.ageRange.map((ageId) => {
+                              const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label || ageId;
+                              return <Badge key={ageId} variant="secondary" className="text-xs">{ageLabel}</Badge>;
+                            });
+                          })()}
+                          {volunteer.experiences && volunteer.experiences.length > 0 && volunteer.experiences.map((exp) => {
+                            const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
+                            return expLabel ? <Badge key={exp} variant="outline" className="text-xs">{expLabel}</Badge> : null;
+                          })}
+                        </div>
 
                         {consecutiveShifts && (
                           <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
