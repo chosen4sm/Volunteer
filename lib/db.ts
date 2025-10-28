@@ -25,6 +25,7 @@ export interface Volunteer {
   experiences?: string[];
   ageRange?: string[];
   jamatKhane?: string[];
+  specialSkill?: string;
   shifts: { [key: string]: string[] };
   submittedAt: Timestamp;
 }

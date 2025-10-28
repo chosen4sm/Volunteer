@@ -139,7 +139,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
 
   const handleExportVolunteers = () => {
     try {
-      const baseFields = ["id", "name", "email", "phone", "role", "experiences", "ageRange", "jamatKhane", "shifts", "submittedAt", "leadTaskIds"];
+      const baseFields = ["id", "name", "email", "phone", "role", "experiences", "ageRange", "jamatKhane", "specialSkill", "shifts", "submittedAt", "leadTaskIds"];
       const excludeFields = ["select-your-primary-jamat-khane"];
       
       const allExtraFields = new Set<string>();
@@ -160,6 +160,8 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
         "Total Shifts",
         "Experiences",
         "Age Range",
+        "Jamat Khane",
+        "Special Skill",
         "Submitted At",
       ];
 
@@ -188,6 +190,17 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label;
             return ageLabel || ageId;
           }).join("; "),
+          (volunteer.jamatKhane || []).map(jamatId => {
+            const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+            const jamatLabel = jamatQuestion?.options?.find(opt => opt.id === jamatId)?.label;
+            return jamatLabel || jamatId;
+          }).join("; "),
+          (() => {
+            if (!volunteer.specialSkill) return "";
+            const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+            const skillLabel = skillQuestion?.options?.find(opt => opt.id === volunteer.specialSkill)?.label;
+            return skillLabel || volunteer.specialSkill;
+          })(),
           volunteer.submittedAt?.toDate?.()?.toLocaleString() || "",
         ];
 
