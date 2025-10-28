@@ -464,19 +464,19 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                           <div className="text-sm text-muted-foreground">{volunteer.email} • {volunteer.phone}</div>
                         </div>
 
-                        <div className="flex gap-2 flex-wrap">
-                          {volunteer.ageRange && volunteer.ageRange.length > 0 && (() => {
-                            const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
-                            return volunteer.ageRange.map((ageId) => {
+                        {(volunteer.ageRange && volunteer.ageRange.length > 0) || (volunteer.experiences && volunteer.experiences.length > 0) ? (
+                          <div className="flex gap-2 flex-wrap">
+                            {volunteer.ageRange && volunteer.ageRange.length > 0 && volunteer.ageRange.map((ageId) => {
+                              const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
                               const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label || ageId;
                               return <Badge key={ageId} variant="secondary" className="text-xs">{ageLabel}</Badge>;
-                            });
-                          })()}
-                          {volunteer.experiences && volunteer.experiences.length > 0 && volunteer.experiences.map((exp) => {
-                            const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
-                            return expLabel ? <Badge key={exp} variant="outline" className="text-xs">{expLabel}</Badge> : null;
-                          })}
-                        </div>
+                            })}
+                            {volunteer.experiences && volunteer.experiences.length > 0 && volunteer.experiences.map((exp) => {
+                              const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
+                              return expLabel ? <Badge key={exp} variant="outline" className="text-xs">{expLabel}</Badge> : null;
+                            })}
+                          </div>
+                        ) : null}
 
                         {Object.keys(shiftData).length > 0 && (
                           <div className="grid grid-cols-2 gap-2 text-xs">
