@@ -212,6 +212,8 @@ export function VolunteerForm() {
         } else if (question.label.toLowerCase().includes("skill")) {
           // Special skills - store as array or first value
           submitData.specialSkill = Array.isArray(answer) ? answer[0] : answer;
+        } else if (question.label.toLowerCase().includes("age")) {
+          submitData.ageRange = Array.isArray(answer) ? answer : [answer];
         } else {
           // For any other fields, store them as-is if they're not undefined
           if (answer !== undefined && answer !== null) {
@@ -291,6 +293,11 @@ export function VolunteerForm() {
             const skillValue = existingData.specialSkill || existingData.skills || existingData[question.id];
             if (skillValue) {
               updatedAnswers[question.id] = Array.isArray(skillValue) ? skillValue : [skillValue];
+            }
+          } else if (question.label.toLowerCase().includes("age")) {
+            const ageValue = existingData.ageRange || existingData[question.id];
+            if (ageValue) {
+              updatedAnswers[question.id] = Array.isArray(ageValue) ? ageValue : [ageValue];
             }
           }
         });
