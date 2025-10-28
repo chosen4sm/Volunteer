@@ -10,6 +10,7 @@ import {
   where,
   orderBy,
   Timestamp,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { normalizePhone } from "./utils";
@@ -246,7 +247,14 @@ export async function migrateJamatKhaneField(): Promise<{ success: number; skipp
         const docRef = doc(db, "volunteers", volunteer.id);
         await updateDoc(docRef, {
           jamatKhane: oldFieldValue,
-          "select-your-primary-jamat-khane": null
+          "select-your-primary-jamat-khane": deleteField()
+        });
+        success++;
+      } else if (oldFieldValue && volunteer.jamatKhane) {
+        // Already migrated, just delete old field
+        const docRef = doc(db, "volunteers", volunteer.id);
+        await updateDoc(docRef, {
+          "select-your-primary-jamat-khane": deleteField()
         });
         success++;
       } else {

@@ -139,13 +139,14 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
 
   const handleExportVolunteers = () => {
     try {
-      const baseFields = ["id", "name", "email", "phone", "role", "experiences", "ageRange", "shifts", "submittedAt", "leadTaskIds"];
+      const baseFields = ["id", "name", "email", "phone", "role", "experiences", "ageRange", "jamatKhane", "shifts", "submittedAt", "leadTaskIds"];
+      const excludeFields = ["select-your-primary-jamat-khane"];
       
       const allExtraFields = new Set<string>();
       volunteers.forEach(v => {
         const volunteerData = v as unknown as Record<string, unknown>;
         Object.keys(volunteerData).forEach(key => {
-          if (!baseFields.includes(key)) {
+          if (!baseFields.includes(key) && !excludeFields.includes(key)) {
             allExtraFields.add(key);
           }
         });
