@@ -55,6 +55,7 @@ export function AssignmentsTab({
   const [filterCount, setFilterCount] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterExperience, setFilterExperience] = useState<string>("");
+  const [filterAgeRange, setFilterAgeRange] = useState<string>("");
 
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignVolunteerId, setAssignVolunteerId] = useState("");
@@ -93,7 +94,7 @@ export function AssignmentsTab({
             .includes(searchQuery.toLowerCase())
         : true;
 
-      if (!filterDay && !filterShift && !filterExperience) return matchesSearch;
+      if (!filterDay && !filterShift && !filterExperience && !filterAgeRange) return matchesSearch;
 
       const shiftData = volunteer.shifts || {};
       const dayShifts = shiftData[filterDay] || [];
@@ -103,8 +104,11 @@ export function AssignmentsTab({
       const matchesExperience = filterExperience
         ? (volunteer.experiences || []).includes(filterExperience)
         : true;
+      const matchesAgeRange = filterAgeRange
+        ? (volunteer.ageRange || []).includes(filterAgeRange)
+        : true;
 
-      return matchesSearch && matchesDay && matchesShift && matchesExperience;
+      return matchesSearch && matchesDay && matchesShift && matchesExperience && matchesAgeRange;
     });
 
     const count = parseInt(filterCount);
@@ -361,7 +365,7 @@ export function AssignmentsTab({
               <CardTitle className="text-lg">Filter & Select Volunteers</CardTitle>
               <CardDescription>Find volunteers to assign to tasks</CardDescription>
             </div>
-            {(searchQuery || filterDay || filterShift || filterCount || filterExperience) && (
+            {(searchQuery || filterDay || filterShift || filterCount || filterExperience || filterAgeRange) && (
               <Button
                 onClick={() => {
                   setSearchQuery("");
@@ -369,6 +373,7 @@ export function AssignmentsTab({
                   setFilterShift("");
                   setFilterCount("");
                   setFilterExperience("");
+                  setFilterAgeRange("");
                 }}
                 variant="outline"
                 size="sm"
@@ -414,6 +419,19 @@ export function AssignmentsTab({
                 {formConfig.experiences.map((exp) => (
                   <SelectItem key={exp.id} value={exp.id}>{exp.label}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterAgeRange || undefined} onValueChange={(val) => setFilterAgeRange(val)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Age Range" />
+              </SelectTrigger>
+              <SelectContent>
+                {(() => {
+                  const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+                  return ageQuestion?.options?.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                  ));
+                })()}
               </SelectContent>
             </Select>
             <Input

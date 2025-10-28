@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Edit2 } from "lucide-react";
+import { Users, Edit2, Download } from "lucide-react";
 import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
 import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
@@ -41,6 +41,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
   const [filterCount, setFilterCount] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterExperience, setFilterExperience] = useState<string>("");
+  const [filterAgeRange, setFilterAgeRange] = useState<string>("");
   const [updatingRoles, setUpdatingRoles] = useState<Set<string>>(new Set());
   const [leadAssignmentDialog, setLeadAssignmentDialog] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             .includes(searchQuery.toLowerCase())
         : true;
 
-      if (!filterDay && !filterShift && !filterExperience) return matchesSearch;
+      if (!filterDay && !filterShift && !filterExperience && !filterAgeRange) return matchesSearch;
 
       const shiftData = volunteer.shifts || {};
       const dayShifts = shiftData[filterDay] || [];
@@ -89,8 +90,11 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
       const matchesExperience = filterExperience
         ? (volunteer.experiences || []).includes(filterExperience)
         : true;
+      const matchesAgeRange = filterAgeRange
+        ? (volunteer.ageRange || []).includes(filterAgeRange)
+        : true;
 
-      return matchesSearch && matchesDay && matchesShift && matchesExperience;
+      return matchesSearch && matchesDay && matchesShift && matchesExperience && matchesAgeRange;
     });
 
     const count = parseInt(filterCount);
@@ -131,6 +135,102 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
       ).length;
     });
     return allocation;
+  };
+
+  const handleExportVolunteers = () => {
+    try {
+      const headers = [
+        "Name",
+        "Email",
+        "Phone",
+        "Role",
+        "Total Shifts",
+        "Experiences",
+        "Age Range",
+        "Submitted At",
+      ];
+
+      formConfig.days.forEach(day => {
+        headers.push(`${day} Shifts`);
+      });
+
+      formConfig.questions.forEach(q => {
+        if (!["text", "tel", "email", "shifts"].includes(q.type)) {
+          headers.push(q.label);
+        }
+      });
+
+      const rows = volunteers.map(volunteer => {
+        const row: string[] = [
+          volunteer.name || "",
+          volunteer.email || "",
+          volunteer.phone || "",
+          volunteer.role || "volunteer",
+          getTotalShifts(volunteer).toString(),
+          (volunteer.experiences || []).map(exp => {
+            const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
+            return expLabel || exp;
+          }).join("; "),
+          (volunteer.ageRange || []).map(ageId => {
+            const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+            const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label;
+            return ageLabel || ageId;
+          }).join("; "),
+          volunteer.submittedAt?.toDate?.()?.toLocaleString() || "",
+        ];
+
+        formConfig.days.forEach(day => {
+          const dayShifts = volunteer.shifts?.[day] || [];
+          row.push(dayShifts.join("; "));
+        });
+
+        formConfig.questions.forEach(q => {
+          if (!["text", "tel", "email", "shifts"].includes(q.type)) {
+            const volunteerData = volunteer as unknown as Record<string, unknown>;
+            const value = volunteerData[q.id];
+            
+            if (Array.isArray(value)) {
+              const labels = value.map(v => {
+                const option = q.options?.find(opt => opt.id === v);
+                return option?.label || v;
+              });
+              row.push(labels.join("; "));
+            } else if (typeof value === "string") {
+              const option = q.options?.find(opt => opt.id === value);
+              row.push(option?.label || value);
+            } else {
+              row.push("");
+            }
+          }
+        });
+
+        return row;
+      });
+
+      const csvContent = [
+        headers.map(h => `"${h}"`).join(","),
+        ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(","))
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `volunteers_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success("Export successful", {
+        description: `Exported ${volunteers.length} volunteer(s) to CSV`,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Export failed", {
+        description: "Failed to export volunteers data",
+      });
+    }
   };
 
   const handleRoleChange = async (volunteerId: string, newRole: "volunteer" | "lead") => {
@@ -367,21 +467,33 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                   : `${volunteers.length} total`}
               </CardDescription>
             </div>
-            {(searchQuery || filterDay || filterShift || filterCount || filterExperience) && (
+            <div className="flex gap-2">
+              {(searchQuery || filterDay || filterShift || filterCount || filterExperience || filterAgeRange) && (
+                <Button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setFilterDay("");
+                    setFilterShift("");
+                    setFilterCount("");
+                    setFilterExperience("");
+                    setFilterAgeRange("");
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  Clear Filters
+                </Button>
+              )}
               <Button
-                onClick={() => {
-                  setSearchQuery("");
-                  setFilterDay("");
-                  setFilterShift("");
-                  setFilterCount("");
-                  setFilterExperience("");
-                }}
+                onClick={handleExportVolunteers}
                 variant="outline"
                 size="sm"
+                disabled={volunteers.length === 0}
               >
-                Clear Filters
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
               </Button>
-            )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -420,6 +532,19 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                 {formConfig.experiences.map((exp) => (
                   <SelectItem key={exp.id} value={exp.id}>{exp.label}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterAgeRange || undefined} onValueChange={(val) => setFilterAgeRange(val)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Age Range" />
+              </SelectTrigger>
+              <SelectContent>
+                {(() => {
+                  const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+                  return ageQuestion?.options?.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                  ));
+                })()}
               </SelectContent>
             </Select>
             <Input
