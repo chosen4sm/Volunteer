@@ -348,11 +348,16 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen gradient-bg">
-      <header className="border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-50">
+      <div className="gradient-blob-1" />
+      <div className="gradient-blob-2" />
+      <div className="gradient-blob-3" />
+      
+      <div className="gradient-content">
+      <header className="border-b border-border gradient-header backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary via-primary to-chart-2 rounded-lg flex items-center justify-center shadow-lg">
                 <Users className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
@@ -389,7 +394,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="border-b border-border bg-background/30">
+      <div className="border-b border-border bg-gradient-to-r from-background/30 via-primary/5 to-background/30 backdrop-blur-sm">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-4">
             <button
@@ -598,6 +603,7 @@ export default function DashboardPage() {
           )}
         </motion.div>
       </main>
+      </div>
     </div>
   );
 }

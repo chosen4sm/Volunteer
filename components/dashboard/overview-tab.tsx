@@ -20,12 +20,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Users, Edit2, Download } from "lucide-react";
 import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
 import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
 import { updateVolunteer } from "@/lib/db";
+import { formatPhone } from "@/lib/utils";
 
 interface OverviewTabProps {
   volunteers: Volunteer[];
@@ -42,10 +51,18 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterExperience, setFilterExperience] = useState<string>("");
   const [filterAgeRange, setFilterAgeRange] = useState<string>("");
+  const [filterJamatKhane, setFilterJamatKhane] = useState<string>("");
+  const [filterSkill, setFilterSkill] = useState<string>("");
+  const [filterRole, setFilterRole] = useState<string>("");
   const [updatingRoles, setUpdatingRoles] = useState<Set<string>>(new Set());
   const [leadAssignmentDialog, setLeadAssignmentDialog] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedLeadTasks, setSelectedLeadTasks] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [detailDialog, setDetailDialog] = useState(false);
+  const [detailDialogTitle, setDetailDialogTitle] = useState("");
+  const [detailDialogVolunteers, setDetailDialogVolunteers] = useState<Volunteer[]>([]);
+  const volunteersPerPage = 10;
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -80,8 +97,6 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             .includes(searchQuery.toLowerCase())
         : true;
 
-      if (!filterDay && !filterShift && !filterExperience && !filterAgeRange) return matchesSearch;
-
       const shiftData = volunteer.shifts || {};
       const dayShifts = shiftData[filterDay] || [];
 
@@ -93,8 +108,17 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
       const matchesAgeRange = filterAgeRange
         ? (volunteer.ageRange || []).includes(filterAgeRange)
         : true;
+      const matchesJamatKhane = filterJamatKhane
+        ? (volunteer.jamatKhane || []).includes(filterJamatKhane)
+        : true;
+      const matchesSkill = filterSkill
+        ? volunteer.specialSkill === filterSkill
+        : true;
+      const matchesRole = filterRole
+        ? volunteer.role === filterRole
+        : true;
 
-      return matchesSearch && matchesDay && matchesShift && matchesExperience && matchesAgeRange;
+      return matchesSearch && matchesDay && matchesShift && matchesExperience && matchesAgeRange && matchesJamatKhane && matchesSkill && matchesRole;
     });
 
     const count = parseInt(filterCount);
@@ -135,6 +159,50 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
       ).length;
     });
     return allocation;
+  };
+
+  const getSkillsAllocation = () => {
+    const allocation: { [key: string]: number } = {};
+    const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+    if (!skillQuestion?.options) return allocation;
+    
+    skillQuestion.options.forEach((skill) => {
+      allocation[skill.id] = volunteers.filter((v) => v.specialSkill === skill.id).length;
+    });
+    return allocation;
+  };
+
+  const getAgeRangeAllocation = () => {
+    const allocation: { [key: string]: number } = {};
+    const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+    if (!ageQuestion?.options) return allocation;
+    
+    ageQuestion.options.forEach((age) => {
+      allocation[age.id] = volunteers.filter((v) => 
+        (v.ageRange || []).includes(age.id)
+      ).length;
+    });
+    return allocation;
+  };
+
+  const getJamatKhaneAllocation = () => {
+    const allocation: { [key: string]: number } = {};
+    const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+    if (!jamatQuestion?.options) return allocation;
+    
+    jamatQuestion.options.forEach((jamat) => {
+      allocation[jamat.id] = volunteers.filter((v) => 
+        (v.jamatKhane || []).includes(jamat.id)
+      ).length;
+    });
+    return allocation;
+  };
+
+  const handleShowVolunteersWithAttribute = (title: string, filterFn: (v: Volunteer) => boolean) => {
+    const filtered = volunteers.filter(filterFn);
+    setDetailDialogTitle(title);
+    setDetailDialogVolunteers(filtered);
+    setDetailDialog(true);
   };
 
   const handleExportVolunteers = () => {
@@ -178,7 +246,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
         const row: string[] = [
           volunteer.name || "",
           volunteer.email || "",
-          volunteer.phone || "",
+          formatPhone(volunteer.phone || ""),
           volunteer.role || "volunteer",
           getTotalShifts(volunteer).toString(),
           (volunteer.experiences || []).map(exp => {
@@ -298,17 +366,41 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
   const shiftAllocation = getShiftAllocation();
   const taskAllocation = getTaskAllocation();
   const experienceAllocation = getExperienceAllocation();
+  const skillsAllocation = getSkillsAllocation();
+  const ageRangeAllocation = getAgeRangeAllocation();
+  const jamatKhaneAllocation = getJamatKhaneAllocation();
+
+  const totalPages = Math.ceil(filteredVolunteers.length / volunteersPerPage);
+  const startIndex = (currentPage - 1) * volunteersPerPage;
+  const endIndex = startIndex + volunteersPerPage;
+  const paginatedVolunteers = filteredVolunteers.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterDay, filterShift, filterExperience, filterAgeRange, filterJamatKhane, filterSkill, filterRole]);
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 grid-cols-4">
-        <Card>
+      <div className="grid gap-4 auto-rows-auto" style={{
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))"
+      }}>
+        <Card className="cursor-pointer hover:border-primary/50 transition" onClick={() => handleShowVolunteersWithAttribute("All Volunteers", () => true)}>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Volunteers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{volunteers.length}</div>
             <p className="text-xs text-muted-foreground mt-1">Total registered</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:border-primary/50 transition" onClick={() => handleShowVolunteersWithAttribute("Team Leads", (v) => v.role === "lead")}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Leads</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{volunteers.filter(v => v.role === "lead").length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Team leads assigned</p>
           </CardContent>
         </Card>
 
@@ -331,19 +423,128 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             <p className="text-xs text-muted-foreground mt-1">Active assignments</p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Experience Distribution</CardTitle>
+            <CardDescription>Volunteers by experience</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2">
+              {formConfig.experiences.map((exp) => (
+                <div 
+                  key={exp.id} 
+                  className="p-3 rounded-lg border cursor-pointer hover:border-primary/50 transition"
+                  onClick={() => handleShowVolunteersWithAttribute(
+                    `Volunteers with ${exp.label}`,
+                    (v) => (v.experiences || []).includes(exp.id)
+                  )}
+                >
+                  <div className="text-sm text-muted-foreground">{exp.label}</div>
+                  <div className="text-2xl font-bold mt-1">{experienceAllocation[exp.id] || 0}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Leads</CardTitle>
+            <CardTitle className="text-lg">Skills Distribution</CardTitle>
+            <CardDescription>Volunteers by special skill</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{volunteers.filter(v => v.role === "lead").length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Team leads assigned</p>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {(() => {
+                const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+                if (!skillQuestion?.options) return <p className="text-sm text-muted-foreground">No skills configured</p>;
+                
+                return skillQuestion.options
+                  .filter(skill => skillsAllocation[skill.id] > 0)
+                  .sort((a, b) => (skillsAllocation[b.id] || 0) - (skillsAllocation[a.id] || 0))
+                  .map((skill) => (
+                    <div 
+                      key={skill.id} 
+                      className="p-3 rounded-lg border flex justify-between items-center cursor-pointer hover:border-primary/50 transition"
+                      onClick={() => handleShowVolunteersWithAttribute(
+                        `Volunteers with ${skill.label}`,
+                        (v) => v.specialSkill === skill.id
+                      )}
+                    >
+                      <div className="text-sm truncate">{skill.label}</div>
+                      <Badge variant="secondary">{skillsAllocation[skill.id] || 0}</Badge>
+                    </div>
+                  ));
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Age Range Distribution</CardTitle>
+            <CardDescription>Volunteers by age range</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {(() => {
+                const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+                if (!ageQuestion?.options) return <p className="text-sm text-muted-foreground">No age ranges configured</p>;
+                
+                return ageQuestion.options.map((age) => (
+                  <div 
+                    key={age.id} 
+                    className="p-3 rounded-lg border flex justify-between items-center cursor-pointer hover:border-primary/50 transition"
+                    onClick={() => handleShowVolunteersWithAttribute(
+                      `Volunteers in ${age.label}`,
+                      (v) => (v.ageRange || []).includes(age.id)
+                    )}
+                  >
+                    <div className="text-sm">{age.label}</div>
+                    <Badge variant="secondary">{ageRangeAllocation[age.id] || 0}</Badge>
+                  </div>
+                ));
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Jamat Khane Distribution</CardTitle>
+            <CardDescription>Volunteers by Jamat Khane</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {(() => {
+                const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+                if (!jamatQuestion?.options) return <p className="text-sm text-muted-foreground">No Jamat Khanes configured</p>;
+                
+                return jamatQuestion.options
+                  .filter(jamat => jamatKhaneAllocation[jamat.id] > 0)
+                  .sort((a, b) => (jamatKhaneAllocation[b.id] || 0) - (jamatKhaneAllocation[a.id] || 0))
+                  .map((jamat) => (
+                    <div 
+                      key={jamat.id} 
+                      className="p-3 rounded-lg border flex justify-between items-center cursor-pointer hover:border-primary/50 transition"
+                      onClick={() => handleShowVolunteersWithAttribute(
+                        `Volunteers from ${jamat.label}`,
+                        (v) => (v.jamatKhane || []).includes(jamat.id)
+                      )}
+                    >
+                      <div className="text-sm truncate">{jamat.label}</div>
+                      <Badge variant="secondary">{jamatKhaneAllocation[jamat.id] || 0}</Badge>
+                    </div>
+                  ));
+              })()}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Leads</CardTitle>
@@ -353,7 +554,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             {volunteers.filter(v => v.role === "lead").length === 0 ? (
               <p className="text-sm text-muted-foreground">No leads assigned yet</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-80 overflow-y-auto">
                 {volunteers
                   .filter(v => v.role === "lead")
                   .map((lead) => {
@@ -406,41 +607,32 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Experience Distribution</CardTitle>
-            <CardDescription>Volunteers by experience</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              {formConfig.experiences.map((exp) => (
-                <div key={exp.id} className="p-3 rounded-lg border">
-                  <div className="text-sm text-muted-foreground">{exp.label}</div>
-                  <div className="text-2xl font-bold mt-1">{experienceAllocation[exp.id] || 0}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Shift Availability</CardTitle>
             <CardDescription>Volunteers available per shift</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4 max-h-80 overflow-y-auto">
               {DAYS.map((day) => (
-                <div key={day}>
-                  <div className="text-sm font-semibold mb-2">{day}</div>
-                  <div className="grid grid-cols-2 gap-2">
+                <div key={day} className="space-y-2">
+                  <div className="text-sm font-semibold text-muted-foreground">{day}</div>
+                  <div className="space-y-2">
                     {SHIFTS.map((shift) => (
-                      <div key={shift} className="p-2 rounded-lg border">
-                        <div className="text-xs text-muted-foreground">{shift}</div>
-                        <div className="text-lg font-bold">{shiftAllocation[day][shift]}</div>
+                      <div 
+                        key={shift} 
+                        className="p-3 rounded-lg border flex justify-between items-center cursor-pointer hover:border-primary/50 transition"
+                        onClick={() => handleShowVolunteersWithAttribute(
+                          `Volunteers available for ${day} - ${shift}`,
+                          (v) => {
+                            const shiftData = v.shifts || {};
+                            const dayShifts = shiftData[day] || [];
+                            return dayShifts.includes(shift);
+                          }
+                        )}
+                      >
+                        <div className="text-sm">{shift}</div>
+                        <Badge variant="secondary">{shiftAllocation[day][shift]}</Badge>
                       </div>
                     ))}
                   </div>
@@ -459,21 +651,30 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
             {tasks.length === 0 ? (
               <p className="text-sm text-muted-foreground">No tasks created yet</p>
             ) : (
-              <div className="space-y-2">
-                {tasks.map((task) => {
-                  const location = locations.find((l) => l.id === task.locationId);
-                  return (
-                    <div key={task.id} className="p-3 rounded-lg border flex items-center justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{task.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {location?.name || "No location"}
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {tasks
+                  .sort((a, b) => (taskAllocation[b.id] || 0) - (taskAllocation[a.id] || 0))
+                  .map((task) => {
+                    const location = locations.find((l) => l.id === task.locationId);
+                    return (
+                      <div 
+                        key={task.id} 
+                        className="p-3 rounded-lg border flex items-center justify-between cursor-pointer hover:border-primary/50 transition"
+                        onClick={() => handleShowVolunteersWithAttribute(
+                          `Volunteers assigned to ${task.name}`,
+                          (v) => assignments.some(a => a.volunteerId === v.id && a.taskId === task.id)
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium truncate">{task.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {location?.name || "No location"}
+                          </div>
                         </div>
+                        <Badge variant="secondary" className="ml-2">{taskAllocation[task.id] || 0}</Badge>
                       </div>
-                      <Badge variant="secondary" className="ml-2">{taskAllocation[task.id] || 0}</Badge>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
           </CardContent>
@@ -492,7 +693,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              {(searchQuery || filterDay || filterShift || filterCount || filterExperience || filterAgeRange) && (
+              {(searchQuery || filterDay || filterShift || filterCount || filterExperience || filterAgeRange || filterJamatKhane || filterSkill || filterRole) && (
                 <Button
                   onClick={() => {
                     setSearchQuery("");
@@ -501,6 +702,9 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                     setFilterCount("");
                     setFilterExperience("");
                     setFilterAgeRange("");
+                    setFilterJamatKhane("");
+                    setFilterSkill("");
+                    setFilterRole("");
                   }}
                   variant="outline"
                   size="sm"
@@ -521,15 +725,16 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-3">
-            <Input
-              placeholder="Search name, email, phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-2"
-            />
+          <Input
+            placeholder="Search name, email, phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <Select value={filterDay || undefined} onValueChange={(val) => setFilterDay(val)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger>
                 <SelectValue placeholder="Day" />
               </SelectTrigger>
               <SelectContent>
@@ -539,7 +744,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
               </SelectContent>
             </Select>
             <Select value={filterShift || undefined} onValueChange={(val) => setFilterShift(val)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger>
                 <SelectValue placeholder="Shift" />
               </SelectTrigger>
               <SelectContent>
@@ -549,7 +754,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
               </SelectContent>
             </Select>
             <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger>
                 <SelectValue placeholder="Experience" />
               </SelectTrigger>
               <SelectContent>
@@ -559,7 +764,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
               </SelectContent>
             </Select>
             <Select value={filterAgeRange || undefined} onValueChange={(val) => setFilterAgeRange(val)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger>
                 <SelectValue placeholder="Age Range" />
               </SelectTrigger>
               <SelectContent>
@@ -571,13 +776,47 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                 })()}
               </SelectContent>
             </Select>
+            <Select value={filterJamatKhane || undefined} onValueChange={(val) => setFilterJamatKhane(val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Jamat Khane" />
+              </SelectTrigger>
+              <SelectContent>
+                {(() => {
+                  const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+                  return jamatQuestion?.options?.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                  ));
+                })()}
+              </SelectContent>
+            </Select>
+            <Select value={filterSkill || undefined} onValueChange={(val) => setFilterSkill(val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Skill" />
+              </SelectTrigger>
+              <SelectContent>
+                {(() => {
+                  const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+                  return skillQuestion?.options?.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                  ));
+                })()}
+              </SelectContent>
+            </Select>
+            <Select value={filterRole || undefined} onValueChange={(val) => setFilterRole(val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="volunteer">Volunteer</SelectItem>
+                <SelectItem value="lead">Lead</SelectItem>
+              </SelectContent>
+            </Select>
             <Input
               type="number"
               min="1"
               placeholder="Limit"
               value={filterCount}
               onChange={(e) => setFilterCount(e.target.value)}
-              className="w-24"
             />
           </div>
 
@@ -587,8 +826,9 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
               <p className="mt-4 text-muted-foreground">No volunteers found</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredVolunteers.map((volunteer) => {
+            <>
+              <div className="space-y-2">
+                {paginatedVolunteers.map((volunteer) => {
                 const shiftData = volunteer.shifts || {};
                 const totalShifts = getTotalShifts(volunteer);
                 const volunteerAssignments = assignments.filter((a) => a.volunteerId === volunteer.id);
@@ -610,7 +850,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                               <Badge variant="default" className="text-xs">Lead</Badge>
                             )}
                           </div>
-                          <div className="text-sm text-muted-foreground">{volunteer.email} • {volunteer.phone}</div>
+                          <div className="text-sm text-muted-foreground">{volunteer.email} • {formatPhone(volunteer.phone)}</div>
                         </div>
 
                         {(volunteer.ageRange?.length || volunteer.experiences?.length) ? (
@@ -663,7 +903,69 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                   </div>
                 );
               })}
-            </div>
+              </div>
+              
+              {totalPages > 1 && (
+                <div className="flex justify-center pt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage > 1) setCurrentPage(currentPage - 1);
+                          }}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setCurrentPage(page);
+                                }}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        } else if (page === currentPage - 2 || page === currentPage + 2) {
+                          return (
+                            <PaginationItem key={page}>
+                              <span className="px-4">...</span>
+                            </PaginationItem>
+                          );
+                        }
+                        return null;
+                      })}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                          }}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -709,6 +1011,46 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                 Save Assignments
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={detailDialog} onOpenChange={setDetailDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{detailDialogTitle}</DialogTitle>
+            <DialogDescription>
+              {detailDialogVolunteers.length} volunteer{detailDialogVolunteers.length !== 1 ? 's' : ''} found
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {detailDialogVolunteers.length === 0 ? (
+              <div className="py-12 text-center">
+                <Users className="mx-auto h-12 w-12 text-muted-foreground/30" />
+                <p className="mt-4 text-muted-foreground">No volunteers found</p>
+              </div>
+            ) : (
+              detailDialogVolunteers.map((volunteer) => (
+                <div key={volunteer.id} className="p-3 rounded-lg border">
+                  <div className="flex gap-3">
+                    <Avatar className="h-10 w-10 shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {getInitials(volunteer.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold">{volunteer.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {volunteer.email} • {formatPhone(volunteer.phone)}
+                      </div>
+                      {volunteer.role === "lead" && (
+                        <Badge variant="default" className="text-xs mt-1">Lead</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>

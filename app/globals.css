@@ -190,5 +190,194 @@
 }
 
 .gradient-bg {
-  background: linear-gradient(to bottom right, var(--background), var(--muted));
+  position: relative;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.gradient-bg::before,
+.gradient-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: float 20s ease-in-out infinite;
+  z-index: 0;
+}
+
+.gradient-bg::before {
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, oklch(from var(--primary) l c h / 0.4), transparent 70%);
+  top: -400px;
+  left: -200px;
+  animation: float 25s ease-in-out infinite;
+}
+
+.gradient-bg::after {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, oklch(from var(--primary) l c h / 0.3), transparent 70%);
+  bottom: -300px;
+  right: -200px;
+  animation: float-reverse 20s ease-in-out infinite;
+}
+
+.gradient-blob-1 {
+  position: absolute;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, oklch(from var(--primary) l c h / 0.25), transparent 70%);
+  border-radius: 50%;
+  filter: blur(100px);
+  top: 20%;
+  right: 10%;
+  animation: float-diagonal 30s ease-in-out infinite;
+  z-index: 0;
+}
+
+.gradient-blob-2 {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, oklch(from var(--primary) l c h / 0.35), transparent 70%);
+  border-radius: 50%;
+  filter: blur(90px);
+  bottom: 10%;
+  left: 15%;
+  animation: float-slow 35s ease-in-out infinite;
+  z-index: 0;
+}
+
+.gradient-blob-3 {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, oklch(from var(--primary) l c h / 0.2), transparent 70%);
+  border-radius: 50%;
+  filter: blur(110px);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse-scale 25s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(100px, -100px) scale(1.1);
+  }
+  50% {
+    transform: translate(200px, -50px) scale(1);
+  }
+  75% {
+    transform: translate(100px, 50px) scale(0.9);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(-100px, 100px) scale(0.9);
+  }
+  50% {
+    transform: translate(-200px, 50px) scale(1);
+  }
+  75% {
+    transform: translate(-100px, -50px) scale(1.1);
+  }
+}
+
+@keyframes float-diagonal {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate(-150px, 100px) rotate(120deg) scale(1.05);
+  }
+  66% {
+    transform: translate(100px, -80px) rotate(240deg) scale(0.95);
+  }
+}
+
+@keyframes float-slow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(80px, -120px) scale(1.15);
+  }
+}
+
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.3;
+  }
+}
+
+.gradient-content {
+  position: relative;
+  z-index: 1;
+}
+
+.gradient-header {
+  background: linear-gradient(
+    to right,
+    oklch(from var(--background) l c h / 0.5),
+    oklch(from var(--primary) l c h / 0.05),
+    oklch(from var(--background) l c h / 0.5)
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+.gradient-header::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, oklch(from var(--primary) l c h / 0.1), transparent 60%);
+  border-radius: 50%;
+  filter: blur(60px);
+  top: -150px;
+  right: 20%;
+  animation: float-header 15s ease-in-out infinite;
+}
+
+@keyframes float-header {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(100px);
+  }
+}
+
+.gradient-card {
+  background: linear-gradient(
+    135deg,
+    oklch(from var(--card) l c h / 0.95) 0%,
+    oklch(from var(--primary) l c h / 0.03) 50%,
+    oklch(from var(--card) l c h / 0.95) 100%
+  );
+}
+
+.gradient-border {
+  border-image: linear-gradient(
+    to right,
+    oklch(from var(--primary) l c h / 0.3),
+    oklch(from var(--chart-2) l c h / 0.3),
+    oklch(from var(--chart-1) l c h / 0.3)
+  ) 1;
 }

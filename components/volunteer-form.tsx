@@ -280,7 +280,7 @@ export function VolunteerForm() {
           if (question.type === "text") {
             updatedAnswers[question.id] = existing.name;
           } else if (question.type === "tel") {
-            updatedAnswers[question.id] = existing.phone;
+            updatedAnswers[question.id] = formatPhone(existing.phone);
           } else if (question.type === "email") {
             updatedAnswers[question.id] = existing.email;
           } else if (question.label.toLowerCase().includes("preference")) {
