@@ -222,6 +222,15 @@ export function AssignmentsTab({
     }
   }, [filterDay, filterShift]);
 
+  useEffect(() => {
+    if (assignLocationId) {
+      const selectedLocation = locations.find(l => l.id === assignLocationId);
+      if (selectedLocation?.description) {
+        setAssignDescription(selectedLocation.description);
+      }
+    }
+  }, [assignLocationId, locations]);
+
   const clearVolunteerSelection = () => {
     setSelectedVolunteers([]);
   };
