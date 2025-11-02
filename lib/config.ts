@@ -17,6 +17,7 @@ export interface FormConfig {
   shifts: string[];
   experiences: Array<{ id: string; label: string }>;
   questions: FormQuestion[];
+  acceptingSubmissions?: boolean;
 }
 
 export const DEFAULT_FORM_CONFIG: FormConfig = {
@@ -27,6 +28,7 @@ export const DEFAULT_FORM_CONFIG: FormConfig = {
     { id: "construction", label: "Construction" },
     { id: "decor", label: "Decor" },
   ],
+  acceptingSubmissions: true,
   questions: [
     {
       id: "name",

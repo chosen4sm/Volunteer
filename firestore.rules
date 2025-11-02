@@ -30,8 +30,9 @@ service cloud.firestore {
     
     // Public volunteer form submissions
     match /volunteers/{volunteerId} {
-      // Anyone can create a volunteer submission (accepts both 'shifts' and 'availability')
+      // Anyone can create a volunteer submission if accepting submissions
       allow create: if (
+        get(/databases/$(database)/documents/form-config/main).data.get('acceptingSubmissions', true) == true &&
         request.resource.data.keys().hasAll(['name', 'phone', 'email', 'submittedAt']) &&
         request.resource.data.name is string && request.resource.data.name.size() > 0 &&
         request.resource.data.phone is string && request.resource.data.phone.size() > 0 &&

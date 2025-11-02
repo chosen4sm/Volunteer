@@ -37,6 +37,7 @@ export function VolunteerForm() {
   const [existingVolunteerId, setExistingVolunteerId] = useState<string | null>(null);
   const [showExistingMessage, setShowExistingMessage] = useState(false);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [allowUpdateMode, setAllowUpdateMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -103,6 +104,39 @@ export function VolunteerForm() {
     );
   }
 
+  const isAcceptingSubmissions = formConfig.acceptingSubmissions !== false;
+
+  if (!isAcceptingSubmissions && !existingVolunteerId && !allowUpdateMode) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center space-y-6 max-w-2xl"
+        >
+          <div className="space-y-4">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
+              Submissions Closed
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              We are not currently accepting new volunteer submissions. If you have already submitted, you can still update your information by entering your phone number or email.
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              setAllowUpdateMode(true);
+              setCurrentQuestionIndex(formConfig.questions.findIndex(q => q.type === "tel"));
+            }}
+            size="lg"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-8"
+          >
+            Update Existing Submission
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
   const currentQuestion = formConfig.questions[currentQuestionIndex];
   const shiftsQuestionIndex = formConfig.questions.findIndex(q => q.type === "shifts");
   const totalQuestions = formConfig.questions.length + (shiftsQuestionIndex >= 0 ? formConfig.days.length - 1 : 0) + 1; // -1 because shifts question expands into days, +1 for review
@@ -164,6 +198,10 @@ export function VolunteerForm() {
     setIsLoading(true);
     setError(null);
     try {
+      if (!isAcceptingSubmissions && !existingVolunteerId) {
+        throw new Error("New submissions are currently closed. Please enter your phone number or email from your previous submission.");
+      }
+
       // Find the questions by type instead of hardcoded IDs
       const nameQuestion = formConfig.questions.find(q => q.type === "text");
       const phoneQuestion = formConfig.questions.find(q => q.type === "tel");
@@ -448,6 +486,9 @@ export function VolunteerForm() {
       {currentQuestionIndex < formConfig.questions.length && (
         <div className="fixed top-6 left-6 z-40">
           <h2 className="text-xl font-bold text-primary">Mulakat Site Setup Sign-in</h2>
+          {!isAcceptingSubmissions && allowUpdateMode && !existingVolunteerId && (
+            <p className="text-sm text-muted-foreground mt-1">Update mode - enter your existing info</p>
+          )}
         </div>
       )}
 

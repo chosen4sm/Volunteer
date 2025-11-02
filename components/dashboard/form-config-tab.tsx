@@ -339,6 +339,34 @@ export function FormConfigTab() {
         </div>
       </div>
 
+      <Card className="border-2 border-primary/20 bg-primary/5">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <Label htmlFor="accepting-submissions" className="text-base font-semibold cursor-pointer">
+                Accept New Submissions
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {editedConfig.acceptingSubmissions !== false 
+                  ? "New volunteers can submit the form"
+                  : "New submissions are disabled, but existing volunteers can still update"}
+              </p>
+            </div>
+            <Checkbox
+              id="accepting-submissions"
+              checked={editedConfig.acceptingSubmissions !== false}
+              onCheckedChange={(checked) => {
+                setEditedConfig({
+                  ...editedConfig,
+                  acceptingSubmissions: checked as boolean,
+                });
+              }}
+              className="w-6 h-6 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-4 gap-2">
         {[
           { id: "experiences", label: "Experiences", count: editedConfig.experiences.length },
