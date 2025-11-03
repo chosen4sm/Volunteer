@@ -990,7 +990,7 @@ Task: *${task.name}*`;
                                   assignment: assignment,
                                 };
                               })
-                              .filter(Boolean);
+                              .filter((v): v is NonNullable<typeof v> => v !== null);
 
                             if (volunteers_list.length > 0) {
                               const firstAssignment = taskAssignments[0];

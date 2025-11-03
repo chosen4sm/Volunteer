@@ -79,7 +79,7 @@ export default function VolunteerPortalPage() {
 
   const handleCheckIn = async (
     assignmentId: string,
-    materialsIssued: { gloves: boolean; glasses: boolean }
+    materialsIssued: { [key: string]: boolean }
   ) => {
     if (!volunteer) return;
 
@@ -98,7 +98,7 @@ export default function VolunteerPortalPage() {
 
   const handleCheckOut = async (
     assignmentId: string,
-    materialsReturned: { gloves: boolean; glasses: boolean }
+    materialsReturned: { [key: string]: boolean }
   ) => {
     if (!volunteer) return;
 
