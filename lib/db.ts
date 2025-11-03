@@ -15,11 +15,20 @@ import {
 import { db } from "./firebase";
 import { normalizePhone } from "./utils";
 
+export interface CheckInRecord {
+  assignmentId: string;
+  checkInTime?: Timestamp;
+  checkOutTime?: Timestamp;
+  materialsIssued?: { [key: string]: boolean };
+  materialsReturned?: { [key: string]: boolean };
+}
+
 export interface Volunteer {
   id: string;
   name: string;
   phone: string;
   email: string;
+  uniqueCode?: string;
   role?: "volunteer" | "lead";
   leadTaskIds?: string[];
   experiences?: string[];
@@ -27,6 +36,7 @@ export interface Volunteer {
   jamatKhane?: string[];
   specialSkill?: string;
   shifts: { [key: string]: string[] };
+  checkIns?: CheckInRecord[];
   submittedAt: Timestamp;
 }
 
@@ -43,6 +53,7 @@ export interface Task {
   locationId?: string;
   name: string;
   description?: string;
+  materials?: string[];
   createdAt: Timestamp;
 }
 
@@ -54,6 +65,7 @@ export interface Assignment {
   shift?: string;
   day?: string;
   description?: string;
+  status?: "pending" | "checked-in" | "completed";
   createdAt: Timestamp;
 }
 
@@ -92,6 +104,16 @@ export async function getVolunteerByPhone(phone: string): Promise<Volunteer | nu
     if (normalizePhone(volunteerPhone) === normalizedPhone) {
       return { id: doc.id, ...doc.data() } as Volunteer;
     }
+  }
+  return null;
+}
+
+export async function getVolunteerByCode(code: string): Promise<Volunteer | null> {
+  const q = query(collection(db, "volunteers"), where("uniqueCode", "==", code));
+  const snapshot = await getDocs(q);
+  if (!snapshot.empty) {
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as Volunteer;
   }
   return null;
 }
@@ -252,7 +274,6 @@ export async function migrateJamatKhaneField(): Promise<{ success: number; skipp
         });
         success++;
       } else if (oldFieldValue && volunteer.jamatKhane) {
-        // Already migrated, just delete old field
         const docRef = doc(db, "volunteers", volunteer.id);
         await updateDoc(docRef, {
           "select-your-primary-jamat-khane": deleteField()
@@ -263,6 +284,156 @@ export async function migrateJamatKhaneField(): Promise<{ success: number; skipp
       }
     } catch (error) {
       console.error(`Error migrating volunteer ${volunteer.id}:`, error);
+      errors++;
+    }
+  }
+
+  return { success, skipped, errors };
+}
+
+export async function checkInVolunteer(
+  assignmentId: string,
+  volunteerId: string,
+  materialsIssued?: { [key: string]: boolean }
+): Promise<void> {
+  const volunteer = await getVolunteer(volunteerId);
+  if (!volunteer) throw new Error("Volunteer not found");
+
+  const checkIns = volunteer.checkIns || [];
+  const existingCheckInIndex = checkIns.findIndex(ci => ci.assignmentId === assignmentId);
+
+  const checkInRecord: CheckInRecord = {
+    assignmentId,
+    checkInTime: Timestamp.now(),
+    materialsIssued,
+  };
+
+  if (existingCheckInIndex >= 0) {
+    checkIns[existingCheckInIndex] = {
+      ...checkIns[existingCheckInIndex],
+      ...checkInRecord,
+    };
+  } else {
+    checkIns.push(checkInRecord);
+  }
+
+  await updateVolunteer(volunteerId, { checkIns });
+  await updateAssignmentStatus(assignmentId, "checked-in");
+}
+
+export async function checkOutVolunteer(
+  assignmentId: string,
+  volunteerId: string,
+  materialsReturned?: { [key: string]: boolean }
+): Promise<void> {
+  const volunteer = await getVolunteer(volunteerId);
+  if (!volunteer) throw new Error("Volunteer not found");
+
+  const checkIns = volunteer.checkIns || [];
+  const checkInIndex = checkIns.findIndex(ci => ci.assignmentId === assignmentId);
+
+  if (checkInIndex >= 0) {
+    checkIns[checkInIndex] = {
+      ...checkIns[checkInIndex],
+      checkOutTime: Timestamp.now(),
+      materialsReturned,
+    };
+  } else {
+    checkIns.push({
+      assignmentId,
+      checkOutTime: Timestamp.now(),
+      materialsReturned,
+    });
+  }
+
+  await updateVolunteer(volunteerId, { checkIns });
+  await updateAssignmentStatus(assignmentId, "completed");
+}
+
+export async function getVolunteerCheckIns(
+  volunteerId: string,
+  dateRange?: { start: Date; end: Date }
+): Promise<CheckInRecord[]> {
+  const volunteer = await getVolunteer(volunteerId);
+  if (!volunteer || !volunteer.checkIns) return [];
+
+  let checkIns = volunteer.checkIns;
+
+  if (dateRange) {
+    checkIns = checkIns.filter((ci) => {
+      if (!ci.checkInTime) return false;
+      const checkInDate = ci.checkInTime.toDate();
+      return checkInDate >= dateRange.start && checkInDate <= dateRange.end;
+    });
+  }
+
+  return checkIns;
+}
+
+export async function updateAssignmentStatus(
+  assignmentId: string,
+  status: "pending" | "checked-in" | "completed"
+): Promise<void> {
+  const docRef = doc(db, "assignments", assignmentId);
+  await updateDoc(docRef, { status });
+}
+
+export async function updateAssignment(
+  id: string,
+  data: Partial<Assignment>
+): Promise<void> {
+  const docRef = doc(db, "assignments", id);
+  await updateDoc(docRef, data);
+}
+
+export async function generateUniqueCodesForExistingVolunteers(): Promise<{
+  success: number;
+  skipped: number;
+  errors: number;
+}> {
+  const volunteers = await getVolunteers();
+  let success = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  const existingCodes = new Set<string>();
+  volunteers.forEach((v) => {
+    if (v.uniqueCode) {
+      existingCodes.add(v.uniqueCode);
+    }
+  });
+
+  for (const volunteer of volunteers) {
+    try {
+      if (volunteer.uniqueCode) {
+        skipped++;
+        continue;
+      }
+
+      let newCode: string;
+      let attempts = 0;
+      const maxAttempts = 100;
+
+      do {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        newCode = "";
+        for (let i = 0; i < 8; i++) {
+          newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        attempts++;
+      } while (existingCodes.has(newCode) && attempts < maxAttempts);
+
+      if (attempts >= maxAttempts) {
+        throw new Error("Could not generate unique code");
+      }
+
+      existingCodes.add(newCode);
+
+      const docRef = doc(db, "volunteers", volunteer.id);
+      await updateDoc(docRef, { uniqueCode: newCode });
+      success++;
+    } catch (error) {
+      console.error(`Error generating code for volunteer ${volunteer.id}:`, error);
       errors++;
     }
   }

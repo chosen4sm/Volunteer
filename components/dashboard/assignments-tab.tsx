@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users, UserPlus, Trash2, AlertTriangle, MessageCircle } from "lucide-react";
+import { Users, UserPlus, Trash2, AlertTriangle, MessageCircle, Link2, Copy } from "lucide-react";
 import { toast } from "sonner";
 import {
   createAssignment,
@@ -61,9 +61,12 @@ export function AssignmentsTab({
   const [assignVolunteerId, setAssignVolunteerId] = useState("");
   const [assignLocationId, setAssignLocationId] = useState("");
   const [assignTaskId, setAssignTaskId] = useState("");
+  const [assignTaskIds, setAssignTaskIds] = useState<string[]>([]);
   const [assignShift, setAssignShift] = useState("");
   const [assignDay, setAssignDay] = useState("");
   const [assignDescription, setAssignDescription] = useState("");
+  const [sendEmailNotifications, setSendEmailNotifications] = useState(true);
+  const [sendWhatsAppMessage, setSendWhatsAppMessage] = useState(false);
   const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
 
   useEffect(() => {
@@ -170,29 +173,137 @@ export function AssignmentsTab({
   };
 
   const handleBulkAssignment = async () => {
-    if (selectedVolunteers.length === 0 || !assignTaskId) {
-      toast.error("Please select volunteers and task");
+    if (selectedVolunteers.length === 0 || assignTaskIds.length === 0) {
+      toast.error("Please select volunteers and at least one task");
       return;
     }
     try {
-      const promises = selectedVolunteers.map((volunteerId) => {
-        const assignmentData: Partial<Assignment> = {
-          volunteerId,
-          taskId: assignTaskId,
-          shift: assignShift || undefined,
-          day: assignDay || undefined,
-          description: assignDescription || undefined,
-        };
-        if (assignLocationId) {
-          assignmentData.locationId = assignLocationId;
+      const promises = [];
+      for (const volunteerId of selectedVolunteers) {
+        for (const taskId of assignTaskIds) {
+          const assignmentData: Partial<Assignment> = {
+            volunteerId,
+            taskId,
+            shift: assignShift || undefined,
+            day: assignDay || undefined,
+            description: assignDescription || undefined,
+            status: "pending",
+          };
+          if (assignLocationId) {
+            assignmentData.locationId = assignLocationId;
+          }
+          promises.push(createAssignment(assignmentData as Omit<Assignment, "id" | "createdAt">));
         }
-        return createAssignment(assignmentData as Omit<Assignment, "id" | "createdAt">);
-      });
+      }
       await Promise.all(promises);
-      toast.success(`${selectedVolunteers.length} volunteer(s) assigned to task`);
+      const totalAssignments = selectedVolunteers.length * assignTaskIds.length;
+      toast.success(`Created ${totalAssignments} assignment(s)`, {
+        description: `${selectedVolunteers.length} volunteer(s) × ${assignTaskIds.length} task(s)`,
+      });
+
+      if (sendEmailNotifications) {
+        const emailAssignments = [];
+        for (const volunteerId of selectedVolunteers) {
+          const volunteer = volunteers.find((v) => v.id === volunteerId);
+          if (!volunteer || !volunteer.email || !volunteer.uniqueCode) continue;
+
+          for (const taskId of assignTaskIds) {
+            const task = tasks.find((t) => t.id === taskId);
+            if (!task) continue;
+
+            const location = assignLocationId
+              ? locations.find((l) => l.id === assignLocationId)
+              : task.locationId
+              ? locations.find((l) => l.id === task.locationId)
+              : undefined;
+
+            emailAssignments.push({
+              to: volunteer.email,
+              volunteerName: volunteer.name,
+              taskName: task.name,
+              locationName: location?.name,
+              day: assignDay || undefined,
+              shift: assignShift || undefined,
+              description: assignDescription || undefined,
+              uniqueCode: volunteer.uniqueCode,
+            });
+          }
+        }
+
+        if (emailAssignments.length > 0) {
+          try {
+            const response = await fetch("/api/send-assignment-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ assignments: emailAssignments }),
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              toast.success(`Sent ${result.successful} email notification(s)`, {
+                description: result.failed > 0 ? `${result.failed} failed to send` : undefined,
+              });
+            } else {
+              toast.error("Failed to send email notifications");
+            }
+          } catch (emailError) {
+            console.error("Error sending emails:", emailError);
+            toast.error("Failed to send email notifications");
+          }
+        }
+      }
+
+      if (sendWhatsAppMessage) {
+        const messages = [];
+        for (const volunteerId of selectedVolunteers) {
+          const volunteer = volunteers.find((v) => v.id === volunteerId);
+          if (!volunteer) continue;
+
+          const taskNames = assignTaskIds
+            .map((taskId) => {
+              const task = tasks.find((t) => t.id === taskId);
+              return task?.name;
+            })
+            .filter(Boolean)
+            .join(", ");
+
+          const scheduleText = assignDay && assignShift
+            ? `${assignDay} - ${assignShift}`
+            : assignDay || assignShift || "TBD";
+
+          let message = `*USA Visit Volunteer Assignment*\n\n`;
+          message += `Hi ${volunteer.name}!\n\n`;
+          message += `You have been assigned to:\n`;
+          message += `*${taskNames}*\n`;
+          message += `Schedule: *${scheduleText}*\n\n`;
+          message += `Please check your email for complete details and your personal volunteer portal link.\n\n`;
+          message += `Thank you for volunteering!`;
+
+          messages.push({
+            name: volunteer.name,
+            phone: volunteer.phone,
+            message: message,
+          });
+        }
+
+        if (messages.length > 0) {
+          const combinedMessage = messages
+            .map((m) => `*${m.name}* (${m.phone}):\n${m.message}`)
+            .join("\n\n---\n\n");
+
+          const encodedMessage = encodeURIComponent(combinedMessage);
+          const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+
+          window.open(whatsappUrl, "_blank");
+          toast.success("Opening WhatsApp", {
+            description: `Prepared messages for ${messages.length} volunteer(s)`,
+          });
+        }
+      }
+
       setSelectedVolunteers([]);
       setAssignLocationId("");
-      setAssignTaskId("");
+      setAssignTaskIds([]);
       setAssignShift("");
       setAssignDay("");
       setAssignDescription("");
@@ -223,13 +334,13 @@ export function AssignmentsTab({
   }, [filterDay, filterShift]);
 
   useEffect(() => {
-    if (assignLocationId) {
+    if (assignLocationId && !assignDescription) {
       const selectedLocation = locations.find(l => l.id === assignLocationId);
       if (selectedLocation?.description) {
         setAssignDescription(selectedLocation.description);
       }
     }
-  }, [assignLocationId, locations]);
+  }, [assignLocationId, locations, assignDescription]);
 
   const clearVolunteerSelection = () => {
     setSelectedVolunteers([]);
@@ -343,18 +454,19 @@ export function AssignmentsTab({
       ? assignment.shift
       : "No schedule specified";
 
-    let message = `✅ Assignment Confirmation
+    let message = `Assignment Confirmation
 
-👤 *${volunteer.name}*
-📞 ${volunteer.phone}
+*${volunteer.name}*
+${volunteer.phone}
 
-🎯 Task: *${task.name}*`;
+Task: *${task.name}*`;
 
     if (location) {
-      message += `\n📍 Location: *${location.name}*`;
+      message += `\nLocation: *${location.name}*`;
     }
 
-    message += `\n📅 Schedule: *${scheduleText}*`;
+    message += `\nSchedule: *${scheduleText}*`;
+    message += `\n\nPlease check your email for complete details.`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
@@ -362,6 +474,45 @@ export function AssignmentsTab({
     window.open(whatsappUrl, "_blank");
     toast.success("Opening WhatsApp", {
       description: "Message is ready to send to your group",
+    });
+  };
+
+  const copyVolunteerLink = (volunteer: Volunteer) => {
+    if (!volunteer.uniqueCode) {
+      toast.error("No unique code found", {
+        description: "This volunteer doesn't have a unique code yet",
+      });
+      return;
+    }
+    const link = `${window.location.origin}/volunteer/${volunteer.uniqueCode}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Link copied!", {
+      description: `Copied link for ${volunteer.name}`,
+    });
+  };
+
+  const copyAllSelectedLinks = () => {
+    const links = selectedVolunteers
+      .map((id) => {
+        const volunteer = volunteers.find((v) => v.id === id);
+        if (volunteer?.uniqueCode) {
+          return `${volunteer.name}: ${window.location.origin}/volunteer/${volunteer.uniqueCode}`;
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    if (!links) {
+      toast.error("No links to copy", {
+        description: "Selected volunteers don't have unique codes",
+      });
+      return;
+    }
+
+    navigator.clipboard.writeText(links);
+    toast.success("All links copied!", {
+      description: `Copied ${selectedVolunteers.length} volunteer link(s)`,
     });
   };
 
@@ -466,9 +617,15 @@ export function AssignmentsTab({
                 Select All
               </Button>
               {selectedVolunteers.length > 0 && (
-                <Button size="sm" variant="outline" onClick={clearVolunteerSelection}>
-                  Clear ({selectedVolunteers.length})
-                </Button>
+                <>
+                  <Button size="sm" variant="outline" onClick={copyAllSelectedLinks}>
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy Links
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={clearVolunteerSelection}>
+                    Clear ({selectedVolunteers.length})
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -570,13 +727,14 @@ export function AssignmentsTab({
         <Card className="border-2 border-primary">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''}</CardTitle>
-            <CardDescription>Choose task and schedule</CardDescription>
+            <CardDescription>Select tasks and schedule</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 grid-cols-2">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Location (optional)</Label>
               <Select value={assignLocationId} onValueChange={(val) => setAssignLocationId(val || "")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Location (optional)" />
+                  <SelectValue placeholder="Filter by location" />
                 </SelectTrigger>
                 <SelectContent>
                   {locations.map((l) => (
@@ -584,20 +742,40 @@ export function AssignmentsTab({
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={assignTaskId} onValueChange={setAssignTaskId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Task *" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tasks
-                    .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
-                    .map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} {t.locationId ? `(${locations.find(l => l.id === t.locationId)?.name})` : ''}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-medium">Tasks *</Label>
+                <div className="text-xs text-muted-foreground">
+                  {assignTaskIds.length} selected
+                </div>
+              </div>
+              <div className="border rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                {tasks
+                  .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
+                  .map((task) => {
+                    const location = locations.find(l => l.id === task.locationId);
+                    return (
+                      <div key={task.id} className="flex items-start space-x-3 p-2 hover:bg-muted rounded">
+                        <Checkbox
+                          id={`task-${task.id}`}
+                          checked={assignTaskIds.includes(task.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setAssignTaskIds([...assignTaskIds, task.id]);
+                            } else {
+                              setAssignTaskIds(assignTaskIds.filter(id => id !== task.id));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`task-${task.id}`} className="flex-1 cursor-pointer text-sm">
+                          <div className="font-medium">{task.name}</div>
+                          {location && <div className="text-xs text-muted-foreground">{location.name}</div>}
+                        </label>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
             <div className="grid gap-3 grid-cols-2">
               <Select value={assignDay || undefined} onValueChange={(val) => setAssignDay(val || "")}>
@@ -626,9 +804,32 @@ export function AssignmentsTab({
               onChange={(e) => setAssignDescription(e.target.value)}
               placeholder="Description (optional) - e.g., Special instructions or notes"
             />
-            <Button onClick={handleBulkAssignment} className="w-full" disabled={!assignTaskId}>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="send-email-notifications"
+                  checked={sendEmailNotifications}
+                  onCheckedChange={(checked) => setSendEmailNotifications(!!checked)}
+                />
+                <Label htmlFor="send-email-notifications" className="text-sm font-normal cursor-pointer">
+                  Send email notifications to volunteers
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="send-whatsapp-message"
+                  checked={sendWhatsAppMessage}
+                  onCheckedChange={(checked) => setSendWhatsAppMessage(!!checked)}
+                />
+                <Label htmlFor="send-whatsapp-message" className="text-sm font-normal cursor-pointer flex items-center gap-1.5">
+                  <MessageCircle className="w-4 h-4 text-green-600" />
+                  Generate WhatsApp message
+                </Label>
+              </div>
+            </div>
+            <Button onClick={handleBulkAssignment} className="w-full" disabled={assignTaskIds.length === 0}>
               <UserPlus className="w-4 h-4 mr-2" />
-              Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''}
+              Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''} to {assignTaskIds.length} Task{assignTaskIds.length !== 1 ? 's' : ''}
             </Button>
           </CardContent>
         </Card>
@@ -774,7 +975,55 @@ export function AssignmentsTab({
                           {location?.name || "No location"}
                         </p>
                       </div>
-                      <Badge variant="secondary">{taskAssignments.length}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const volunteers_list = taskAssignments
+                              .map((assignment) => {
+                                const volunteer = volunteers.find((v) => v.id === assignment.volunteerId);
+                                if (!volunteer) return null;
+                                return {
+                                  name: volunteer.name,
+                                  phone: volunteer.phone,
+                                  assignment: assignment,
+                                };
+                              })
+                              .filter(Boolean);
+
+                            if (volunteers_list.length > 0) {
+                              const firstAssignment = taskAssignments[0];
+                              const scheduleText = firstAssignment.day && firstAssignment.shift
+                                ? `${firstAssignment.day} - ${firstAssignment.shift}`
+                                : firstAssignment.day || firstAssignment.shift || "TBD";
+
+                              let message = `The following have been assigned this volunteer task: Please check your email for complete details.\n\n`;
+                              message += `*${task.name}*\n`;
+                              if (location) {
+                                message += `${location.name}\n`;
+                              }
+                              message += `${scheduleText}\n\n`;
+                              volunteers_list.forEach((v, idx) => {
+                                message += `${idx + 1}. ${v.name} - ${v.phone}\n`;
+                              });
+
+                              const encodedMessage = encodeURIComponent(message);
+                              const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+
+                              window.open(whatsappUrl, "_blank");
+                              toast.success("Opening WhatsApp", {
+                                description: `Prepared message for ${volunteers_list.length} volunteer(s)`,
+                              });
+                            }
+                          }}
+                          className="gap-1.5"
+                        >
+                          <MessageCircle className="w-4 h-4 text-green-600" />
+                          WhatsApp All
+                        </Button>
+                        <Badge variant="secondary">{taskAssignments.length}</Badge>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       {taskAssignments.map((assignment) => {
@@ -795,6 +1044,15 @@ export function AssignmentsTab({
                               )}
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyVolunteerLink(volunteer)}
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-600"
+                                title="Copy volunteer link"
+                              >
+                                <Link2 className="w-4 h-4" />
+                              </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"

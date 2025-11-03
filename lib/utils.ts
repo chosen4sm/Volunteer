@@ -25,6 +25,15 @@ export function formatPhone(phone: string): string {
   return `(${normalized.slice(0, 3)}) ${normalized.slice(3, 6)}-${normalized.slice(6, 10)}`;
 }
 
+export function generateUniqueVolunteerCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
 export interface VolunteerFormData {
   name: string;
   phone: string;
@@ -38,11 +47,13 @@ export interface VolunteerFormData {
 export async function submitVolunteerForm(data: Omit<VolunteerFormData, "submittedAt"> & Record<string, string | string[] | Record<string, string[]>>) {
   try {
     const volunteersRef = collection(db, "volunteers");
+    const uniqueCode = generateUniqueVolunteerCode();
     const docRef = await addDoc(volunteersRef, {
       ...data,
+      uniqueCode,
       submittedAt: Timestamp.now(),
     });
-    return { success: true, id: docRef.id };
+    return { success: true, id: docRef.id, uniqueCode };
   } catch (error) {
     console.error("Error submitting form:", error);
     throw error;

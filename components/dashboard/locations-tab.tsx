@@ -13,7 +13,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   createLocation,
@@ -43,6 +44,8 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
   const [locationAddress, setLocationAddress] = useState("");
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
+  const [taskMaterials, setTaskMaterials] = useState("");
+  const [taskMaterialsList, setTaskMaterialsList] = useState<string[]>([]);
 
   const handleCreateLocation = async () => {
     if (!locationName.trim()) {
@@ -96,9 +99,10 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
     }
     try {
       if (editingTask) {
-        const updateData: { name: string; description: string; locationId?: string } = {
+        const updateData: { name: string; description: string; materials?: string[]; locationId?: string } = {
           name: taskName,
           description: taskDescription,
+          materials: taskMaterialsList.length > 0 ? taskMaterialsList : undefined,
         };
         if (editingTask.locationId) {
           updateData.locationId = editingTask.locationId;
@@ -106,9 +110,10 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
         await updateTask(editingTask.id, updateData);
         toast.success("Task updated");
       } else {
-        const createData: { name: string; description: string } = {
+        const createData: { name: string; description: string; materials?: string[] } = {
           name: taskName,
           description: taskDescription,
+          materials: taskMaterialsList.length > 0 ? taskMaterialsList : undefined,
         };
         await createTask(createData);
         toast.success("Task created");
@@ -116,6 +121,8 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
       setTaskDialogOpen(false);
       setTaskName("");
       setTaskDescription("");
+      setTaskMaterials("");
+      setTaskMaterialsList([]);
       setEditingTask(null);
       onDataChange();
     } catch (error) {
@@ -148,7 +155,21 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
     setEditingTask(task);
     setTaskName(task.name);
     setTaskDescription(task.description || "");
+    setTaskMaterialsList(task.materials || []);
+    setTaskMaterials("");
     setTaskDialogOpen(true);
+  };
+
+  const addMaterial = () => {
+    const material = taskMaterials.trim();
+    if (material && !taskMaterialsList.includes(material)) {
+      setTaskMaterialsList([...taskMaterialsList, material]);
+      setTaskMaterials("");
+    }
+  };
+
+  const removeMaterial = (material: string) => {
+    setTaskMaterialsList(taskMaterialsList.filter(m => m !== material));
   };
 
   return (
@@ -268,6 +289,8 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     setEditingTask(null);
                     setTaskName("");
                     setTaskDescription("");
+                    setTaskMaterials("");
+                    setTaskMaterialsList([]);
                   }}
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -297,6 +320,47 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                       onChange={(e) => setTaskDescription(e.target.value)}
                       placeholder="e.g., Set up chairs and tables"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="task-materials">Materials (optional)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="task-materials"
+                        value={taskMaterials}
+                        onChange={(e) => setTaskMaterials(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addMaterial();
+                          }
+                        }}
+                        placeholder="e.g., Gloves, Hard Hat"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={addMaterial}
+                        disabled={!taskMaterials.trim()}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    {taskMaterialsList.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {taskMaterialsList.map((material) => (
+                          <Badge key={material} variant="secondary" className="gap-1">
+                            {material}
+                            <button
+                              type="button"
+                              onClick={() => removeMaterial(material)}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <Button onClick={handleCreateTask} className="w-full">
                     {editingTask ? "Update" : "Create"} Task

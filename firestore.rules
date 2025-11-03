@@ -41,13 +41,17 @@ service cloud.firestore {
         request.resource.data.submittedAt is timestamp
       );
       
-      // Anyone can read volunteers (needed to check if email exists)
+      // Anyone can read volunteers (needed for volunteer portal and email existence check)
       allow read: if true;
       
-      // Anyone can update their own volunteer record (but can't change email)
-      allow update: if request.resource.data.email == resource.data.email &&
-                      request.resource.data.name is string && request.resource.data.name.size() > 0 &&
-                      request.resource.data.phone is string && request.resource.data.phone.size() > 0;
+      // Volunteers can update their own checkIns array through the portal
+      // or anyone can update basic info (but can't change email)
+      allow update: if (
+        (request.resource.data.email == resource.data.email &&
+         request.resource.data.name is string && request.resource.data.name.size() > 0 &&
+         request.resource.data.phone is string && request.resource.data.phone.size() > 0) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkIns']))
+      );
       
       // Only admins can delete volunteers
       allow delete: if isAdmin();
@@ -55,20 +59,29 @@ service cloud.firestore {
     
     // Locations (categories)
     match /locations/{locationId} {
-      // Only admins can manage locations
-      allow read, create, update, delete: if isAdmin();
+      // Anyone can read locations (needed for volunteer portal)
+      allow read: if true;
+      // Only admins can create, update, delete
+      allow create, update, delete: if isAdmin();
     }
     
     // Tasks (sub-categories under locations)
     match /tasks/{taskId} {
-      // Only admins can manage tasks
-      allow read, create, update, delete: if isAdmin();
+      // Anyone can read tasks (needed for volunteer portal)
+      allow read: if true;
+      // Only admins can create, update, delete
+      allow create, update, delete: if isAdmin();
     }
     
     // Assignments (manual volunteer-to-task assignments)
     match /assignments/{assignmentId} {
-      // Only admins can manage assignments
-      allow read, create, update, delete: if isAdmin();
+      // Anyone can read assignments (needed for volunteer portal)
+      allow read: if true;
+      // Only admins can create, delete
+      allow create, delete: if isAdmin();
+      // Admins can update all fields, or anyone can update status field only
+      allow update: if isAdmin() || 
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
     }
   }
 }

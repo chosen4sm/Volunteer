@@ -19,7 +19,7 @@ import { useAuth } from "@/components/auth-provider";
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { signOut } from "firebase/auth";
-import { LogOut, Users, AlertCircle, User, MapPin, UserPlus, Database, Trash2, AlertTriangle } from "lucide-react";
+import { LogOut, Users, AlertCircle, User, MapPin, UserPlus, Database, Trash2, AlertTriangle, History } from "lucide-react";
 import { toast } from "sonner";
 import {
   getVolunteers,
@@ -29,6 +29,7 @@ import {
   nukeAllData,
   nukeVolunteersAndAssignments,
   createLocation,
+  generateUniqueCodesForExistingVolunteers,
   type Volunteer,
   type Location,
   type Task,
@@ -39,8 +40,9 @@ import { OverviewTab } from "@/components/dashboard/overview-tab";
 import { LocationsTab } from "@/components/dashboard/locations-tab";
 import { AssignmentsTab } from "@/components/dashboard/assignments-tab";
 import { FormConfigTab } from "@/components/dashboard/form-config-tab";
+import { HistoryTab } from "@/components/dashboard/history-tab";
 
-type TabType = "overview" | "locations" | "assignments" | "form-config" | "dev";
+type TabType = "overview" | "locations" | "assignments" | "history" | "form-config" | "dev";
 
 const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
 const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
@@ -57,6 +59,7 @@ export default function DashboardPage() {
   const [isSeedingHalls, setIsSeedingHalls] = useState(false);
   const [isNuking, setIsNuking] = useState(false);
   const [isPopulatingJamatOptions, setIsPopulatingJamatOptions] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -314,6 +317,37 @@ export default function DashboardPage() {
     }
   };
 
+  const handleGenerateUniqueCodes = async () => {
+    if (isMigrating) return;
+
+    const confirmed = confirm(
+      "Generate unique codes for all volunteers that don't have one yet. Continue?"
+    );
+
+    if (!confirmed) return;
+
+    setIsMigrating(true);
+    toast.info("Generating unique codes...", {
+      description: "Creating codes for existing volunteers.",
+    });
+
+    try {
+      const result = await generateUniqueCodesForExistingVolunteers();
+      await fetchAllData();
+
+      toast.success("Migration complete!", {
+        description: `Generated ${result.success} codes, skipped ${result.skipped}, errors: ${result.errors}`,
+      });
+    } catch (error) {
+      console.error("Error generating codes:", error);
+      toast.error("Migration failed", {
+        description: "Failed to generate unique codes. Check console for details.",
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -431,6 +465,17 @@ export default function DashboardPage() {
               Assignments
             </button>
             <button
+              onClick={() => setActiveTab("history")}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === "history"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <History className="w-4 h-4 inline mr-2" />
+              History
+            </button>
+            <button
               onClick={() => setActiveTab("form-config")}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === "form-config"
@@ -485,6 +530,15 @@ export default function DashboardPage() {
               tasks={tasks}
               assignments={assignments}
               onDataChange={fetchAllData}
+            />
+          )}
+
+          {activeTab === "history" && (
+            <HistoryTab
+              volunteers={volunteers}
+              locations={locations}
+              tasks={tasks}
+              assignments={assignments}
             />
           )}
 
@@ -573,6 +627,22 @@ export default function DashboardPage() {
                     >
                       <MapPin className="w-4 h-4" />
                       {isPopulatingJamatOptions ? "Populating..." : "Populate Jamat Khane Options"}
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-6 space-y-4">
+                    <h3 className="text-lg font-semibold">Migrations</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Run data migrations for existing volunteers.
+                    </p>
+                    <Button
+                      onClick={handleGenerateUniqueCodes}
+                      disabled={isMigrating}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <Database className="w-4 h-4" />
+                      {isMigrating ? "Migrating..." : "Generate Unique Codes"}
                     </Button>
                   </div>
 

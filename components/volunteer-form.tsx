@@ -485,7 +485,7 @@ export function VolunteerForm() {
       {/* Logo/Title */}
       {currentQuestionIndex < formConfig.questions.length && (
         <div className="fixed top-6 left-6 z-40">
-          <h2 className="text-xl font-bold text-primary">Mulakat Site Setup Sign-in</h2>
+          <h2 className="text-xl font-bold text-primary">Mulaqat Site Setup Sign-in</h2>
           {!isAcceptingSubmissions && allowUpdateMode && !existingVolunteerId && (
             <p className="text-sm text-muted-foreground mt-1">Update mode - enter your existing info</p>
           )}
