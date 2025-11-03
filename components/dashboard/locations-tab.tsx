@@ -99,9 +99,9 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
     }
     try {
       if (editingTask) {
-        const updateData: { name: string; description: string; materials?: string[]; locationId?: string } = {
+        const updateData: { name: string; description?: string; materials?: string[]; locationId?: string } = {
           name: taskName,
-          description: taskDescription,
+          description: taskDescription.trim() || undefined,
           materials: taskMaterialsList.length > 0 ? taskMaterialsList : undefined,
         };
         if (editingTask.locationId) {
@@ -110,9 +110,9 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
         await updateTask(editingTask.id, updateData);
         toast.success("Task updated");
       } else {
-        const createData: { name: string; description: string; materials?: string[] } = {
+        const createData: { name: string; description?: string; materials?: string[] } = {
           name: taskName,
-          description: taskDescription,
+          description: taskDescription.trim() || undefined,
           materials: taskMaterialsList.length > 0 ? taskMaterialsList : undefined,
         };
         await createTask(createData);

@@ -56,6 +56,9 @@ export function AssignmentsTab({
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filterExperience, setFilterExperience] = useState<string>("");
   const [filterAgeRange, setFilterAgeRange] = useState<string>("");
+  const [filterJamatKhane, setFilterJamatKhane] = useState<string>("");
+  const [filterSkill, setFilterSkill] = useState<string>("");
+  const [filterRole, setFilterRole] = useState<string>("");
 
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignVolunteerId, setAssignVolunteerId] = useState("");
@@ -97,8 +100,6 @@ export function AssignmentsTab({
             .includes(searchQuery.toLowerCase())
         : true;
 
-      if (!filterDay && !filterShift && !filterExperience && !filterAgeRange) return matchesSearch;
-
       const shiftData = volunteer.shifts || {};
       const dayShifts = shiftData[filterDay] || [];
 
@@ -110,8 +111,17 @@ export function AssignmentsTab({
       const matchesAgeRange = filterAgeRange
         ? (volunteer.ageRange || []).includes(filterAgeRange)
         : true;
+      const matchesJamatKhane = filterJamatKhane
+        ? (volunteer.jamatKhane || []).includes(filterJamatKhane)
+        : true;
+      const matchesSkill = filterSkill
+        ? volunteer.specialSkill === filterSkill
+        : true;
+      const matchesRole = filterRole
+        ? volunteer.role === filterRole
+        : true;
 
-      return matchesSearch && matchesDay && matchesShift && matchesExperience && matchesAgeRange;
+      return matchesSearch && matchesDay && matchesShift && matchesExperience && matchesAgeRange && matchesJamatKhane && matchesSkill && matchesRole;
     });
 
     const count = parseInt(filterCount);
@@ -129,8 +139,16 @@ export function AssignmentsTab({
   })();
 
   const handleCreateAssignment = async () => {
-    if (!assignVolunteerId || !assignTaskId) {
-      toast.error("Please fill in volunteer and task");
+    if (!assignVolunteerId) {
+      toast.error("Missing volunteer", {
+        description: "Please select a volunteer to assign",
+      });
+      return;
+    }
+    if (!assignTaskId) {
+      toast.error("Missing task", {
+        description: "Please select a task to assign",
+      });
       return;
     }
     try {
@@ -156,7 +174,10 @@ export function AssignmentsTab({
       onDataChange();
     } catch (error) {
       console.error("Error creating assignment:", error);
-      toast.error("Failed to create assignment");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error("Failed to create assignment", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -168,13 +189,24 @@ export function AssignmentsTab({
       onDataChange();
     } catch (error) {
       console.error("Error deleting assignment:", error);
-      toast.error("Failed to remove assignment");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error("Failed to remove assignment", {
+        description: errorMessage,
+      });
     }
   };
 
   const handleBulkAssignment = async () => {
-    if (selectedVolunteers.length === 0 || assignTaskIds.length === 0) {
-      toast.error("Please select volunteers and at least one task");
+    if (selectedVolunteers.length === 0) {
+      toast.error("No volunteers selected", {
+        description: "Please select at least one volunteer to assign",
+      });
+      return;
+    }
+    if (assignTaskIds.length === 0) {
+      toast.error("No tasks selected", {
+        description: "Please select at least one task to assign",
+      });
       return;
     }
     try {
@@ -244,11 +276,17 @@ export function AssignmentsTab({
                 description: result.failed > 0 ? `${result.failed} failed to send` : undefined,
               });
             } else {
-              toast.error("Failed to send email notifications");
+              const errorText = await response.text();
+              toast.error("Failed to send email notifications", {
+                description: errorText || `Server returned ${response.status}`,
+              });
             }
           } catch (emailError) {
             console.error("Error sending emails:", emailError);
-            toast.error("Failed to send email notifications");
+            const errorMessage = emailError instanceof Error ? emailError.message : "Network error";
+            toast.error("Failed to send email notifications", {
+              description: errorMessage,
+            });
           }
         }
       }
@@ -310,7 +348,10 @@ export function AssignmentsTab({
       onDataChange();
     } catch (error) {
       console.error("Error creating bulk assignments:", error);
-      toast.error("Failed to create assignments");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error("Failed to create assignments", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -358,15 +399,28 @@ export function AssignmentsTab({
         : true;
       if (!matchesSearch) return false;
       
-      if (filterDay || filterShift) {
-        const shiftData = v.shifts || {};
-        const dayShifts = shiftData[filterDay] || [];
-        
-        const matchesDay = filterDay ? dayShifts.length > 0 : true;
-        const matchesShift = filterShift ? dayShifts.includes(filterShift) : true;
-        
-        if (!matchesDay || !matchesShift) return false;
-      }
+      const shiftData = v.shifts || {};
+      const dayShifts = shiftData[filterDay] || [];
+      
+      const matchesDay = filterDay ? dayShifts.length > 0 : true;
+      const matchesShift = filterShift ? dayShifts.includes(filterShift) : true;
+      const matchesExperience = filterExperience
+        ? (v.experiences || []).includes(filterExperience)
+        : true;
+      const matchesAgeRange = filterAgeRange
+        ? (v.ageRange || []).includes(filterAgeRange)
+        : true;
+      const matchesJamatKhane = filterJamatKhane
+        ? (v.jamatKhane || []).includes(filterJamatKhane)
+        : true;
+      const matchesSkill = filterSkill
+        ? v.specialSkill === filterSkill
+        : true;
+      const matchesRole = filterRole
+        ? v.role === filterRole
+        : true;
+      
+      if (!matchesDay || !matchesShift || !matchesExperience || !matchesAgeRange || !matchesJamatKhane || !matchesSkill || !matchesRole) return false;
       
       const hasConflict = hasConsecutiveShifts(v, filterDay, filterShift);
       if (hasConflict) return false;
@@ -525,7 +579,7 @@ Task: *${task.name}*`;
               <CardTitle className="text-lg">Filter & Select Volunteers</CardTitle>
               <CardDescription>Find volunteers to assign to tasks</CardDescription>
             </div>
-            {(searchQuery || filterDay || filterShift || filterCount || filterExperience || filterAgeRange) && (
+            {(searchQuery || filterDay || filterShift || filterCount || filterExperience || filterAgeRange || filterJamatKhane || filterSkill || filterRole) && (
               <Button
                 onClick={() => {
                   setSearchQuery("");
@@ -534,6 +588,9 @@ Task: *${task.name}*`;
                   setFilterCount("");
                   setFilterExperience("");
                   setFilterAgeRange("");
+                  setFilterJamatKhane("");
+                  setFilterSkill("");
+                  setFilterRole("");
                 }}
                 variant="outline"
                 size="sm"
@@ -544,15 +601,16 @@ Task: *${task.name}*`;
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-3">
-            <Input
-              placeholder="Search name, email, phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-2"
-            />
+          <Input
+            placeholder="Search name, email, phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full"
+          />
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <Select value={filterDay || undefined} onValueChange={(val) => setFilterDay(val)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger>
                 <SelectValue placeholder="Day" />
               </SelectTrigger>
               <SelectContent>
@@ -562,7 +620,7 @@ Task: *${task.name}*`;
               </SelectContent>
             </Select>
             <Select value={filterShift || undefined} onValueChange={(val) => setFilterShift(val)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger>
                 <SelectValue placeholder="Shift" />
               </SelectTrigger>
               <SelectContent>
@@ -572,7 +630,7 @@ Task: *${task.name}*`;
               </SelectContent>
             </Select>
             <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger>
                 <SelectValue placeholder="Experience" />
               </SelectTrigger>
               <SelectContent>
@@ -582,7 +640,7 @@ Task: *${task.name}*`;
               </SelectContent>
             </Select>
             <Select value={filterAgeRange || undefined} onValueChange={(val) => setFilterAgeRange(val)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger>
                 <SelectValue placeholder="Age Range" />
               </SelectTrigger>
               <SelectContent>
@@ -594,13 +652,47 @@ Task: *${task.name}*`;
                 })()}
               </SelectContent>
             </Select>
+            <Select value={filterJamatKhane || undefined} onValueChange={(val) => setFilterJamatKhane(val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Jamat Khane" />
+              </SelectTrigger>
+              <SelectContent>
+                {(() => {
+                  const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+                  return jamatQuestion?.options?.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                  ));
+                })()}
+              </SelectContent>
+            </Select>
+            <Select value={filterSkill || undefined} onValueChange={(val) => setFilterSkill(val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Skill" />
+              </SelectTrigger>
+              <SelectContent>
+                {(() => {
+                  const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+                  return skillQuestion?.options?.map((opt) => (
+                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                  ));
+                })()}
+              </SelectContent>
+            </Select>
+            <Select value={filterRole || undefined} onValueChange={(val) => setFilterRole(val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="volunteer">Volunteer</SelectItem>
+                <SelectItem value="lead">Lead</SelectItem>
+              </SelectContent>
+            </Select>
             <Input
               type="number"
               min="1"
               placeholder="Limit"
               value={filterCount}
               onChange={(e) => setFilterCount(e.target.value)}
-              className="w-24"
             />
           </div>
 

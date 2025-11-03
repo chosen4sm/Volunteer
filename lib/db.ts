@@ -164,10 +164,11 @@ export async function getTasks(locationId?: string): Promise<Task[]> {
 
 export async function createTask(data: Partial<Omit<Task, "id" | "createdAt">>): Promise<string> {
   const cleanData = { ...data };
-  // Remove undefined or empty locationId
-  if (!cleanData.locationId) {
-    delete cleanData.locationId;
-  }
+  Object.keys(cleanData).forEach(key => {
+    if (cleanData[key as keyof typeof cleanData] === undefined) {
+      delete cleanData[key as keyof typeof cleanData];
+    }
+  });
   const docRef = await addDoc(collection(db, "tasks"), {
     ...cleanData,
     createdAt: Timestamp.now(),
@@ -177,10 +178,11 @@ export async function createTask(data: Partial<Omit<Task, "id" | "createdAt">>):
 
 export async function updateTask(id: string, data: Partial<Task>): Promise<void> {
   const cleanData = { ...data };
-  // Remove undefined or empty locationId
-  if (!cleanData.locationId) {
-    delete cleanData.locationId;
-  }
+  Object.keys(cleanData).forEach(key => {
+    if (cleanData[key as keyof typeof cleanData] === undefined) {
+      delete cleanData[key as keyof typeof cleanData];
+    }
+  });
   const docRef = doc(db, "tasks", id);
   await updateDoc(docRef, cleanData);
 }
