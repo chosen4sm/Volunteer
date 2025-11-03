@@ -19,7 +19,7 @@ export async function sendAssignmentNotification(params: SendAssignmentEmailPara
 
   try {
     const { data, error } = await resend.emails.send({
-      from: "USA Visit Volunteer Team <onboarding@resend.dev>",
+      from: "USA Visit Volunteer Team <noreply@notify.ismailiseva.com>",
       replyTo: "ismailiseva@gmail.com",
       to: params.to,
       subject: `USA Visit Volunteer Assignment: ${params.taskName}`,
