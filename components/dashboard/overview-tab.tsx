@@ -29,11 +29,11 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Edit2, Download } from "lucide-react";
+import { Users, Edit2, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
 import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
-import { updateVolunteer } from "@/lib/db";
+import { updateVolunteer, deleteVolunteer } from "@/lib/db";
 import { formatPhone } from "@/lib/utils";
 
 interface OverviewTabProps {
@@ -41,9 +41,10 @@ interface OverviewTabProps {
   locations: Location[];
   tasks: Task[];
   assignments: Assignment[];
+  onDataChange: () => void;
 }
 
-export function OverviewTab({ volunteers, locations, tasks, assignments }: OverviewTabProps) {
+export function OverviewTab({ volunteers, locations, tasks, assignments, onDataChange }: OverviewTabProps) {
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [filterDay, setFilterDay] = useState<string>("");
   const [filterShift, setFilterShift] = useState<string>("");
@@ -361,6 +362,23 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
     setSelectedLeadId(leadId);
     setSelectedLeadTasks(lead?.leadTaskIds || []);
     setLeadAssignmentDialog(true);
+  };
+
+  const handleDeleteVolunteer = async (volunteerId: string, volunteerName: string) => {
+    if (!confirm(`Are you sure you want to delete ${volunteerName}? This action cannot be undone.`)) return;
+    try {
+      await deleteVolunteer(volunteerId);
+      toast.success("Volunteer deleted", {
+        description: `${volunteerName} has been removed from the database`,
+      });
+      onDataChange();
+    } catch (error) {
+      console.error("Error deleting volunteer:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error("Failed to delete volunteer", {
+        description: errorMessage,
+      });
+    }
   };
 
   const shiftAllocation = getShiftAllocation();
@@ -898,6 +916,15 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                         {volunteerAssignments.length > 0 && (
                           <Badge>{volunteerAssignments.length} tasks</Badge>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteVolunteer(volunteer.id, volunteer.name)}
+                          title="Delete volunteer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1047,6 +1074,18 @@ export function OverviewTab({ volunteers, locations, tasks, assignments }: Overv
                         <Badge variant="default" className="text-xs mt-1">Lead</Badge>
                       )}
                     </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive shrink-0"
+                      onClick={() => {
+                        handleDeleteVolunteer(volunteer.id, volunteer.name);
+                        setDetailDialog(false);
+                      }}
+                      title="Delete volunteer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               ))

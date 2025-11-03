@@ -516,6 +516,7 @@ export default function DashboardPage() {
               locations={locations}
               tasks={tasks}
               assignments={assignments}
+              onDataChange={fetchAllData}
             />
           )}
 

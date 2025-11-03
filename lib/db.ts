@@ -123,6 +123,11 @@ export async function updateVolunteer(id: string, data: Partial<Volunteer>): Pro
   await updateDoc(docRef, data);
 }
 
+export async function deleteVolunteer(id: string): Promise<void> {
+  const docRef = doc(db, "volunteers", id);
+  await deleteDoc(docRef);
+}
+
 export async function getLocations(): Promise<Location[]> {
   const q = query(collection(db, "locations"), orderBy("name", "asc"));
   const snapshot = await getDocs(q);
