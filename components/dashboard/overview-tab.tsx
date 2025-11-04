@@ -207,6 +207,40 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
     setDetailDialog(true);
   };
 
+  const handleExportCategory = (categoryLabel: string, volunteers: Volunteer[]) => {
+    try {
+      const headers = ["Name", "Email", "Phone"];
+      const rows = volunteers.map(v => [
+        v.name || "",
+        v.email || "",
+        formatPhone(v.phone || "")
+      ]);
+
+      const csvContent = [
+        headers.map(h => `"${h}"`).join(","),
+        ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(","))
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      const filename = categoryLabel.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success("Export successful", {
+        description: `Exported ${volunteers.length} volunteer(s) to CSV`,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Export failed");
+    }
+  };
+
   const handleExportVolunteers = () => {
     try {
       const baseFields = ["id", "name", "email", "phone", "role", "experiences", "ageRange", "jamatKhane", "specialSkill", "shifts", "submittedAt", "leadTaskIds"];
@@ -1203,10 +1237,24 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
       <Dialog open={detailDialog} onOpenChange={setDetailDialog}>
         <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>{detailDialogTitle}</DialogTitle>
-            <DialogDescription>
-              {detailDialogVolunteers.length} volunteer{detailDialogVolunteers.length !== 1 ? 's' : ''} found
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>{detailDialogTitle}</DialogTitle>
+                <DialogDescription>
+                  {detailDialogVolunteers.length} volunteer{detailDialogVolunteers.length !== 1 ? 's' : ''} found
+                </DialogDescription>
+              </div>
+              {detailDialogVolunteers.length > 0 && (
+                <Button
+                  onClick={() => handleExportCategory(detailDialogTitle, detailDialogVolunteers)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {detailDialogVolunteers.length === 0 ? (
@@ -1232,18 +1280,35 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                         <Badge variant="default" className="text-xs mt-1">Lead</Badge>
                       )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive shrink-0"
-                      onClick={() => {
-                        handleDeleteVolunteer(volunteer.id, volunteer.name);
-                        setDetailDialog(false);
-                      }}
-                      title="Delete volunteer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const whatsappUrl = `https://wa.me/${volunteer.phone.replace(/\D/g, '')}`;
+                          window.open(whatsappUrl, "_blank");
+                          toast.success("Opening WhatsApp", {
+                            description: `Contacting ${volunteer.name}`,
+                          });
+                        }}
+                        title="Contact on WhatsApp"
+                      >
+                        <WhatsAppIcon className="w-4 h-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          handleDeleteVolunteer(volunteer.id, volunteer.name);
+                          setDetailDialog(false);
+                        }}
+                        title="Delete volunteer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
