@@ -456,7 +456,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
           </CardContent>
         </Card>
 
-        <Card className="hover:border-primary/50 transition hover:shadow-md">
+        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("All Assigned Volunteers", (v) => assignments.some(a => a.volunteerId === v.id))}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium text-muted-foreground">Assignments</CardTitle>
@@ -467,17 +467,47 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
             <div className="text-3xl font-bold">{assignments.length}</div>
             <div className="flex gap-1.5 mt-2 flex-wrap">
               {pendingAssignments > 0 && (
-                <Badge variant="outline" className="text-xs">
+                <Badge 
+                  variant="outline" 
+                  className="text-xs cursor-pointer hover:bg-primary/10 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShowVolunteersWithAttribute(
+                      "Volunteers with Pending Assignments",
+                      (v) => assignments.some(a => a.volunteerId === v.id && a.status === "pending")
+                    );
+                  }}
+                >
                   {pendingAssignments} pending
                 </Badge>
               )}
               {checkedInAssignments > 0 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge 
+                  variant="secondary" 
+                  className="text-xs cursor-pointer hover:bg-primary/10 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShowVolunteersWithAttribute(
+                      "Volunteers Checked-In",
+                      (v) => assignments.some(a => a.volunteerId === v.id && a.status === "checked-in")
+                    );
+                  }}
+                >
                   {checkedInAssignments} checked-in
                 </Badge>
               )}
               {completedAssignments > 0 && (
-                <Badge variant="default" className="text-xs">
+                <Badge 
+                  variant="default" 
+                  className="text-xs cursor-pointer hover:bg-primary/10 transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShowVolunteersWithAttribute(
+                      "Volunteers with Completed Assignments",
+                      (v) => assignments.some(a => a.volunteerId === v.id && a.status === "completed")
+                    );
+                  }}
+                >
                   {completedAssignments} completed
                 </Badge>
               )}
