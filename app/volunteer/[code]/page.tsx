@@ -16,6 +16,8 @@ import {
   User,
   AlertCircle,
   Loader2,
+  Package,
+  CheckCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -154,15 +156,29 @@ export default function VolunteerPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container max-w-4xl mx-auto p-4 space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <User className="w-8 h-8 text-primary" />
-              <div>
-                <CardTitle className="text-2xl">{volunteer?.name}</CardTitle>
-                <CardDescription>{volunteer?.email}</CardDescription>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="container max-w-5xl mx-auto p-4 md:p-6 space-y-6">
+        <Card className="border-2 border-primary/20 shadow-lg">
+          <CardHeader className="pb-4 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-b">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4 min-w-0 flex-1">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20 shrink-0">
+                  <User className="w-8 h-8 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-2xl md:text-3xl truncate">{volunteer?.name}</CardTitle>
+                  <CardDescription className="text-base mt-1 truncate">{volunteer?.email}</CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <Badge variant="secondary" className="text-sm whitespace-nowrap">
+                  {assignments.length} {assignments.length === 1 ? "assignment" : "assignments"}
+                </Badge>
+                {upcomingAssignments.length > 0 && (
+                  <Badge variant="default" className="text-sm whitespace-nowrap">
+                    {upcomingAssignments.length} active
+                  </Badge>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -170,11 +186,13 @@ export default function VolunteerPortalPage() {
 
         {assignments.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center">
-              <Calendar className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-              <p className="text-muted-foreground">No assignments yet.</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                You&apos;ll see your shifts here when they&apos;re assigned.
+            <CardContent className="py-16 text-center">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-10 h-10 text-primary/50" />
+              </div>
+              <p className="text-xl font-semibold text-muted-foreground mb-2">No assignments yet</p>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                You&apos;ll see your shifts here when they&apos;re assigned by the organizers.
               </p>
             </CardContent>
           </Card>
@@ -182,13 +200,21 @@ export default function VolunteerPortalPage() {
           <>
             {upcomingAssignments.length > 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Upcoming & Active Shifts</CardTitle>
-                  <CardDescription>
-                    {upcomingAssignments.length} assignment{upcomingAssignments.length !== 1 ? "s" : ""}
-                  </CardDescription>
+                <CardHeader className="pb-4 bg-muted/30 border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-primary" />
+                      <div>
+                        <CardTitle className="text-xl">Upcoming & Active Shifts</CardTitle>
+                        <CardDescription className="mt-1">
+                          {upcomingAssignments.length} assignment{upcomingAssignments.length !== 1 ? "s" : ""} to complete
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge variant="default" className="text-sm">Active</Badge>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 pt-4">
                   {upcomingAssignments.map((assignment) => (
                     <AssignmentCard
                       key={assignment.id}
@@ -208,13 +234,21 @@ export default function VolunteerPortalPage() {
 
             {completedAssignments.length > 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Completed Shifts</CardTitle>
-                  <CardDescription>
-                    {completedAssignments.length} completed
-                  </CardDescription>
+                <CardHeader className="pb-4 bg-muted/30 border-b">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCheck className="w-5 h-5 text-green-600" />
+                      <div>
+                        <CardTitle className="text-xl">Completed Shifts</CardTitle>
+                        <CardDescription className="mt-1">
+                          {completedAssignments.length} assignment{completedAssignments.length !== 1 ? "s" : ""} completed
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="text-sm">Completed</Badge>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 pt-4">
                   {completedAssignments.map((assignment) => (
                     <AssignmentCard
                       key={assignment.id}
@@ -277,12 +311,23 @@ function AssignmentCard({
               {location.name}
             </div>
           )}
-          {(assignment.day || assignment.shift) && (
+          {(assignment.day || assignment.shift || assignment.startTime || assignment.endTime) && (
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
-              {assignment.day && assignment.shift
-                ? `${assignment.day} • ${assignment.shift}`
-                : assignment.day || assignment.shift}
+              {assignment.startTime || assignment.endTime ? (
+                <>
+                  {assignment.day && <span>{assignment.day} • </span>}
+                  {assignment.startTime && <span>{assignment.startTime}</span>}
+                  {assignment.startTime && assignment.endTime && <span> - </span>}
+                  {assignment.endTime && <span>{assignment.endTime}</span>}
+                </>
+              ) : (
+                <>
+                  {assignment.day && assignment.shift
+                    ? `${assignment.day} • ${assignment.shift}`
+                    : assignment.day || assignment.shift}
+                </>
+              )}
             </div>
           )}
           {assignment.description && (

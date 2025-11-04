@@ -10,6 +10,8 @@ export interface SendAssignmentEmailParams {
   locationName?: string;
   day?: string;
   shift?: string;
+  startTime?: string;
+  endTime?: string;
   description?: string;
   uniqueCode: string;
 }
@@ -29,6 +31,8 @@ export async function sendAssignmentNotification(params: SendAssignmentEmailPara
         locationName: params.locationName,
         day: params.day,
         shift: params.shift,
+        startTime: params.startTime,
+        endTime: params.endTime,
         description: params.description,
         uniqueCode: params.uniqueCode,
         baseUrl,

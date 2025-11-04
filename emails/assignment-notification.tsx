@@ -19,6 +19,8 @@ interface AssignmentNotificationEmailProps {
   locationName?: string;
   day?: string;
   shift?: string;
+  startTime?: string;
+  endTime?: string;
   description?: string;
   uniqueCode: string;
   baseUrl: string;
@@ -30,15 +32,29 @@ export const AssignmentNotificationEmail = ({
   locationName,
   day,
   shift,
+  startTime,
+  endTime,
   description,
   uniqueCode = "ABC12345",
   baseUrl = "https://example.com",
 }: AssignmentNotificationEmailProps) => {
   const volunteerPortalUrl = `${baseUrl}/volunteer/${uniqueCode}`;
   
-  const scheduleText = day && shift 
-    ? `${day} - ${shift}` 
-    : day || shift || "To be scheduled";
+  const getScheduleText = () => {
+    if (startTime || endTime) {
+      const timeStr = [startTime, endTime].filter(Boolean).join(" - ");
+      if (day) {
+        return `${day} ${timeStr}`;
+      }
+      return timeStr;
+    }
+    if (day && shift) {
+      return `${day} - ${shift}`;
+    }
+    return day || shift || "To be scheduled";
+  };
+  
+  const scheduleText = getScheduleText();
 
   return (
     <Html>

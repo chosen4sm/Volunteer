@@ -29,12 +29,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Edit2, Download, Trash2 } from "lucide-react";
+import { Users, Edit2, Download, Trash2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
 import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
 import { updateVolunteer, deleteVolunteer } from "@/lib/db";
 import { formatPhone } from "@/lib/utils";
+import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 
 interface OverviewTabProps {
   volunteers: Volunteer[];
@@ -397,48 +398,90 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
     setCurrentPage(1);
   }, [searchQuery, filterDay, filterShift, filterExperience, filterAgeRange, filterJamatKhane, filterSkill, filterRole]);
 
+  const totalShiftsAvailable = volunteers.reduce((acc, v) => acc + getTotalShifts(v), 0);
+  const pendingAssignments = assignments.filter(a => a.status === "pending").length;
+  const completedAssignments = assignments.filter(a => a.status === "completed").length;
+  const checkedInAssignments = assignments.filter(a => a.status === "checked-in").length;
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 auto-rows-auto" style={{
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))"
-      }}>
-        <Card className="cursor-pointer hover:border-primary/50 transition" onClick={() => handleShowVolunteersWithAttribute("All Volunteers", () => true)}>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("All Volunteers", () => true)}>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Volunteers</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Volunteers</CardTitle>
+              <Users className="w-4 h-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{volunteers.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Total registered</p>
+            <div className="flex gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                {volunteers.filter(v => v.role === "lead").length} leads
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {totalShiftsAvailable} shifts
+              </Badge>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:border-primary/50 transition" onClick={() => handleShowVolunteersWithAttribute("Team Leads", (v) => v.role === "lead")}>
+        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("Team Leads", (v) => v.role === "lead")}>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Leads</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Team Leads</CardTitle>
+              <Badge variant="default" className="text-xs">Lead</Badge>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{volunteers.filter(v => v.role === "lead").length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Team leads assigned</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {volunteers.filter(v => v.role === "lead" && v.leadTaskIds && v.leadTaskIds.length > 0).length} with assigned tasks
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:border-primary/50 transition hover:shadow-md">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Locations</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Locations & Tasks</CardTitle>
+              <MapPin className="w-4 h-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{locations.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">{tasks.length} tasks</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {tasks.length} total tasks created
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:border-primary/50 transition hover:shadow-md">
           <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium text-muted-foreground">Assignments</CardTitle>
+              <Badge variant="secondary">{assignments.length}</Badge>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{assignments.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active assignments</p>
+            <div className="flex gap-1.5 mt-2 flex-wrap">
+              {pendingAssignments > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {pendingAssignments} pending
+                </Badge>
+              )}
+              {checkedInAssignments > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {checkedInAssignments} checked-in
+                </Badge>
+              )}
+              {completedAssignments > 0 && (
+                <Badge variant="default" className="text-xs">
+                  {completedAssignments} completed
+                </Badge>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -616,6 +659,34 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                             onClick={() => window.location.href = `mailto:${lead.email}`}
                           >
                             Email
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-xs h-7"
+                            onClick={() => {
+                              let message = `Hi ${lead.name}!\n\n`;
+                              message += `Thank you for being a team lead for the USA Visit volunteer program.\n\n`;
+                              if (leadTasks.length > 0) {
+                                message += `You're leading:\n`;
+                                leadTasks.forEach((task, idx) => {
+                                  message += `${idx + 1}. ${task.name}\n`;
+                                });
+                                message += `\n`;
+                              }
+                              message += `Please let us know if you have any questions.\n\n`;
+                              message += `Best regards`;
+
+                              const encodedMessage = encodeURIComponent(message);
+                              const whatsappUrl = `https://wa.me/${lead.phone.replace(/\D/g, '')}?text=${encodedMessage}`;
+                              
+                              window.open(whatsappUrl, "_blank");
+                              toast.success("Opening WhatsApp", {
+                                description: `Message prepared for ${lead.name}`,
+                              });
+                            }}
+                          >
+                            <WhatsAppIcon className="w-3.5 h-3.5 text-green-600" />
                           </Button>
                         </div>
                       </div>
@@ -845,60 +916,98 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
             </div>
           ) : (
             <>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {paginatedVolunteers.map((volunteer) => {
                 const shiftData = volunteer.shifts || {};
                 const totalShifts = getTotalShifts(volunteer);
                 const volunteerAssignments = assignments.filter((a) => a.volunteerId === volunteer.id);
+                const jamatKhaneLabels = (volunteer.jamatKhane || []).map(jkId => {
+                  const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+                  return jamatQuestion?.options?.find(opt => opt.id === jkId)?.label || jkId;
+                });
+                const skillLabel = volunteer.specialSkill ? (() => {
+                  const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+                  return skillQuestion?.options?.find(opt => opt.id === volunteer.specialSkill)?.label;
+                })() : null;
 
                 return (
-                  <div key={volunteer.id} className="p-4 rounded-lg border hover:border-primary/50 transition">
+                  <div key={volunteer.id} className="p-4 rounded-lg border hover:border-primary/50 transition hover:shadow-sm bg-card">
                     <div className="flex gap-4">
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                      <Avatar className="h-12 w-12 shrink-0 ring-2 ring-primary/10">
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-base">
                           {getInitials(volunteer.name)}
                         </AvatarFallback>
                       </Avatar>
                       
-                      <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex-1 min-w-0 space-y-3">
                         <div>
-                          <div className="flex items-center gap-2">
-                            <div className="font-semibold">{volunteer.name}</div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="font-semibold text-base">{volunteer.name}</div>
                             {volunteer.role === "lead" && (
-                              <Badge variant="default" className="text-xs">Lead</Badge>
+                              <Badge variant="default" className="text-xs">Team Lead</Badge>
                             )}
                           </div>
-                          <div className="text-sm text-muted-foreground">{volunteer.email} • {formatPhone(volunteer.phone)}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+                            <span>{volunteer.email}</span>
+                            <span>•</span>
+                            <span>{formatPhone(volunteer.phone)}</span>
+                            {volunteer.submittedAt && (
+                              <>
+                                <span>•</span>
+                                <span className="text-xs">
+                                  Joined {volunteer.submittedAt.toDate?.()?.toLocaleDateString()}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
 
-                        {(volunteer.ageRange?.length || volunteer.experiences?.length) ? (
                           <div className="flex gap-2 flex-wrap">
                             {volunteer.ageRange?.map((ageId) => {
                               const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
                               const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label || ageId;
-                              return <Badge key={ageId} variant="secondary" className="text-xs">{ageLabel}</Badge>;
+                            return <Badge key={ageId} variant="secondary" className="text-xs">👤 {ageLabel}</Badge>;
                             })}
                             {volunteer.experiences?.map((exp) => {
                               const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
-                              return expLabel ? <Badge key={exp} variant="outline" className="text-xs">{expLabel}</Badge> : null;
+                            return expLabel ? <Badge key={exp} variant="outline" className="text-xs">⭐ {expLabel}</Badge> : null;
                             })}
+                          {skillLabel && (
+                            <Badge variant="default" className="text-xs">🛠️ {skillLabel}</Badge>
+                          )}
+                          {jamatKhaneLabels.length > 0 && (
+                            <Badge variant="outline" className="text-xs">🕌 {jamatKhaneLabels[0]}</Badge>
+                          )}
                           </div>
-                        ) : null}
 
                         {Object.keys(shiftData).length > 0 && (
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                             {formConfig.days
                               .filter((day) => shiftData[day]?.length > 0)
                               .map((day) => (
-                                <div key={day} className="p-2 rounded bg-muted">
-                                  <span className="font-medium">{day}:</span> {shiftData[day].join(", ")}
+                                <div key={day} className="p-2 rounded bg-muted/50 border">
+                                  <span className="font-medium text-primary">{day}:</span> <span className="text-muted-foreground">{shiftData[day].join(", ")}</span>
                                 </div>
                               ))}
                           </div>
                         )}
+
+                        {volunteerAssignments.length > 0 && (
+                          <div className="flex gap-2 flex-wrap">
+                            {volunteerAssignments.map((assignment) => {
+                              const task = tasks.find(t => t.id === assignment.taskId);
+                              const location = locations.find(l => l.id === (assignment.locationId || task?.locationId));
+                              return task ? (
+                                <Badge key={assignment.id} variant="secondary" className="text-xs">
+                                  📋 {task.name} {location && `@ ${location.name}`}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="flex flex-col gap-2 items-end">
+                      <div className="flex flex-col gap-2 items-end shrink-0">
                         <Select 
                           value={volunteer.role || "volunteer"}
                           onValueChange={(value) => handleRoleChange(volunteer.id, value as "volunteer" | "lead")}
@@ -909,22 +1018,41 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="volunteer">Volunteer</SelectItem>
-                            <SelectItem value="lead">Lead</SelectItem>
+                            <SelectItem value="lead">Team Lead</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Badge variant="secondary">{totalShifts} shifts</Badge>
+                        <div className="flex gap-2">
+                          <Badge variant="outline" className="text-xs">{totalShifts} shifts</Badge>
                         {volunteerAssignments.length > 0 && (
-                          <Badge>{volunteerAssignments.length} tasks</Badge>
+                            <Badge className="text-xs">{volunteerAssignments.length} tasks</Badge>
                         )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteVolunteer(volunteer.id, volunteer.name)}
-                          title="Delete volunteer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              const whatsappUrl = `https://wa.me/${volunteer.phone.replace(/\D/g, '')}`;
+                              window.open(whatsappUrl, "_blank");
+                              toast.success("Opening WhatsApp", {
+                                description: `Contacting ${volunteer.name}`,
+                              });
+                            }}
+                            title="Contact on WhatsApp"
+                          >
+                            <WhatsAppIcon className="w-4 h-4 text-green-600" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteVolunteer(volunteer.id, volunteer.name)}
+                            title="Delete volunteer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>

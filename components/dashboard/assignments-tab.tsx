@@ -22,7 +22,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users, UserPlus, Trash2, AlertTriangle, MessageCircle, Link2, Copy } from "lucide-react";
+import { Users, UserPlus, Trash2, AlertTriangle, Link2, Copy, MapPin, User, Clock } from "lucide-react";
 import { toast } from "sonner";
 import {
   createAssignment,
@@ -33,6 +33,8 @@ import {
   type Assignment,
 } from "@/lib/db";
 import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
+import { TimePicker } from "@/components/ui/time-picker";
+import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 
 interface AssignmentsTabProps {
   volunteers: Volunteer[];
@@ -67,6 +69,8 @@ export function AssignmentsTab({
   const [assignTaskIds, setAssignTaskIds] = useState<string[]>([]);
   const [assignShift, setAssignShift] = useState("");
   const [assignDay, setAssignDay] = useState("");
+  const [assignStartTime, setAssignStartTime] = useState("");
+  const [assignEndTime, setAssignEndTime] = useState("");
   const [assignDescription, setAssignDescription] = useState("");
   const [sendEmailNotifications, setSendEmailNotifications] = useState(true);
   const [sendWhatsAppMessage, setSendWhatsAppMessage] = useState(false);
@@ -157,6 +161,8 @@ export function AssignmentsTab({
         taskId: assignTaskId,
         shift: assignShift || undefined,
         day: assignDay || undefined,
+        startTime: assignStartTime || undefined,
+        endTime: assignEndTime || undefined,
         description: assignDescription || undefined,
       };
       if (assignLocationId) {
@@ -170,6 +176,8 @@ export function AssignmentsTab({
       setAssignTaskId("");
       setAssignShift("");
       setAssignDay("");
+      setAssignStartTime("");
+      setAssignEndTime("");
       setAssignDescription("");
       onDataChange();
     } catch (error) {
@@ -218,6 +226,8 @@ export function AssignmentsTab({
             taskId,
             shift: assignShift || undefined,
             day: assignDay || undefined,
+            startTime: assignStartTime || undefined,
+            endTime: assignEndTime || undefined,
             description: assignDescription || undefined,
             status: "pending",
           };
@@ -256,6 +266,8 @@ export function AssignmentsTab({
               locationName: location?.name,
               day: assignDay || undefined,
               shift: assignShift || undefined,
+              startTime: assignStartTime || undefined,
+              endTime: assignEndTime || undefined,
               description: assignDescription || undefined,
               uniqueCode: volunteer.uniqueCode,
             });
@@ -344,6 +356,8 @@ export function AssignmentsTab({
       setAssignTaskIds([]);
       setAssignShift("");
       setAssignDay("");
+      setAssignStartTime("");
+      setAssignEndTime("");
       setAssignDescription("");
       onDataChange();
     } catch (error) {
@@ -500,13 +514,21 @@ export function AssignmentsTab({
   };
 
   const sendToWhatsApp = (volunteer: Volunteer, task: Task, location: Location | undefined, assignment: Assignment) => {
-    const scheduleText = assignment.day && assignment.shift
-      ? `${assignment.day} - ${assignment.shift}`
-      : assignment.day
-      ? assignment.day
-      : assignment.shift
-      ? assignment.shift
-      : "No schedule specified";
+    const getScheduleText = () => {
+      if (assignment.startTime || assignment.endTime) {
+        const timeStr = [assignment.startTime, assignment.endTime].filter(Boolean).join(" - ");
+        if (assignment.day) {
+          return `${assignment.day} ${timeStr}`;
+        }
+        return timeStr;
+      }
+      if (assignment.day && assignment.shift) {
+        return `${assignment.day} - ${assignment.shift}`;
+      }
+      return assignment.day || assignment.shift || "No schedule specified";
+    };
+
+    const scheduleText = getScheduleText();
 
     let message = `Assignment Confirmation
 
@@ -573,11 +595,14 @@ Task: *${task.name}*`;
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-4 bg-muted/30 border-b">
           <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
             <div>
               <CardTitle className="text-lg">Filter & Select Volunteers</CardTitle>
-              <CardDescription>Find volunteers to assign to tasks</CardDescription>
+                <CardDescription>Find and filter volunteers to assign tasks</CardDescription>
+              </div>
             </div>
             {(searchQuery || filterDay || filterShift || filterCount || filterExperience || filterAgeRange || filterJamatKhane || filterSkill || filterRole) && (
               <Button
@@ -595,23 +620,25 @@ Task: *${task.name}*`;
                 variant="outline"
                 size="sm"
               >
-                Clear Filters
+                Clear All
               </Button>
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-4 space-y-4">
           <Input
-            placeholder="Search name, email, phone..."
+            placeholder="🔍 Search by name, email, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full"
           />
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-muted-foreground px-1">Availability</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <Select value={filterDay || undefined} onValueChange={(val) => setFilterDay(val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Day" />
+                <SelectTrigger className="bg-background w-full">
+                  <SelectValue placeholder="📅 Day" />
               </SelectTrigger>
               <SelectContent>
                 {DAYS.map((day) => (
@@ -620,8 +647,8 @@ Task: *${task.name}*`;
               </SelectContent>
             </Select>
             <Select value={filterShift || undefined} onValueChange={(val) => setFilterShift(val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Shift" />
+                <SelectTrigger className="bg-background w-full">
+                  <SelectValue placeholder="⏰ Shift" />
               </SelectTrigger>
               <SelectContent>
                 {SHIFTS.map((shift) => (
@@ -629,8 +656,22 @@ Task: *${task.name}*`;
                 ))}
               </SelectContent>
             </Select>
+              <Input
+                type="number"
+                min="1"
+                placeholder="# Limit results"
+                value={filterCount}
+                onChange={(e) => setFilterCount(e.target.value)}
+                className="bg-background w-full"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-muted-foreground px-1">Demographics & Skills</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
-              <SelectTrigger>
+                <SelectTrigger className="bg-background w-full">
                 <SelectValue placeholder="Experience" />
               </SelectTrigger>
               <SelectContent>
@@ -640,7 +681,7 @@ Task: *${task.name}*`;
               </SelectContent>
             </Select>
             <Select value={filterAgeRange || undefined} onValueChange={(val) => setFilterAgeRange(val)}>
-              <SelectTrigger>
+                <SelectTrigger className="bg-background w-full">
                 <SelectValue placeholder="Age Range" />
               </SelectTrigger>
               <SelectContent>
@@ -653,7 +694,7 @@ Task: *${task.name}*`;
               </SelectContent>
             </Select>
             <Select value={filterJamatKhane || undefined} onValueChange={(val) => setFilterJamatKhane(val)}>
-              <SelectTrigger>
+                <SelectTrigger className="bg-background w-full">
                 <SelectValue placeholder="Jamat Khane" />
               </SelectTrigger>
               <SelectContent>
@@ -666,8 +707,8 @@ Task: *${task.name}*`;
               </SelectContent>
             </Select>
             <Select value={filterSkill || undefined} onValueChange={(val) => setFilterSkill(val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Skill" />
+                <SelectTrigger className="bg-background w-full">
+                  <SelectValue placeholder="Special Skill" />
               </SelectTrigger>
               <SelectContent>
                 {(() => {
@@ -678,22 +719,20 @@ Task: *${task.name}*`;
                 })()}
               </SelectContent>
             </Select>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-muted-foreground px-1">Role</div>
             <Select value={filterRole || undefined} onValueChange={(val) => setFilterRole(val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Role" />
+              <SelectTrigger className="bg-background w-full sm:w-48">
+                <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="volunteer">Volunteer</SelectItem>
-                <SelectItem value="lead">Lead</SelectItem>
+                <SelectItem value="lead">Team Lead</SelectItem>
               </SelectContent>
             </Select>
-            <Input
-              type="number"
-              min="1"
-              placeholder="Limit"
-              value={filterCount}
-              onChange={(e) => setFilterCount(e.target.value)}
-            />
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t">
@@ -738,56 +777,60 @@ Task: *${task.name}*`;
                   <div
                     key={volunteer.id}
                     onClick={() => toggleVolunteerSelection(volunteer.id)}
-                    className={`p-3 rounded-lg border cursor-pointer transition ${
-                      isSelected ? "border-primary bg-primary/5" : "hover:border-primary/50"
+                    className={`rounded-lg border cursor-pointer transition-all ${
+                      isSelected 
+                        ? "border-primary bg-primary/5 shadow-sm" 
+                        : "hover:border-primary/50 hover:shadow-sm"
                     }`}
                   >
-                    <div className="flex gap-3">
-                      <Checkbox checked={isSelected} className="pointer-events-none mt-1" />
+                    <div className="p-3 flex gap-3">
+                      <Checkbox checked={isSelected} className="pointer-events-none mt-0.5" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-sm">{volunteer.name}</div>
-                            <div className="text-xs text-muted-foreground truncate">{volunteer.email}</div>
+                            <div className="font-semibold">{volunteer.name}</div>
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">{volunteer.email}</div>
                           </div>
-                          <Badge variant="secondary" className="shrink-0">{totalShifts}</Badge>
+                          <Badge variant="secondary" className="shrink-0 h-5">
+                            {totalShifts} {totalShifts === 1 ? "shift" : "shifts"}
+                          </Badge>
                         </div>
 
                         {(volunteer.ageRange?.length || volunteer.experiences?.length) ? (
-                          <div className="flex gap-1 flex-wrap mt-2">
+                          <div className="flex gap-1.5 flex-wrap mt-2">
                             {volunteer.ageRange?.map((ageId) => {
                               const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
                               const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label || ageId;
-                              return <Badge key={ageId} variant="secondary" className="text-xs">{ageLabel}</Badge>;
+                              return <Badge key={ageId} variant="secondary" className="text-xs h-5">{ageLabel}</Badge>;
                             })}
                             {volunteer.experiences?.map((exp) => {
                               const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
-                              return expLabel ? <Badge key={exp} variant="outline" className="text-xs">{expLabel}</Badge> : null;
+                              return expLabel ? <Badge key={exp} variant="outline" className="text-xs h-5">{expLabel}</Badge> : null;
                             })}
                           </div>
                         ) : null}
 
                         {consecutiveShifts && (
-                          <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                          <div className="mt-2 p-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-md">
                             <div className="flex items-start gap-2">
-                              <AlertTriangle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
+                              <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 shrink-0 mt-0.5" />
                               <div className="flex-1 min-w-0">
-                                <div className="text-xs font-semibold text-yellow-600">
-                                  Consecutive Shifts
+                                <div className="text-xs font-semibold text-yellow-700 mb-0.5">
+                                  Consecutive Shifts Warning
                                 </div>
                                 {consecutiveShifts.map((shift, idx) => (
-                                  <div key={idx} className="text-xs text-yellow-600">{shift}</div>
+                                  <div key={idx} className="text-xs text-yellow-600/90">{shift}</div>
                                 ))}
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-6 px-2 text-xs mt-1 border-yellow-500/30"
+                                  className="h-6 px-2 text-xs mt-1.5 border-yellow-500/40 hover:bg-yellow-500/10"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     replaceVolunteerWithAlternative(volunteer.id, volunteer.name);
                                   }}
                                 >
-                                  Replace
+                                  Find Replacement
                                 </Button>
                               </div>
                             </div>
@@ -795,12 +838,14 @@ Task: *${task.name}*`;
                         )}
 
                         {Object.keys(shiftData).length > 0 && (
-                          <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
+                          <div className="mt-2.5 pt-2.5 border-t space-y-1">
                             {formConfig.days
                               .filter((day) => shiftData[day]?.length > 0)
                               .map((day) => (
-                                <div key={day} className="p-1.5 rounded bg-muted">
-                                  <span className="font-medium">{day}:</span> {shiftData[day].join(", ")}
+                                <div key={day} className="flex items-center gap-2 text-xs">
+                                  <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
+                                  <span className="font-medium text-muted-foreground min-w-[60px]">{day}</span>
+                                  <span className="text-muted-foreground">{shiftData[day].join(", ")}</span>
                                 </div>
                               ))}
                           </div>
@@ -816,12 +861,17 @@ Task: *${task.name}*`;
       </Card>
 
       {selectedVolunteers.length > 0 && (
-        <Card className="border-2 border-primary">
-          <CardHeader className="pb-3">
+        <Card className="border-2 border-primary shadow-lg">
+          <CardHeader className="pb-4 bg-primary/5 border-b">
+            <div className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              <div>
             <CardTitle className="text-lg">Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''}</CardTitle>
-            <CardDescription>Select tasks and schedule</CardDescription>
+                <CardDescription>Select tasks and schedule details</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-4">
             <div>
               <Label className="text-sm font-medium mb-2 block">Location (optional)</Label>
               <Select value={assignLocationId} onValueChange={(val) => setAssignLocationId(val || "")}>
@@ -838,58 +888,151 @@ Task: *${task.name}*`;
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-sm font-medium">Tasks *</Label>
-                <div className="text-xs text-muted-foreground">
+                <Badge variant="secondary" className="text-xs">
                   {assignTaskIds.length} selected
+                </Badge>
                 </div>
-              </div>
-              <div className="border rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+              <div className="border rounded-lg divide-y max-h-60 overflow-y-auto">
                 {tasks
                   .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
                   .map((task) => {
                     const location = locations.find(l => l.id === task.locationId);
+                    const isChecked = assignTaskIds.includes(task.id);
                     return (
-                      <div key={task.id} className="flex items-start space-x-3 p-2 hover:bg-muted rounded">
-                        <Checkbox
-                          id={`task-${task.id}`}
-                          checked={assignTaskIds.includes(task.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setAssignTaskIds([...assignTaskIds, task.id]);
-                            } else {
+                      <div 
+                        key={task.id} 
+                        className={`flex items-start space-x-3 p-3 hover:bg-muted/50 transition-colors cursor-pointer ${
+                          isChecked ? "bg-primary/5" : ""
+                        }`}
+                        onClick={() => {
+                          if (isChecked) {
                               setAssignTaskIds(assignTaskIds.filter(id => id !== task.id));
+                          } else {
+                            setAssignTaskIds([...assignTaskIds, task.id]);
                             }
                           }}
+                      >
+                        <Checkbox
+                          id={`task-${task.id}`}
+                          checked={isChecked}
+                          className="pointer-events-none mt-0.5"
                         />
-                        <label htmlFor={`task-${task.id}`} className="flex-1 cursor-pointer text-sm">
+                        <label htmlFor={`task-${task.id}`} className="flex-1 cursor-pointer text-sm pointer-events-none">
                           <div className="font-medium">{task.name}</div>
-                          {location && <div className="text-xs text-muted-foreground">{location.name}</div>}
+                          {location && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                              <MapPin className="w-3 h-3" />
+                              {location.name}
+                            </div>
+                          )}
                         </label>
                       </div>
                     );
                   })}
               </div>
             </div>
-            <div className="grid gap-3 grid-cols-2">
-              <Select value={assignDay || undefined} onValueChange={(val) => setAssignDay(val || "")}>
+            <div className="space-y-3">
+              {selectedVolunteers.length > 0 && (
+                <div className="p-3 bg-muted/50 rounded-lg border text-sm">
+                  <div className="font-medium text-muted-foreground mb-2">Availability:</div>
+                  {selectedVolunteers.length === 1 ? (
+                    <div className="text-xs text-muted-foreground">
+                      {(() => {
+                        const volunteer = volunteers.find(v => v.id === selectedVolunteers[0]);
+                        const availableDays = DAYS.filter(day => {
+                          const shifts = volunteer?.shifts?.[day] || [];
+                          return shifts.length > 0;
+                        });
+                        return availableDays.length > 0 
+                          ? availableDays.map(day => {
+                              const shifts = volunteer?.shifts?.[day] || [];
+                              return `${day} (${shifts.join(", ")})`;
+                            }).join(" • ")
+                          : "No availability data";
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      Only days/shifts where ALL selected volunteers are available will be shown
+                    </div>
+                  )}
+                </div>
+              )}
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Schedule</Label>
+                <div className="grid gap-2 grid-cols-2">
+                  <Select value={assignDay || undefined} onValueChange={(val) => {
+                    setAssignDay(val || "");
+                    if (val && assignShift) {
+                      const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
+                      const allHaveShift = selectedVols.every(v => {
+                        const shifts = v.shifts?.[val] || [];
+                        return shifts.includes(assignShift);
+                      });
+                      if (!allHaveShift) {
+                        setAssignShift("");
+                      }
+                    }
+                  }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Day (optional)" />
+                      <SelectValue placeholder="Day" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DAYS.map((day) => (
-                    <SelectItem key={day} value={day}>{day}</SelectItem>
-                  ))}
+                      {DAYS.map((day) => {
+                        const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
+                        const isAvailable = selectedVols.every(v => {
+                          const shifts = v.shifts?.[day] || [];
+                          return shifts.length > 0;
+                        });
+                        return (
+                          <SelectItem key={day} value={day} disabled={!isAvailable}>
+                            {day} {!isAvailable && "(unavailable)"}
+                          </SelectItem>
+                        );
+                      })}
                 </SelectContent>
               </Select>
-              <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")}>
+                  <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")} disabled={!assignDay}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Shift (optional)" />
+                      <SelectValue placeholder="Shift" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SHIFTS.map((shift) => (
-                    <SelectItem key={shift} value={shift}>{shift}</SelectItem>
-                  ))}
+                      {SHIFTS.map((shift) => {
+                        if (!assignDay) {
+                          return <SelectItem key={shift} value={shift}>{shift}</SelectItem>;
+                        }
+                        const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
+                        const isAvailable = selectedVols.every(v => {
+                          const shifts = v.shifts?.[assignDay] || [];
+                          return shifts.includes(shift);
+                        });
+                        return (
+                          <SelectItem key={shift} value={shift} disabled={!isAvailable}>
+                            {shift} {!isAvailable && "(unavailable)"}
+                          </SelectItem>
+                        );
+                      })}
                 </SelectContent>
               </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">Custom Time (optional)</Label>
+                <div className="grid gap-2 grid-cols-2">
+                  <TimePicker
+                    value={assignStartTime}
+                    onChange={setAssignStartTime}
+                    placeholder="Start time"
+                    className="w-full"
+                  />
+                  <TimePicker
+                    value={assignEndTime}
+                    onChange={setAssignEndTime}
+                    placeholder="End time"
+                    className="w-full"
+                  />
+                </div>
+              </div>
             </div>
             <Input
               value={assignDescription}
@@ -914,7 +1057,7 @@ Task: *${task.name}*`;
                   onCheckedChange={(checked) => setSendWhatsAppMessage(!!checked)}
                 />
                 <Label htmlFor="send-whatsapp-message" className="text-sm font-normal cursor-pointer flex items-center gap-1.5">
-                  <MessageCircle className="w-4 h-4 text-green-600" />
+                  <WhatsAppIcon className="w-4 h-4 text-green-600" />
                   Generate WhatsApp message
                 </Label>
               </div>
@@ -994,35 +1137,100 @@ Task: *${task.name}*`;
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assign-day">Day (optional)</Label>
-                    <Select value={assignDay || undefined} onValueChange={(val) => setAssignDay(val || "")}>
+                  <div className="space-y-3">
+                    {assignVolunteerId && (
+                      <div className="p-3 bg-muted/50 rounded-lg border text-sm">
+                        <div className="font-medium text-muted-foreground mb-2">Volunteer Availability:</div>
+                        <div className="text-xs text-muted-foreground">
+                          {(() => {
+                            const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                            const availableDays = DAYS.filter(day => {
+                              const shifts = volunteer?.shifts?.[day] || [];
+                              return shifts.length > 0;
+                            });
+                            return availableDays.length > 0 
+                              ? availableDays.map(day => {
+                                  const shifts = volunteer?.shifts?.[day] || [];
+                                  return `${day} (${shifts.join(", ")})`;
+                                }).join(" • ")
+                              : "No availability data";
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Schedule</Label>
+                      <div className="grid gap-2 grid-cols-2">
+                        <Select value={assignDay || undefined} onValueChange={(val) => {
+                          setAssignDay(val || "");
+                          if (val && assignShift && assignVolunteerId) {
+                            const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                            if (volunteer) {
+                              const shifts = volunteer.shifts?.[val] || [];
+                              if (!shifts.includes(assignShift)) {
+                                setAssignShift("");
+                              }
+                            }
+                          }
+                        }}>
                       <SelectTrigger id="assign-day">
-                        <SelectValue placeholder="None" />
+                            <SelectValue placeholder="Select day" />
                       </SelectTrigger>
                       <SelectContent>
-                        {DAYS.map((day) => (
-                          <SelectItem key={day} value={day}>
-                            {day}
+                            {DAYS.map((day) => {
+                              if (!assignVolunteerId) {
+                                return <SelectItem key={day} value={day}>{day}</SelectItem>;
+                              }
+                              const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                              const shifts = volunteer?.shifts?.[day] || [];
+                              const isAvailable = shifts.length > 0;
+                              return (
+                                <SelectItem key={day} value={day} disabled={!isAvailable}>
+                                  {day} {!isAvailable && "(unavailable)"}
                           </SelectItem>
-                        ))}
+                              );
+                            })}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assign-shift">Shift (optional)</Label>
-                    <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")}>
+                        <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")} disabled={!assignDay}>
                       <SelectTrigger id="assign-shift">
-                        <SelectValue placeholder="None" />
+                            <SelectValue placeholder="Select shift" />
                       </SelectTrigger>
                       <SelectContent>
-                        {SHIFTS.map((shift) => (
-                          <SelectItem key={shift} value={shift}>
-                            {shift}
+                            {SHIFTS.map((shift) => {
+                              if (!assignVolunteerId || !assignDay) {
+                                return <SelectItem key={shift} value={shift}>{shift}</SelectItem>;
+                              }
+                              const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                              const shifts = volunteer?.shifts?.[assignDay] || [];
+                              const isAvailable = shifts.includes(shift);
+                              return (
+                                <SelectItem key={shift} value={shift} disabled={!isAvailable}>
+                                  {shift} {!isAvailable && "(unavailable)"}
                           </SelectItem>
-                        ))}
+                              );
+                            })}
                       </SelectContent>
                     </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground mb-2 block">Custom Time (optional)</Label>
+                      <div className="grid gap-2 grid-cols-2">
+                        <TimePicker
+                          value={assignStartTime}
+                          onChange={setAssignStartTime}
+                          placeholder="Start time"
+                          className="w-full"
+                        />
+                        <TimePicker
+                          value={assignEndTime}
+                          onChange={setAssignEndTime}
+                          placeholder="End time"
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="assign-description">Description (optional)</Label>
@@ -1052,25 +1260,47 @@ Task: *${task.name}*`;
             </div>
           ) : (
             <div className="space-y-3">
-              {tasks.map((task) => {
+              {tasks
+                .filter((task) => assignments.some((a) => a.taskId === task.id))
+                .sort((a, b) => {
+                  const locationA = locations.find((l) => l.id === a.locationId)?.name || "";
+                  const locationB = locations.find((l) => l.id === b.locationId)?.name || "";
+                  return locationA.localeCompare(locationB);
+                })
+                .map((task) => {
                 const taskAssignments = assignments.filter((a) => a.taskId === task.id);
                 if (taskAssignments.length === 0) return null;
 
-                const location = locations.find((l) => l.id === task.locationId);
+                const getLocationForAssignment = (assignment: Assignment) => {
+                  if (assignment.locationId) {
+                    return locations.find((l) => l.id === assignment.locationId);
+                  }
+                  return locations.find((l) => l.id === task.locationId);
+                };
+
+                const primaryLocation = getLocationForAssignment(taskAssignments[0]);
 
                 return (
-                  <div key={task.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
+                  <div key={task.id} className="border rounded-lg overflow-hidden">
+                    <div className="bg-muted/50 px-4 py-3 border-b">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold">{task.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {location?.name || "No location"}
-                        </p>
+                            <h3 className="font-semibold text-base">{task.name}</h3>
+                            {primaryLocation && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground">{primaryLocation.name}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                            )}
+                          </div>
+                          <Badge variant="secondary" className="shrink-0">
+                            {taskAssignments.length} {taskAssignments.length === 1 ? "volunteer" : "volunteers"}
+                          </Badge>
+                        </div>
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="ghost"
                           onClick={() => {
                             const volunteers_list = taskAssignments
                               .map((assignment) => {
@@ -1092,8 +1322,8 @@ Task: *${task.name}*`;
 
                               let message = `The following have been assigned this volunteer task: Please check your email for complete details.\n\n`;
                               message += `*${task.name}*\n`;
-                              if (location) {
-                                message += `${location.name}\n`;
+                              if (primaryLocation) {
+                                message += `${primaryLocation.name}\n`;
                               }
                               message += `${scheduleText}\n\n`;
                               volunteers_list.forEach((v, idx) => {
@@ -1109,30 +1339,61 @@ Task: *${task.name}*`;
                               });
                             }
                           }}
-                          className="gap-1.5"
+                          className="gap-1.5 ml-2"
                         >
-                          <MessageCircle className="w-4 h-4 text-green-600" />
-                          WhatsApp All
+                          <WhatsAppIcon className="w-4 h-4 text-green-600" />
+                          <span className="hidden sm:inline">WhatsApp All</span>
                         </Button>
-                        <Badge variant="secondary">{taskAssignments.length}</Badge>
                       </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="divide-y">
                       {taskAssignments.map((assignment) => {
                         const volunteer = volunteers.find((v) => v.id === assignment.volunteerId);
                         if (!volunteer) return null;
 
-                        const scheduleText = assignment.day && assignment.shift
-                          ? `${assignment.day} - ${assignment.shift}`
-                          : assignment.day || assignment.shift || "No schedule";
+                        const getScheduleText = () => {
+                          if (assignment.startTime || assignment.endTime) {
+                            const timeStr = [assignment.startTime, assignment.endTime].filter(Boolean).join(" - ");
+                            if (assignment.day) {
+                              return `${assignment.day} ${timeStr}`;
+                            }
+                            return timeStr;
+                          }
+                          if (assignment.day && assignment.shift) {
+                            return `${assignment.day} - ${assignment.shift}`;
+                          }
+                          return assignment.day || assignment.shift || "No schedule";
+                        };
+
+                        const scheduleText = getScheduleText();
+                        const assignmentLocation = getLocationForAssignment(assignment);
 
                         return (
-                          <div key={assignment.id} className="flex items-center justify-between p-2 rounded-lg border">
+                          <div key={assignment.id} className="p-3 hover:bg-muted/30 transition-colors">
+                            <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm">{volunteer.name}</div>
-                              <div className="text-xs text-muted-foreground">{scheduleText}</div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                                  <span className="font-medium">{volunteer.name}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2 ml-6">
+                                  {scheduleText && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Clock className="w-3 h-3" />
+                                      {scheduleText}
+                                    </div>
+                                  )}
+                                  {assignmentLocation && assignmentLocation.id !== primaryLocation?.id && (
+                                    <Badge variant="outline" className="text-xs">
+                                      <MapPin className="w-3 h-3 mr-1" />
+                                      {assignmentLocation.name}
+                                    </Badge>
+                                  )}
+                                </div>
                               {assignment.description && (
-                                <div className="text-xs text-muted-foreground mt-1">{assignment.description}</div>
+                                  <div className="text-xs text-muted-foreground mt-1.5 ml-6 italic">
+                                    {assignment.description}
+                                  </div>
                               )}
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
@@ -1140,29 +1401,30 @@ Task: *${task.name}*`;
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => copyVolunteerLink(volunteer)}
-                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-600"
+                                  className="h-8 w-8 p-0"
                                 title="Copy volunteer link"
                               >
-                                <Link2 className="w-4 h-4" />
+                                  <Link2 className="w-3.5 h-3.5" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => sendToWhatsApp(volunteer, task, location, assignment)}
-                                className="h-8 w-8 p-0 text-green-600 hover:text-green-600"
+                                  onClick={() => sendToWhatsApp(volunteer, task, assignmentLocation || primaryLocation, assignment)}
+                                  className="h-8 w-8 p-0"
                                 title="Share to WhatsApp"
                               >
-                                <MessageCircle className="w-4 h-4" />
+                                  <WhatsAppIcon className="w-3.5 h-3.5 text-green-600" />
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleDeleteAssignment(assignment.id)}
-                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                  className="h-8 w-8 p-0"
                                 title="Remove"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
                               </Button>
+                              </div>
                             </div>
                           </div>
                         );

@@ -18,8 +18,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Volunteer Sign Up",
-  description: "Professional volunteer sign up form",
+  title: "USA Visit Volunteer | Mulaqat 2025",
+  description: "USA Visit Volunteer | Mulaqat 2025",
 };
 
 export default function RootLayout({

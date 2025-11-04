@@ -64,6 +64,8 @@ export interface Assignment {
   taskId: string;
   shift?: string;
   day?: string;
+  startTime?: string;
+  endTime?: string;
   description?: string;
   status?: "pending" | "checked-in" | "completed";
   createdAt: Timestamp;
