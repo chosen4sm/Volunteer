@@ -15,6 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -963,19 +968,65 @@ Task: *${task.name}*`;
                 <div className="grid gap-2 grid-cols-2">
                   <Select value={assignDay || undefined} onValueChange={(val) => {
                     setAssignDay(val || "");
-                    if (val && assignShift) {
+                    if (val) {
                       const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
-                      const allHaveShift = selectedVols.every(v => {
+                      const isAvailable = selectedVols.every(v => {
                         const shifts = v.shifts?.[val] || [];
-                        return shifts.includes(assignShift);
+                        return shifts.length > 0;
                       });
-                      if (!allHaveShift) {
-                        setAssignShift("");
+                      if (!isAvailable) {
+                        toast.warning("Availability Override", {
+                          description: "You're assigning to a day when some volunteers marked themselves unavailable",
+                        });
+                      }
+                      if (assignShift) {
+                        const allHaveShift = selectedVols.every(v => {
+                          const shifts = v.shifts?.[val] || [];
+                          return shifts.includes(assignShift);
+                        });
+                        if (!allHaveShift) {
+                          setAssignShift("");
+                        }
                       }
                     }
                   }}>
-                <SelectTrigger>
+                <SelectTrigger className={(() => {
+                  if (!assignDay) return "";
+                  const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
+                  const isAvailable = selectedVols.every(v => {
+                    const shifts = v.shifts?.[assignDay] || [];
+                    return shifts.length > 0;
+                  });
+                  return !isAvailable ? "border-amber-500 bg-amber-50/50" : "";
+                })()}>
+                  <div className="flex items-center gap-1.5 w-full">
+                    {assignDay && (() => {
+                      const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
+                      const unavailableVols = selectedVols.filter(v => {
+                        const shifts = v.shifts?.[assignDay] || [];
+                        return shifts.length === 0;
+                      });
+                      if (unavailableVols.length === 0) return null;
+                      return (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="text-xs">
+                              <div className="font-semibold mb-1">Unavailable volunteers:</div>
+                              {unavailableVols.map(v => (
+                                <div key={v.id}>• {v.name}</div>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })()}
                       <SelectValue placeholder="Day" />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                       {DAYS.map((day) => {
@@ -985,16 +1036,68 @@ Task: *${task.name}*`;
                           return shifts.length > 0;
                         });
                         return (
-                          <SelectItem key={day} value={day} disabled={!isAvailable}>
-                            {day} {!isAvailable && "(unavailable)"}
+                          <SelectItem key={day} value={day} className={!isAvailable ? "text-amber-600" : ""}>
+                            <div className="flex items-center gap-1.5">
+                              {!isAvailable && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                              {day} {!isAvailable && "(override)"}
+                            </div>
                           </SelectItem>
                         );
                       })}
                 </SelectContent>
               </Select>
-                  <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")} disabled={!assignDay}>
-                <SelectTrigger>
+                  <Select value={assignShift || undefined} onValueChange={(val) => {
+                    setAssignShift(val || "");
+                    if (val && assignDay) {
+                      const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
+                      const isAvailable = selectedVols.every(v => {
+                        const shifts = v.shifts?.[assignDay] || [];
+                        return shifts.includes(val);
+                      });
+                      if (!isAvailable) {
+                        toast.warning("Availability Override", {
+                          description: "You're assigning to a shift when some volunteers marked themselves unavailable",
+                        });
+                      }
+                    }
+                  }} disabled={!assignDay}>
+                <SelectTrigger className={(() => {
+                  if (!assignShift || !assignDay) return "";
+                  const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
+                  const isAvailable = selectedVols.every(v => {
+                    const shifts = v.shifts?.[assignDay] || [];
+                    return shifts.includes(assignShift);
+                  });
+                  return !isAvailable ? "border-amber-500 bg-amber-50/50" : "";
+                })()}>
+                  <div className="flex items-center gap-1.5 w-full">
+                    {assignShift && assignDay && (() => {
+                      const selectedVols = volunteers.filter(v => selectedVolunteers.includes(v.id));
+                      const unavailableVols = selectedVols.filter(v => {
+                        const shifts = v.shifts?.[assignDay] || [];
+                        return !shifts.includes(assignShift);
+                      });
+                      if (unavailableVols.length === 0) return null;
+                      return (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="text-xs">
+                              <div className="font-semibold mb-1">Unavailable volunteers:</div>
+                              {unavailableVols.map(v => (
+                                <div key={v.id}>• {v.name}</div>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })()}
                       <SelectValue placeholder="Shift" />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                       {SHIFTS.map((shift) => {
@@ -1007,8 +1110,11 @@ Task: *${task.name}*`;
                           return shifts.includes(shift);
                         });
                         return (
-                          <SelectItem key={shift} value={shift} disabled={!isAvailable}>
-                            {shift} {!isAvailable && "(unavailable)"}
+                          <SelectItem key={shift} value={shift} className={!isAvailable ? "text-amber-600" : ""}>
+                            <div className="flex items-center gap-1.5">
+                              {!isAvailable && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                              {shift} {!isAvailable && "(override)"}
+                            </div>
                           </SelectItem>
                         );
                       })}
@@ -1163,18 +1269,49 @@ Task: *${task.name}*`;
                       <div className="grid gap-2 grid-cols-2">
                         <Select value={assignDay || undefined} onValueChange={(val) => {
                           setAssignDay(val || "");
-                          if (val && assignShift && assignVolunteerId) {
+                          if (val && assignVolunteerId) {
                             const volunteer = volunteers.find(v => v.id === assignVolunteerId);
                             if (volunteer) {
                               const shifts = volunteer.shifts?.[val] || [];
-                              if (!shifts.includes(assignShift)) {
+                              if (shifts.length === 0) {
+                                toast.warning("Availability Override", {
+                                  description: "This volunteer marked themselves unavailable for this day",
+                                });
+                              }
+                              if (assignShift && !shifts.includes(assignShift)) {
                                 setAssignShift("");
                               }
                             }
                           }
                         }}>
-                      <SelectTrigger id="assign-day">
+                      <SelectTrigger id="assign-day" className={(() => {
+                        if (!assignDay || !assignVolunteerId) return "";
+                        const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                        const shifts = volunteer?.shifts?.[assignDay] || [];
+                        return shifts.length === 0 ? "border-amber-500 bg-amber-50/50" : "";
+                      })()}>
+                        <div className="flex items-center gap-1.5 w-full">
+                          {assignDay && assignVolunteerId && (() => {
+                            const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                            const shifts = volunteer?.shifts?.[assignDay] || [];
+                            if (shifts.length > 0) return null;
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="text-xs">
+                                    <div className="font-semibold">{volunteer?.name} is unavailable on this day</div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()}
                             <SelectValue placeholder="Select day" />
+                        </div>
                       </SelectTrigger>
                       <SelectContent>
                             {DAYS.map((day) => {
@@ -1185,16 +1322,58 @@ Task: *${task.name}*`;
                               const shifts = volunteer?.shifts?.[day] || [];
                               const isAvailable = shifts.length > 0;
                               return (
-                                <SelectItem key={day} value={day} disabled={!isAvailable}>
-                                  {day} {!isAvailable && "(unavailable)"}
+                                <SelectItem key={day} value={day} className={!isAvailable ? "text-amber-600" : ""}>
+                                  <div className="flex items-center gap-1.5">
+                                    {!isAvailable && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                                    {day} {!isAvailable && "(override)"}
+                                  </div>
                           </SelectItem>
                               );
                             })}
                       </SelectContent>
                     </Select>
-                        <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")} disabled={!assignDay}>
-                      <SelectTrigger id="assign-shift">
+                        <Select value={assignShift || undefined} onValueChange={(val) => {
+                          setAssignShift(val || "");
+                          if (val && assignDay && assignVolunteerId) {
+                            const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                            if (volunteer) {
+                              const shifts = volunteer.shifts?.[assignDay] || [];
+                              if (!shifts.includes(val)) {
+                                toast.warning("Availability Override", {
+                                  description: "This volunteer marked themselves unavailable for this shift",
+                                });
+                              }
+                            }
+                          }
+                        }} disabled={!assignDay}>
+                      <SelectTrigger id="assign-shift" className={(() => {
+                        if (!assignShift || !assignDay || !assignVolunteerId) return "";
+                        const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                        const shifts = volunteer?.shifts?.[assignDay] || [];
+                        return !shifts.includes(assignShift) ? "border-amber-500 bg-amber-50/50" : "";
+                      })()}>
+                        <div className="flex items-center gap-1.5 w-full">
+                          {assignShift && assignDay && assignVolunteerId && (() => {
+                            const volunteer = volunteers.find(v => v.id === assignVolunteerId);
+                            const shifts = volunteer?.shifts?.[assignDay] || [];
+                            if (shifts.includes(assignShift)) return null;
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <div className="text-xs">
+                                    <div className="font-semibold">{volunteer?.name} is unavailable for this shift</div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()}
                             <SelectValue placeholder="Select shift" />
+                        </div>
                       </SelectTrigger>
                       <SelectContent>
                             {SHIFTS.map((shift) => {
@@ -1205,8 +1384,11 @@ Task: *${task.name}*`;
                               const shifts = volunteer?.shifts?.[assignDay] || [];
                               const isAvailable = shifts.includes(shift);
                               return (
-                                <SelectItem key={shift} value={shift} disabled={!isAvailable}>
-                                  {shift} {!isAvailable && "(unavailable)"}
+                                <SelectItem key={shift} value={shift} className={!isAvailable ? "text-amber-600" : ""}>
+                                  <div className="flex items-center gap-1.5">
+                                    {!isAvailable && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                                    {shift} {!isAvailable && "(override)"}
+                                  </div>
                           </SelectItem>
                               );
                             })}
