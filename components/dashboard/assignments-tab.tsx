@@ -309,51 +309,49 @@ export function AssignmentsTab({
       }
 
       if (sendWhatsAppMessage) {
-        const messages = [];
-        for (const volunteerId of selectedVolunteers) {
-          const volunteer = volunteers.find((v) => v.id === volunteerId);
-          if (!volunteer) continue;
+        const taskNames = assignTaskIds
+          .map((taskId) => {
+            const task = tasks.find((t) => t.id === taskId);
+            return task?.name;
+          })
+          .filter(Boolean)
+          .join(", ");
 
-          const taskNames = assignTaskIds
-            .map((taskId) => {
-              const task = tasks.find((t) => t.id === taskId);
-              return task?.name;
-            })
-            .filter(Boolean)
-            .join(", ");
+        const scheduleText = (() => {
+          if (assignStartTime || assignEndTime) {
+            const timeStr = [assignStartTime, assignEndTime].filter(Boolean).join(" - ");
+            if (assignDay) {
+              return `${assignDay} ${timeStr}`;
+            }
+            return timeStr;
+          }
+          if (assignDay && assignShift) {
+            return `${assignDay} - ${assignShift}`;
+          }
+          return assignDay || assignShift || "TBD";
+        })();
 
-          const scheduleText = assignDay && assignShift
-            ? `${assignDay} - ${assignShift}`
-            : assignDay || assignShift || "TBD";
+        const volunteersList = selectedVolunteers
+          .map((id) => {
+            const volunteer = volunteers.find((v) => v.id === id);
+            return volunteer ? `${volunteer.name} - ${volunteer.phone}` : null;
+          })
+          .filter(Boolean)
+          .join("\n");
 
-          let message = `*USA Visit Volunteer Assignment*\n\n`;
-          message += `Hi ${volunteer.name}!\n\n`;
-          message += `You have been assigned to:\n`;
-          message += `*${taskNames}*\n`;
-          message += `Schedule: *${scheduleText}*\n\n`;
-          message += `Please check your email for complete details and your personal volunteer portal link.\n\n`;
-          message += `Thank you for volunteering!`;
+        let message = `*Volunteer Assignment*\n\n`;
+        message += `Task: *${taskNames}*\n`;
+        message += `Schedule: *${scheduleText}*\n\n`;
+        message += `Assigned volunteers:\n${volunteersList}\n\n`;
+        message += `Check your email for complete details.`;
 
-          messages.push({
-            name: volunteer.name,
-            phone: volunteer.phone,
-            message: message,
-          });
-        }
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
 
-        if (messages.length > 0) {
-          const combinedMessage = messages
-            .map((m) => `*${m.name}* (${m.phone}):\n${m.message}`)
-            .join("\n\n---\n\n");
-
-          const encodedMessage = encodeURIComponent(combinedMessage);
-          const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-
-          window.open(whatsappUrl, "_blank");
-          toast.success("Opening WhatsApp", {
-            description: `Prepared messages for ${messages.length} volunteer(s)`,
-          });
-        }
+        window.open(whatsappUrl, "_blank");
+        toast.success("Opening WhatsApp", {
+          description: `Prepared message for ${selectedVolunteers.length} volunteer(s)`,
+        });
       }
 
       setSelectedVolunteers([]);
