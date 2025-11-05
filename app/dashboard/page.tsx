@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,7 +50,7 @@ const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
 const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
 
 export default function DashboardPage() {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, isViewer, loading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
@@ -69,7 +70,7 @@ export default function DashboardPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user && isAdmin) {
+    if (user && (isAdmin || isViewer)) {
       fetchAllData();
       
       const intervalId = setInterval(() => {
@@ -78,7 +79,7 @@ export default function DashboardPage() {
 
       return () => clearInterval(intervalId);
     }
-  }, [user, isAdmin]);
+  }, [user, isAdmin, isViewer]);
 
   const fetchAllData = async () => {
     try {
@@ -358,6 +359,41 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSetViewer = async () => {
+    const email = prompt("Enter the email address of the user to set as viewer:");
+    if (!email) return;
+
+    try {
+      const { doc, getDoc, updateDoc, getDocs, query, collection, where } = await import("firebase/firestore");
+      
+      // Find user by email in profiles collection
+      const profilesQuery = query(collection(db, "profiles"), where("email", "==", email));
+      const querySnapshot = await getDocs(profilesQuery);
+      
+      if (querySnapshot.empty) {
+        toast.error("User not found", {
+          description: `No user found with email: ${email}`,
+        });
+        return;
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, "profiles", userDoc.id), {
+        viewer: true,
+        admin: false,
+      });
+
+      toast.success("Viewer access granted!", {
+        description: `${email} can now view the dashboard (read-only)`,
+      });
+    } catch (error) {
+      console.error("Error setting viewer:", error);
+      toast.error("Failed to set viewer", {
+        description: "Check console for details.",
+      });
+    }
+  };
+
   const handleGenerateUniqueCodes = async () => {
     if (isMigrating) return;
 
@@ -397,7 +433,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAdmin && !isViewer) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md">
@@ -437,8 +473,15 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-foreground">Volunteer Dashboard</h1>
-                <p className="text-xs text-muted-foreground">Admin Panel</p>
+                <p className="text-xs text-muted-foreground">
+                  {isViewer ? "View Only Access" : "Admin Panel"}
+                </p>
               </div>
+              {isViewer && (
+                <Badge variant="secondary" className="ml-3">
+                  View Only
+                </Badge>
+              )}
             </div>
 
             <DropdownMenu>
@@ -527,18 +570,20 @@ export default function DashboardPage() {
               <History className="w-4 h-4 inline mr-2" />
               History
             </button>
-            <button
-              onClick={() => setActiveTab("form-config")}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                activeTab === "form-config"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Database className="w-4 h-4 inline mr-2" />
-              Form Config
-            </button>
-            {process.env.NODE_ENV === "development" && (
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab("form-config")}
+                className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                  activeTab === "form-config"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Database className="w-4 h-4 inline mr-2" />
+                Form Config
+              </button>
+            )}
+            {process.env.NODE_ENV === "development" && isAdmin && (
               <button
                 onClick={() => setActiveTab("dev")}
                 className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
@@ -569,11 +614,12 @@ export default function DashboardPage() {
               tasks={tasks}
               assignments={assignments}
               onDataChange={fetchAllData}
+              isReadOnly={isViewer}
             />
           )}
 
           {activeTab === "locations" && (
-            <LocationsTab locations={locations} tasks={tasks} onDataChange={fetchAllData} />
+            <LocationsTab locations={locations} tasks={tasks} onDataChange={fetchAllData} isReadOnly={isViewer} />
           )}
 
           {activeTab === "assignments" && (
@@ -583,6 +629,7 @@ export default function DashboardPage() {
               tasks={tasks}
               assignments={assignments}
               onDataChange={fetchAllData}
+              isReadOnly={isViewer}
             />
           )}
 
@@ -593,6 +640,7 @@ export default function DashboardPage() {
               tasks={tasks}
               assignments={assignments}
               onDataChange={fetchAllData}
+              isReadOnly={isViewer}
             />
           )}
 
@@ -690,6 +738,21 @@ export default function DashboardPage() {
                     >
                       <MapPin className="w-4 h-4" />
                       {isPopulatingJamatOptions ? "Populating..." : "Populate Jamat Khane Options"}
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-6 space-y-4">
+                    <h3 className="text-lg font-semibold">Access Management</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Grant or revoke dashboard access permissions.
+                    </p>
+                    <Button
+                      onClick={handleSetViewer}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <User className="w-4 h-4" />
+                      Grant Viewer Access
                     </Button>
                   </div>
 

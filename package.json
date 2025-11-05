@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
+    "build:prod": "BUILD_DIR=.next-prod next build --turbopack",
     "start": "next start",
+    "start:prod": "BUILD_DIR=.next-prod next start",
     "lint": "eslint",
     "email": "email dev"
   },

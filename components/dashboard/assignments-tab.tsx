@@ -48,6 +48,7 @@ interface AssignmentsTabProps {
   tasks: Task[];
   assignments: Assignment[];
   onDataChange: () => void;
+  isReadOnly?: boolean;
 }
 
 export function AssignmentsTab({
@@ -56,6 +57,7 @@ export function AssignmentsTab({
   tasks,
   assignments,
   onDataChange,
+  isReadOnly = false,
 }: AssignmentsTabProps) {
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [filterDay, setFilterDay] = useState<string>("");
@@ -1332,7 +1334,7 @@ export function AssignmentsTab({
                 </Label>
               </div>
             </div>
-            <Button onClick={handleBulkAssignment} className="w-full" disabled={assignTaskIds.length === 0}>
+            <Button onClick={handleBulkAssignment} className="w-full" disabled={isReadOnly || assignTaskIds.length === 0}>
               <UserPlus className="w-4 h-4 mr-2" />
               Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''} to {assignTaskIds.length} Task{assignTaskIds.length !== 1 ? 's' : ''}
             </Button>
@@ -1349,7 +1351,7 @@ export function AssignmentsTab({
             </div>
             <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline" disabled={volunteers.length === 0 || tasks.length === 0}>
+                <Button size="sm" variant="outline" disabled={isReadOnly || volunteers.length === 0 || tasks.length === 0}>
                   <UserPlus className="w-4 h-4 mr-2" />
                   Quick Assign
                 </Button>
@@ -1587,7 +1589,7 @@ export function AssignmentsTab({
                       placeholder="e.g., Special instructions or notes"
                     />
                   </div>
-                  <Button onClick={handleCreateAssignment} className="w-full">
+                  <Button onClick={handleCreateAssignment} className="w-full" disabled={isReadOnly}>
                     Create Assignment
                   </Button>
                 </div>

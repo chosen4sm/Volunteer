@@ -31,9 +31,10 @@ interface LocationsTabProps {
   locations: Location[];
   tasks: Task[];
   onDataChange: () => void;
+  isReadOnly?: boolean;
 }
 
-export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabProps) {
+export function LocationsTab({ locations, tasks, onDataChange, isReadOnly = false }: LocationsTabProps) {
   const [locationDialogOpen, setLocationDialogOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
@@ -238,6 +239,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     setLocationDescription("");
                     setLocationAddress("");
                   }}
+                  disabled={isReadOnly}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                     Add
@@ -323,10 +325,10 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     )}
                     </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="ghost" onClick={() => openEditLocationDialog(location)} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="ghost" onClick={() => openEditLocationDialog(location)} className="h-8 w-8 p-0" disabled={isReadOnly} title={isReadOnly ? "Cannot edit in view-only mode" : "Edit location"}>
                       <Edit className="w-4 h-4" />
                     </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDeleteLocation(location.id)} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="ghost" onClick={() => handleDeleteLocation(location.id)} className="h-8 w-8 p-0" disabled={isReadOnly} title={isReadOnly ? "Cannot delete in view-only mode" : "Delete location"}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>
@@ -360,6 +362,7 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     setTaskMaterials("");
                     setTaskMaterialsList([]);
                   }}
+                  disabled={isReadOnly}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                     Add
@@ -490,10 +493,10 @@ export function LocationsTab({ locations, tasks, onDataChange }: LocationsTabPro
                     </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="ghost" onClick={() => openEditTaskDialog(task)} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="ghost" onClick={() => openEditTaskDialog(task)} className="h-8 w-8 p-0" disabled={isReadOnly} title={isReadOnly ? "Cannot edit in view-only mode" : "Edit task"}>
                         <Edit className="w-4 h-4" />
                       </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)} className="h-8 w-8 p-0">
+                          <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)} className="h-8 w-8 p-0" disabled={isReadOnly} title={isReadOnly ? "Cannot delete in view-only mode" : "Delete task"}>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                         </div>

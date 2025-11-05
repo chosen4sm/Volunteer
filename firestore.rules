@@ -8,6 +8,18 @@ service cloud.firestore {
              get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.admin == true;
     }
     
+    // Helper function to check if user is viewer (read-only admin)
+    function isViewer() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.viewer == true;
+    }
+    
+    // Helper function to check if user has admin or viewer access
+    function hasAccess() {
+      return isAdmin() || isViewer();
+    }
+    
     // Form configuration (public read, admin write only)
     match /form-config/{document=**} {
       allow read: if true;
@@ -16,13 +28,14 @@ service cloud.firestore {
     
     // User profiles
     match /profiles/{userId} {
-      // Users can read their own profile
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Users can read their own profile, or admins/viewers can read all profiles
+      allow read: if (request.auth != null && request.auth.uid == userId) || hasAccess();
       
-      // Users can create their own profile (with admin: false only)
+      // Users can create their own profile (with admin: false and viewer: false only)
       allow create: if request.auth != null && 
                       request.auth.uid == userId &&
-                      request.resource.data.admin == false;
+                      request.resource.data.admin == false &&
+                      request.resource.data.viewer == false;
       
       // Only admins can update or delete profiles
       allow update, delete: if isAdmin();

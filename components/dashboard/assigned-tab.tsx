@@ -25,6 +25,7 @@ interface AssignedTabProps {
   tasks: Task[];
   assignments: Assignment[];
   onDataChange: () => void;
+  isReadOnly?: boolean;
 }
 
 export function AssignedTab({
@@ -33,6 +34,7 @@ export function AssignedTab({
   tasks,
   assignments,
   onDataChange,
+  isReadOnly = false,
 }: AssignedTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLocation, setFilterLocation] = useState<string>("all");
@@ -383,7 +385,8 @@ export function AssignedTab({
                                 variant="ghost"
                                 onClick={() => handleDeleteAssignment(assignment.id)}
                                 className="h-9 w-9 p-0"
-                                title="Remove"
+                                disabled={isReadOnly}
+                                title={isReadOnly ? "Cannot delete in view-only mode" : "Remove"}
                               >
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>

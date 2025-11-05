@@ -43,9 +43,10 @@ interface OverviewTabProps {
   tasks: Task[];
   assignments: Assignment[];
   onDataChange: () => void;
+  isReadOnly?: boolean;
 }
 
-export function OverviewTab({ volunteers, locations, tasks, assignments, onDataChange }: OverviewTabProps) {
+export function OverviewTab({ volunteers, locations, tasks, assignments, onDataChange, isReadOnly = false }: OverviewTabProps) {
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
   const [filterDay, setFilterDay] = useState<string>("");
   const [filterShift, setFilterShift] = useState<string>("");
@@ -1129,7 +1130,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                         <Select 
                           value={volunteer.role || "volunteer"}
                           onValueChange={(value) => handleRoleChange(volunteer.id, value as "volunteer" | "lead" | "team-lead")}
-                          disabled={updatingRoles.has(volunteer.id)}
+                          disabled={isReadOnly || updatingRoles.has(volunteer.id)}
                         >
                           <SelectTrigger className="w-32 text-xs h-8">
                             <SelectValue />
@@ -1167,7 +1168,8 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                             variant="ghost"
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                             onClick={() => handleDeleteVolunteer(volunteer.id, volunteer.name)}
-                            title="Delete volunteer"
+                            disabled={isReadOnly}
+                            title={isReadOnly ? "Cannot delete in view-only mode" : "Delete volunteer"}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -1281,7 +1283,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
               <Button variant="outline" onClick={() => setLeadAssignmentDialog(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSaveLeadTasks}>
+              <Button onClick={handleSaveLeadTasks} disabled={isReadOnly}>
                 Save Assignments
               </Button>
             </div>
@@ -1362,7 +1364,8 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                           handleDeleteVolunteer(volunteer.id, volunteer.name);
                           setDetailDialog(false);
                         }}
-                        title="Delete volunteer"
+                        disabled={isReadOnly}
+                        title={isReadOnly ? "Cannot delete in view-only mode" : "Delete volunteer"}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
