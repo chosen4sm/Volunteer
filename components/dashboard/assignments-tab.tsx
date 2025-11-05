@@ -40,6 +40,7 @@ import {
 import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
 import { TimePicker } from "@/components/ui/time-picker";
 import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
+import { formatTime } from "@/lib/utils";
 
 interface AssignmentsTabProps {
   volunteers: Volunteer[];
@@ -175,6 +176,72 @@ export function AssignmentsTab({
       }
       await createAssignment(assignmentData as Omit<Assignment, "id" | "createdAt">);
       toast.success("Volunteer assigned to task");
+
+      const volunteer = volunteers.find((v) => v.id === assignVolunteerId);
+      const task = tasks.find((t) => t.id === assignTaskId);
+      
+      if (volunteer?.email && volunteer?.uniqueCode && task) {
+        const allVolunteerAssignments = [];
+        
+        const existingAssignments = assignments.filter(a => a.volunteerId === assignVolunteerId);
+        for (const existingAssignment of existingAssignments) {
+          const existingTask = tasks.find((t) => t.id === existingAssignment.taskId);
+          if (!existingTask) continue;
+          const existingLocation = existingAssignment.locationId
+            ? locations.find((l) => l.id === existingAssignment.locationId)
+            : existingTask.locationId
+            ? locations.find((l) => l.id === existingTask.locationId)
+            : undefined;
+          
+          allVolunteerAssignments.push({
+            taskName: existingTask.name,
+            locationName: existingLocation?.name,
+            day: existingAssignment.day,
+            shift: existingAssignment.shift,
+            startTime: existingAssignment.startTime,
+            endTime: existingAssignment.endTime,
+            description: existingAssignment.description,
+          });
+        }
+
+        const location = assignLocationId
+          ? locations.find((l) => l.id === assignLocationId)
+          : task.locationId
+          ? locations.find((l) => l.id === task.locationId)
+          : undefined;
+
+        allVolunteerAssignments.push({
+          taskName: task.name,
+          locationName: location?.name,
+          day: assignDay || undefined,
+          shift: assignShift || undefined,
+          startTime: assignStartTime || undefined,
+          endTime: assignEndTime || undefined,
+          description: assignDescription || undefined,
+        });
+
+        try {
+          const response = await fetch("/api/send-assignment-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              assignments: [{
+                to: volunteer.email,
+                volunteerName: volunteer.name,
+                assignments: allVolunteerAssignments,
+                uniqueCode: volunteer.uniqueCode,
+              }]
+            }),
+          });
+
+          if (response.ok) {
+            toast.success("Email notification sent");
+          }
+        } catch (emailError) {
+          console.error("Error sending email:", emailError);
+        }
+      }
+
       setAssignmentDialogOpen(false);
       setAssignVolunteerId("");
       setAssignLocationId("");
@@ -254,6 +321,29 @@ export function AssignmentsTab({
           const volunteer = volunteers.find((v) => v.id === volunteerId);
           if (!volunteer || !volunteer.email || !volunteer.uniqueCode) continue;
 
+          const allVolunteerAssignments = [];
+          
+          const existingAssignments = assignments.filter(a => a.volunteerId === volunteerId);
+          for (const existingAssignment of existingAssignments) {
+            const task = tasks.find((t) => t.id === existingAssignment.taskId);
+            if (!task) continue;
+            const location = existingAssignment.locationId
+              ? locations.find((l) => l.id === existingAssignment.locationId)
+              : task.locationId
+              ? locations.find((l) => l.id === task.locationId)
+              : undefined;
+            
+            allVolunteerAssignments.push({
+              taskName: task.name,
+              locationName: location?.name,
+              day: existingAssignment.day,
+              shift: existingAssignment.shift,
+              startTime: existingAssignment.startTime,
+              endTime: existingAssignment.endTime,
+              description: existingAssignment.description,
+            });
+          }
+
           for (const taskId of assignTaskIds) {
             const task = tasks.find((t) => t.id === taskId);
             if (!task) continue;
@@ -264,9 +354,7 @@ export function AssignmentsTab({
               ? locations.find((l) => l.id === task.locationId)
               : undefined;
 
-            emailAssignments.push({
-              to: volunteer.email,
-              volunteerName: volunteer.name,
+            allVolunteerAssignments.push({
               taskName: task.name,
               locationName: location?.name,
               day: assignDay || undefined,
@@ -274,9 +362,15 @@ export function AssignmentsTab({
               startTime: assignStartTime || undefined,
               endTime: assignEndTime || undefined,
               description: assignDescription || undefined,
-              uniqueCode: volunteer.uniqueCode,
             });
           }
+
+          emailAssignments.push({
+            to: volunteer.email,
+            volunteerName: volunteer.name,
+            assignments: allVolunteerAssignments,
+            uniqueCode: volunteer.uniqueCode,
+          });
         }
 
         if (emailAssignments.length > 0) {
@@ -317,9 +411,16 @@ export function AssignmentsTab({
           .filter(Boolean)
           .join(", ");
 
+        const location = assignLocationId
+          ? locations.find((l) => l.id === assignLocationId)
+          : undefined;
+
         const scheduleText = (() => {
           if (assignStartTime || assignEndTime) {
-            const timeStr = [assignStartTime, assignEndTime].filter(Boolean).join(" - ");
+            const timeStr = [assignStartTime, assignEndTime]
+              .filter(Boolean)
+              .map(t => formatTime(t))
+              .join(" - ");
             if (assignDay) {
               return `${assignDay} ${timeStr}`;
             }
@@ -339,11 +440,11 @@ export function AssignmentsTab({
           .filter(Boolean)
           .join("\n");
 
-        let message = `*Volunteer Assignment*\n\n`;
-        message += `Task: *${taskNames}*\n`;
-        message += `Schedule: *${scheduleText}*\n\n`;
-        message += `Assigned volunteers:\n${volunteersList}\n\n`;
-        message += `Check your email for complete details.`;
+        let message = `You have been assigned to a duty @ ${location?.name || ""}\n\n`;
+        message += `*${taskNames}*\n`;
+        message += `${scheduleText}\n\n`;
+        message += `${volunteersList}\n\n`;
+        message += `Check your email for details.`;
 
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
@@ -519,7 +620,10 @@ export function AssignmentsTab({
   const sendToWhatsApp = (volunteer: Volunteer, task: Task, location: Location | undefined, assignment: Assignment) => {
     const getScheduleText = () => {
       if (assignment.startTime || assignment.endTime) {
-        const timeStr = [assignment.startTime, assignment.endTime].filter(Boolean).join(" - ");
+        const timeStr = [assignment.startTime, assignment.endTime]
+          .filter(Boolean)
+          .map(t => formatTime(t))
+          .join(" - ");
         if (assignment.day) {
           return `${assignment.day} ${timeStr}`;
         }
@@ -533,26 +637,18 @@ export function AssignmentsTab({
 
     const scheduleText = getScheduleText();
 
-    let message = `Assignment Confirmation
-
-*${volunteer.name}*
-${volunteer.phone}
-
-Task: *${task.name}*`;
-
-    if (location) {
-      message += `\nLocation: *${location.name}*`;
-    }
-
-    message += `\nSchedule: *${scheduleText}*`;
-    message += `\n\nPlease check your email for complete details.`;
+    let message = `You have been assigned to a duty @ ${location?.name || ""}\n\n`;
+    message += `*${task.name}*\n`;
+    message += `${scheduleText}\n\n`;
+    message += `${volunteer.name} - ${volunteer.phone}\n\n`;
+    message += `Check your email for details.`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
     
     window.open(whatsappUrl, "_blank");
     toast.success("Opening WhatsApp", {
-      description: "Message is ready to send to your group",
+      description: "Message is ready to send",
     });
   };
 
@@ -792,11 +888,37 @@ Task: *${task.name}*`;
                         <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold">{volunteer.name}</div>
-                            <div className="text-xs text-muted-foreground truncate mt-0.5">{volunteer.email}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              <div className="truncate">{volunteer.email}</div>
+                              <div>{volunteer.phone}</div>
+                            </div>
                           </div>
-                          <Badge variant="secondary" className="shrink-0 h-5">
-                            {totalShifts} {totalShifts === 1 ? "shift" : "shifts"}
-                          </Badge>
+                          <div className="flex flex-col gap-1 items-end shrink-0">
+                            <Badge variant="secondary" className="h-5 text-xs">
+                              {totalShifts} {totalShifts === 1 ? "shift" : "shifts"}
+                            </Badge>
+                            {(() => {
+                              const volunteerAssignments = assignments.filter(a => a.volunteerId === volunteer.id);
+                              if (volunteerAssignments.length > 0) {
+                                const uniqueShifts = new Set(
+                                  volunteerAssignments.map(a => {
+                                    if (a.startTime || a.endTime) {
+                                      const timeStr = [a.startTime, a.endTime].filter(Boolean).join("-");
+                                      return `${a.day || "no-day"}_${timeStr}`;
+                                    }
+                                    return `${a.day || "no-day"}_${a.shift || "no-shift"}`;
+                                  })
+                                );
+                                const shiftCount = uniqueShifts.size;
+                                return (
+                                  <Badge variant="default" className="h-5 text-xs">
+                                    {shiftCount} {shiftCount === 1 ? "shift" : "shifts"}
+                                  </Badge>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
                         </div>
 
                         {(volunteer.ageRange?.length || volunteer.experiences?.length) ? (
@@ -840,19 +962,63 @@ Task: *${task.name}*`;
                           </div>
                         )}
 
-                        {Object.keys(shiftData).length > 0 && (
-                          <div className="mt-2.5 pt-2.5 border-t space-y-1">
-                            {formConfig.days
-                              .filter((day) => shiftData[day]?.length > 0)
-                              .map((day) => (
-                                <div key={day} className="flex items-center gap-2 text-xs">
-                                  <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
-                                  <span className="font-medium text-muted-foreground min-w-[60px]">{day}</span>
-                                  <span className="text-muted-foreground">{shiftData[day].join(", ")}</span>
-                                </div>
-                              ))}
-                          </div>
-                        )}
+                        {(() => {
+                          const volunteerAssignments = assignments.filter(a => a.volunteerId === volunteer.id);
+                          if (volunteerAssignments.length > 0) {
+                            return (
+                              <div className="mt-2.5 pt-2.5 border-t space-y-1">
+                                <div className="text-xs font-medium text-muted-foreground mb-1.5">Current Assignments</div>
+                                {volunteerAssignments.map((assignment) => {
+                                  const task = tasks.find(t => t.id === assignment.taskId);
+                                  const location = locations.find(l => l.id === (assignment.locationId || task?.locationId));
+                                  const scheduleText = (() => {
+                                    if (assignment.startTime || assignment.endTime) {
+                                      const timeStr = [assignment.startTime, assignment.endTime]
+                                        .filter(Boolean)
+                                        .map(t => formatTime(t))
+                                        .join(" - ");
+                                      return assignment.day ? `${assignment.day} ${timeStr}` : timeStr;
+                                    }
+                                    if (assignment.day && assignment.shift) {
+                                      return `${assignment.day} - ${assignment.shift}`;
+                                    }
+                                    return assignment.day || assignment.shift || "No schedule";
+                                  })();
+                                  return (
+                                    <div key={assignment.id} className="flex items-start gap-1.5 text-xs">
+                                      <Clock className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium">{task?.name || "Unknown"}</div>
+                                        <div className="text-muted-foreground">
+                                          {scheduleText}
+                                          {location && ` @ ${location.name}`}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          }
+                          
+                          if (Object.keys(shiftData).length > 0) {
+                            return (
+                              <div className="mt-2.5 pt-2.5 border-t space-y-1">
+                                <div className="text-xs font-medium text-muted-foreground mb-1.5">Availability</div>
+                                {formConfig.days
+                                  .filter((day) => shiftData[day]?.length > 0)
+                                  .map((day) => (
+                                    <div key={day} className="flex items-center gap-2 text-xs">
+                                      <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
+                                      <span className="font-medium text-muted-foreground min-w-[60px]">{day}</span>
+                                      <span className="text-muted-foreground">{shiftData[day].join(", ")}</span>
+                                    </div>
+                                  ))}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -1496,19 +1662,27 @@ Task: *${task.name}*`;
 
                             if (volunteers_list.length > 0) {
                               const firstAssignment = taskAssignments[0];
-                              const scheduleText = firstAssignment.day && firstAssignment.shift
-                                ? `${firstAssignment.day} - ${firstAssignment.shift}`
-                                : firstAssignment.day || firstAssignment.shift || "TBD";
+                              const scheduleText = (() => {
+                                if (firstAssignment.startTime || firstAssignment.endTime) {
+                                  const timeStr = [firstAssignment.startTime, firstAssignment.endTime]
+                                    .filter(Boolean)
+                                    .map(t => formatTime(t))
+                                    .join(" - ");
+                                  return firstAssignment.day ? `${firstAssignment.day} ${timeStr}` : timeStr;
+                                }
+                                if (firstAssignment.day && firstAssignment.shift) {
+                                  return `${firstAssignment.day} - ${firstAssignment.shift}`;
+                                }
+                                return firstAssignment.day || firstAssignment.shift || "TBD";
+                              })();
 
-                              let message = `The following have been assigned this volunteer task: Please check your email for complete details.\n\n`;
+                              let message = `You have been assigned to a duty @ ${primaryLocation?.name || ""}\n\n`;
                               message += `*${task.name}*\n`;
-                              if (primaryLocation) {
-                                message += `${primaryLocation.name}\n`;
-                              }
                               message += `${scheduleText}\n\n`;
-                              volunteers_list.forEach((v, idx) => {
-                                message += `${idx + 1}. ${v.name} - ${v.phone}\n`;
+                              volunteers_list.forEach((v) => {
+                                message += `${v.name} - ${v.phone}\n`;
                               });
+                              message += `\nCheck your email for details.`;
 
                               const encodedMessage = encodeURIComponent(message);
                               const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
@@ -1533,7 +1707,10 @@ Task: *${task.name}*`;
 
                         const getScheduleText = () => {
                           if (assignment.startTime || assignment.endTime) {
-                            const timeStr = [assignment.startTime, assignment.endTime].filter(Boolean).join(" - ");
+                            const timeStr = [assignment.startTime, assignment.endTime]
+                              .filter(Boolean)
+                              .map(t => formatTime(t))
+                              .join(" - ");
                             if (assignment.day) {
                               return `${assignment.day} ${timeStr}`;
                             }

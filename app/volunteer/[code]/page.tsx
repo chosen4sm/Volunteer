@@ -33,6 +33,7 @@ import {
   type Location,
   type CheckInRecord,
 } from "@/lib/db";
+import { formatTime } from "@/lib/utils";
 
 export default function VolunteerPortalPage() {
   const params = useParams();
@@ -80,16 +81,23 @@ export default function VolunteerPortalPage() {
   }, [loadVolunteerData]);
 
   const handleCheckIn = async (
-    assignmentId: string,
+    shiftKey: string,
     materialsIssued: { [key: string]: boolean }
   ) => {
     if (!volunteer) return;
 
     try {
-      setCheckingIn(assignmentId);
-      await checkInVolunteer(assignmentId, volunteer.id, materialsIssued);
+      setCheckingIn(shiftKey);
+      const shiftAssignments = assignments.filter(a => getShiftKey(a) === shiftKey);
+      
+      await Promise.all(
+        shiftAssignments.map(assignment => 
+          checkInVolunteer(assignment.id, volunteer.id, materialsIssued)
+        )
+      );
+      
       await loadVolunteerData();
-      toast.success("Checked in successfully!");
+      toast.success(`Checked in to ${shiftAssignments.length} assignment(s)!`);
     } catch (err) {
       console.error("Error checking in:", err);
       toast.error("Failed to check in. Please try again.");
@@ -99,22 +107,37 @@ export default function VolunteerPortalPage() {
   };
 
   const handleCheckOut = async (
-    assignmentId: string,
+    shiftKey: string,
     materialsReturned: { [key: string]: boolean }
   ) => {
     if (!volunteer) return;
 
     try {
-      setCheckingIn(assignmentId);
-      await checkOutVolunteer(assignmentId, volunteer.id, materialsReturned);
+      setCheckingIn(shiftKey);
+      const shiftAssignments = assignments.filter(a => getShiftKey(a) === shiftKey);
+      
+      await Promise.all(
+        shiftAssignments.map(assignment =>
+          checkOutVolunteer(assignment.id, volunteer.id, materialsReturned)
+        )
+      );
+      
       await loadVolunteerData();
-      toast.success("Checked out successfully!");
+      toast.success(`Checked out of ${shiftAssignments.length} assignment(s)!`);
     } catch (err) {
       console.error("Error checking out:", err);
       toast.error("Failed to check out. Please try again.");
     } finally {
       setCheckingIn(null);
     }
+  };
+
+  const getShiftKey = (assignment: Assignment): string => {
+    if (assignment.startTime || assignment.endTime) {
+      const timeStr = [assignment.startTime, assignment.endTime].filter(Boolean).join("-");
+      return `${assignment.day || "no-day"}_${timeStr}`;
+    }
+    return `${assignment.day || "no-day"}_${assignment.shift || "no-shift"}`;
   };
 
   const getCheckInForAssignment = (assignmentId: string): CheckInRecord | undefined => {
@@ -125,6 +148,21 @@ export default function VolunteerPortalPage() {
     (a) => a.status === "pending" || a.status === "checked-in"
   );
   const completedAssignments = assignments.filter((a) => a.status === "completed");
+
+  const groupAssignmentsByShift = (assignmentList: Assignment[]) => {
+    const grouped = new Map<string, Assignment[]>();
+    assignmentList.forEach(assignment => {
+      const key = getShiftKey(assignment);
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(assignment);
+    });
+    return grouped;
+  };
+
+  const upcomingShifts = groupAssignmentsByShift(upcomingAssignments);
+  const completedShifts = groupAssignmentsByShift(completedAssignments);
 
   if (loading) {
     return (
@@ -198,7 +236,7 @@ export default function VolunteerPortalPage() {
           </Card>
         ) : (
           <>
-            {upcomingAssignments.length > 0 && (
+            {upcomingShifts.size > 0 && (
               <Card>
                 <CardHeader className="pb-4 bg-muted/30 border-b">
                   <div className="flex items-center justify-between">
@@ -207,7 +245,7 @@ export default function VolunteerPortalPage() {
                       <div>
                         <CardTitle className="text-xl">Upcoming & Active Shifts</CardTitle>
                         <CardDescription className="mt-1">
-                          {upcomingAssignments.length} assignment{upcomingAssignments.length !== 1 ? "s" : ""} to complete
+                          {upcomingShifts.size} shift{upcomingShifts.size !== 1 ? "s" : ""} to complete
                         </CardDescription>
                       </div>
                     </div>
@@ -215,24 +253,25 @@ export default function VolunteerPortalPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-4">
-                  {upcomingAssignments.map((assignment) => (
-                    <AssignmentCard
-                      key={assignment.id}
-                      assignment={assignment}
+                  {Array.from(upcomingShifts.entries()).map(([shiftKey, shiftAssignments]) => (
+                    <ShiftCard
+                      key={shiftKey}
+                      shiftKey={shiftKey}
+                      assignments={shiftAssignments}
                       volunteer={volunteer!}
-                      task={tasks.find((t) => t.id === assignment.taskId)}
-                      location={locations.find((l) => l.id === assignment.locationId)}
-                      checkIn={getCheckInForAssignment(assignment.id)}
+                      tasks={tasks}
+                      locations={locations}
+                      checkIns={shiftAssignments.map(a => getCheckInForAssignment(a.id))}
                       onCheckIn={handleCheckIn}
                       onCheckOut={handleCheckOut}
-                      isProcessing={checkingIn === assignment.id}
+                      isProcessing={checkingIn === shiftKey}
                     />
                   ))}
                 </CardContent>
               </Card>
             )}
 
-            {completedAssignments.length > 0 && (
+            {completedShifts.size > 0 && (
               <Card>
                 <CardHeader className="pb-4 bg-muted/30 border-b">
                   <div className="flex items-center justify-between">
@@ -241,7 +280,7 @@ export default function VolunteerPortalPage() {
                       <div>
                         <CardTitle className="text-xl">Completed Shifts</CardTitle>
                         <CardDescription className="mt-1">
-                          {completedAssignments.length} assignment{completedAssignments.length !== 1 ? "s" : ""} completed
+                          {completedShifts.size} shift{completedShifts.size !== 1 ? "s" : ""} completed
                         </CardDescription>
                       </div>
                     </div>
@@ -249,14 +288,15 @@ export default function VolunteerPortalPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-4">
-                  {completedAssignments.map((assignment) => (
-                    <AssignmentCard
-                      key={assignment.id}
-                      assignment={assignment}
+                  {Array.from(completedShifts.entries()).map(([shiftKey, shiftAssignments]) => (
+                    <ShiftCard
+                      key={shiftKey}
+                      shiftKey={shiftKey}
+                      assignments={shiftAssignments}
                       volunteer={volunteer!}
-                      task={tasks.find((t) => t.id === assignment.taskId)}
-                      location={locations.find((l) => l.id === assignment.locationId)}
-                      checkIn={getCheckInForAssignment(assignment.id)}
+                      tasks={tasks}
+                      locations={locations}
+                      checkIns={shiftAssignments.map(a => getCheckInForAssignment(a.id))}
                       onCheckIn={handleCheckIn}
                       onCheckOut={handleCheckOut}
                       isProcessing={false}
@@ -273,69 +313,94 @@ export default function VolunteerPortalPage() {
   );
 }
 
-function AssignmentCard({
-  assignment,
-  task,
-  location,
-  checkIn,
+function ShiftCard({
+  shiftKey,
+  assignments,
+  tasks,
+  locations,
+  checkIns,
   onCheckIn,
   onCheckOut,
   isProcessing,
   isCompleted = false,
 }: {
-  assignment: Assignment;
+  shiftKey: string;
+  assignments: Assignment[];
   volunteer: Volunteer;
-  task?: Task;
-  location?: Location;
-  checkIn?: CheckInRecord;
-  onCheckIn: (assignmentId: string, materials: { [key: string]: boolean }) => void;
-  onCheckOut: (assignmentId: string, materials: { [key: string]: boolean }) => void;
+  tasks: Task[];
+  locations: Location[];
+  checkIns: (CheckInRecord | undefined)[];
+  onCheckIn: (shiftKey: string, materials: { [key: string]: boolean }) => void;
+  onCheckOut: (shiftKey: string, materials: { [key: string]: boolean }) => void;
   isProcessing: boolean;
   isCompleted?: boolean;
 }) {
   const [materials, setMaterials] = useState<{ [key: string]: boolean }>({});
 
-  const taskMaterials = task?.materials || [];
-  const isCheckedIn = assignment.status === "checked-in";
-  const hasCheckIn = !!checkIn?.checkInTime;
-  const hasCheckOut = !!checkIn?.checkOutTime;
+  const firstAssignment = assignments[0];
+  const allCheckedIn = assignments.every(a => a.status === "checked-in" || a.status === "completed");
+  const anyCheckedIn = assignments.some(a => a.status === "checked-in" || a.status === "completed");
+  const hasCheckIn = checkIns.some(ci => !!ci?.checkInTime);
+  const hasCheckOut = checkIns.every(ci => !!ci?.checkOutTime);
+
+  const allMaterials = Array.from(
+    new Set(
+      assignments.flatMap(a => {
+        const task = tasks.find(t => t.id === a.taskId);
+        return task?.materials || [];
+      })
+    )
+  );
+
+  const getScheduleText = () => {
+    if (firstAssignment.startTime || firstAssignment.endTime) {
+      const timeStr = [firstAssignment.startTime, firstAssignment.endTime]
+        .filter(Boolean)
+        .map(t => formatTime(t))
+        .join(" - ");
+      if (firstAssignment.day) {
+        return `${firstAssignment.day} • ${timeStr}`;
+      }
+      return timeStr;
+    }
+    if (firstAssignment.day && firstAssignment.shift) {
+      return `${firstAssignment.day} • ${firstAssignment.shift}`;
+    }
+    return firstAssignment.day || firstAssignment.shift || "No schedule";
+  };
 
   return (
     <div className={`border rounded-lg p-4 space-y-3 ${isCompleted ? "opacity-75" : ""}`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 space-y-1">
-          <h3 className="font-semibold text-lg">{task?.name || "Unknown Task"}</h3>
-          {location && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <MapPin className="w-4 h-4" />
-              {location.name}
-            </div>
-          )}
-          {(assignment.day || assignment.shift || assignment.startTime || assignment.endTime) && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Calendar className="w-4 h-4" />
-              {assignment.startTime || assignment.endTime ? (
-                <>
-                  {assignment.day && <span>{assignment.day} • </span>}
-                  {assignment.startTime && <span>{assignment.startTime}</span>}
-                  {assignment.startTime && assignment.endTime && <span> - </span>}
-                  {assignment.endTime && <span>{assignment.endTime}</span>}
-                </>
-              ) : (
-                <>
-                  {assignment.day && assignment.shift
-                    ? `${assignment.day} • ${assignment.shift}`
-                    : assignment.day || assignment.shift}
-                </>
-              )}
-            </div>
-          )}
-          {assignment.description && (
-            <p className="text-sm text-muted-foreground">{assignment.description}</p>
-          )}
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <h3 className="font-semibold text-lg">{getScheduleText()}</h3>
+          </div>
+          
+          <div className="space-y-1.5 pl-6">
+            {assignments.map(assignment => {
+              const task = tasks.find(t => t.id === assignment.taskId);
+              const location = locations.find(l => l.id === assignment.locationId);
+              return (
+                <div key={assignment.id} className="text-sm">
+                  <div className="font-medium">{task?.name || "Unknown Task"}</div>
+                  {location && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <MapPin className="w-3 h-3" />
+                      {location.name}
+                    </div>
+                  )}
+                  {assignment.description && (
+                    <p className="text-xs text-muted-foreground italic mt-0.5">{assignment.description}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <Badge variant={isCompleted ? "secondary" : isCheckedIn ? "default" : "outline"}>
-          {isCompleted ? "Completed" : isCheckedIn ? "Checked In" : "Pending"}
+        <Badge variant={isCompleted ? "secondary" : anyCheckedIn ? "default" : "outline"}>
+          {isCompleted ? "Completed" : anyCheckedIn ? "Checked In" : "Pending"}
         </Badge>
       </div>
 
@@ -344,16 +409,19 @@ function AssignmentCard({
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-green-600" />
             <span className="text-muted-foreground">
-              Checked in: {checkIn.checkInTime?.toDate().toLocaleString()}
+              Checked in: {checkIns.find(ci => ci?.checkInTime)?.checkInTime?.toDate().toLocaleString()}
             </span>
           </div>
-          {checkIn.materialsIssued && Object.keys(checkIn.materialsIssued).length > 0 && (
+          {checkIns.some(ci => ci?.materialsIssued && Object.keys(ci.materialsIssued).length > 0) && (
             <div className="ml-6 text-xs text-muted-foreground">
               Materials issued:{" "}
-              {Object.entries(checkIn.materialsIssued)
-                .filter(([, value]) => value)
-                .map(([key]) => key)
-                .join(", ") || "None"}
+              {Array.from(new Set(
+                checkIns.flatMap(ci => 
+                  ci?.materialsIssued ? Object.entries(ci.materialsIssued)
+                    .filter(([, value]) => value)
+                    .map(([key]) => key) : []
+                )
+              )).join(", ") || "None"}
             </div>
           )}
         </div>
@@ -364,16 +432,19 @@ function AssignmentCard({
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-blue-600" />
             <span className="text-muted-foreground">
-              Checked out: {checkIn.checkOutTime?.toDate().toLocaleString()}
+              Checked out: {checkIns.find(ci => ci?.checkOutTime)?.checkOutTime?.toDate().toLocaleString()}
             </span>
           </div>
-          {checkIn.materialsReturned && Object.keys(checkIn.materialsReturned).length > 0 && (
+          {checkIns.some(ci => ci?.materialsReturned && Object.keys(ci.materialsReturned).length > 0) && (
             <div className="ml-6 text-xs text-muted-foreground">
               Materials returned:{" "}
-              {Object.entries(checkIn.materialsReturned)
-                .filter(([, value]) => value)
-                .map(([key]) => key)
-                .join(", ") || "None"}
+              {Array.from(new Set(
+                checkIns.flatMap(ci => 
+                  ci?.materialsReturned ? Object.entries(ci.materialsReturned)
+                    .filter(([, value]) => value)
+                    .map(([key]) => key) : []
+                )
+              )).join(", ") || "None"}
             </div>
           )}
         </div>
@@ -384,18 +455,18 @@ function AssignmentCard({
           <Separator />
           {!hasCheckIn && (
             <div className="space-y-3">
-              {taskMaterials.length > 0 && (
+              {allMaterials.length > 0 && (
                 <div className="flex flex-wrap gap-4">
-                  {taskMaterials.map((material) => (
+                  {allMaterials.map((material) => (
                     <div key={material} className="flex items-center gap-2">
                       <Checkbox
-                        id={`material-${assignment.id}-${material}`}
+                        id={`material-${shiftKey}-${material}`}
                         checked={materials[material] || false}
                         onCheckedChange={(c) =>
                           setMaterials((prev) => ({ ...prev, [material]: !!c }))
                         }
                       />
-                      <Label htmlFor={`material-${assignment.id}-${material}`} className="text-sm">
+                      <Label htmlFor={`material-${shiftKey}-${material}`} className="text-sm">
                         {material}
                       </Label>
                     </div>
@@ -403,7 +474,7 @@ function AssignmentCard({
                 </div>
               )}
               <Button
-                onClick={() => onCheckIn(assignment.id, materials)}
+                onClick={() => onCheckIn(shiftKey, materials)}
                 disabled={isProcessing}
                 className="w-full"
               >
@@ -415,7 +486,7 @@ function AssignmentCard({
                 ) : (
                   <>
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Check In
+                    Check In to Shift ({assignments.length} task{assignments.length !== 1 ? 's' : ''})
                   </>
                 )}
               </Button>
@@ -424,18 +495,18 @@ function AssignmentCard({
 
           {hasCheckIn && !hasCheckOut && (
             <div className="space-y-3">
-              {taskMaterials.length > 0 && (
+              {allMaterials.length > 0 && (
                 <div className="flex flex-wrap gap-4">
-                  {taskMaterials.map((material) => (
+                  {allMaterials.map((material) => (
                     <div key={material} className="flex items-center gap-2">
                       <Checkbox
-                        id={`material-return-${assignment.id}-${material}`}
+                        id={`material-return-${shiftKey}-${material}`}
                         checked={materials[material] || false}
                         onCheckedChange={(c) =>
                           setMaterials((prev) => ({ ...prev, [material]: !!c }))
                         }
                       />
-                      <Label htmlFor={`material-return-${assignment.id}-${material}`} className="text-sm">
+                      <Label htmlFor={`material-return-${shiftKey}-${material}`} className="text-sm">
                         Return {material}
                       </Label>
                     </div>
@@ -443,7 +514,7 @@ function AssignmentCard({
                 </div>
               )}
               <Button
-                onClick={() => onCheckOut(assignment.id, materials)}
+                onClick={() => onCheckOut(shiftKey, materials)}
                 disabled={isProcessing}
                 className="w-full"
                 variant="outline"
@@ -456,7 +527,7 @@ function AssignmentCard({
                 ) : (
                   <>
                     <Clock className="w-4 h-4 mr-2" />
-                    Check Out
+                    Check Out of Shift ({assignments.length} task{assignments.length !== 1 ? 's' : ''})
                   </>
                 )}
               </Button>

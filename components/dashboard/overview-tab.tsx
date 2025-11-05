@@ -433,6 +433,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
   }, [searchQuery, filterDay, filterShift, filterExperience, filterAgeRange, filterJamatKhane, filterSkill, filterRole]);
 
   const totalShiftsAvailable = volunteers.reduce((acc, v) => acc + getTotalShifts(v), 0);
+  const uniqueVolunteersWithAssignments = new Set(assignments.map(a => a.volunteerId)).size;
   const pendingAssignments = assignments.filter(a => a.status === "pending").length;
   const completedAssignments = assignments.filter(a => a.status === "completed").length;
   const checkedInAssignments = assignments.filter(a => a.status === "checked-in").length;
@@ -493,12 +494,15 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
         <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("All Assigned Volunteers", (v) => assignments.some(a => a.volunteerId === v.id))}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Assignments</CardTitle>
-              <Badge variant="secondary">{assignments.length}</Badge>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Volunteers Deployed</CardTitle>
+              <Badge variant="secondary">{uniqueVolunteersWithAssignments}</Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{assignments.length}</div>
+            <div className="text-3xl font-bold">{uniqueVolunteersWithAssignments}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {assignments.length} total assignment{assignments.length !== 1 ? 's' : ''}
+            </p>
             <div className="flex gap-1.5 mt-2 flex-wrap">
               {pendingAssignments > 0 && (
                 <Badge 

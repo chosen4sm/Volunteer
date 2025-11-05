@@ -13,8 +13,16 @@ import {
 } from "@react-email/components";
 import * as React from "react";
 
-interface AssignmentNotificationEmailProps {
-  volunteerName: string;
+function formatTime(time?: string): string {
+  if (!time) return "";
+  const [hours, minutes] = time.split(":");
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+interface AssignmentDetail {
   taskName: string;
   locationName?: string;
   day?: string;
@@ -22,6 +30,18 @@ interface AssignmentNotificationEmailProps {
   startTime?: string;
   endTime?: string;
   description?: string;
+}
+
+interface AssignmentNotificationEmailProps {
+  volunteerName: string;
+  taskName?: string;
+  locationName?: string;
+  day?: string;
+  shift?: string;
+  startTime?: string;
+  endTime?: string;
+  description?: string;
+  assignments?: AssignmentDetail[];
   uniqueCode: string;
   baseUrl: string;
 }
@@ -35,31 +55,39 @@ export const AssignmentNotificationEmail = ({
   startTime,
   endTime,
   description,
+  assignments,
   uniqueCode = "ABC12345",
   baseUrl = "https://example.com",
 }: AssignmentNotificationEmailProps) => {
   const volunteerPortalUrl = `${baseUrl}/volunteer/${uniqueCode}`;
   
-  const getScheduleText = () => {
-    if (startTime || endTime) {
-      const timeStr = [startTime, endTime].filter(Boolean).join(" - ");
-      if (day) {
-        return `${day} ${timeStr}`;
+  const getScheduleText = (assignmentData: { day?: string; shift?: string; startTime?: string; endTime?: string }) => {
+    if (assignmentData.startTime || assignmentData.endTime) {
+      const timeStr = [assignmentData.startTime, assignmentData.endTime]
+        .filter(Boolean)
+        .map(t => formatTime(t))
+        .join(" - ");
+      if (assignmentData.day) {
+        return `${assignmentData.day} ${timeStr}`;
       }
       return timeStr;
     }
-    if (day && shift) {
-      return `${day} - ${shift}`;
+    if (assignmentData.day && assignmentData.shift) {
+      return `${assignmentData.day} - ${assignmentData.shift}`;
     }
-    return day || shift || "To be scheduled";
+    return assignmentData.day || assignmentData.shift || "To be scheduled";
   };
   
-  const scheduleText = getScheduleText();
+  const displayAssignments = assignments && assignments.length > 0 
+    ? assignments 
+    : [{ taskName: taskName!, locationName, day, shift, startTime, endTime, description }];
+  
+  const hasMultipleAssignments = displayAssignments.length > 1;
 
   return (
     <Html>
       <Head />
-      <Preview>USA Visit - Your volunteer assignment for {taskName}</Preview>
+      <Preview>USA Visit - {hasMultipleAssignments ? `Your ${displayAssignments.length} volunteer assignments` : `Your volunteer assignment${displayAssignments[0]?.taskName ? ` for ${displayAssignments[0].taskName}` : ''}`}</Preview>
       <Tailwind
         config={{
           theme: {
@@ -145,41 +173,32 @@ export const AssignmentNotificationEmail = ({
                   lineHeight: "1.6",
                   margin: "0 0 32px 0",
                 }}>
-                  Thank you for volunteering with USA Visit! You have been assigned to a service opportunity. Please review your assignment details below:
+                  Thank you for volunteering with USA Visit! {hasMultipleAssignments ? `You have ${displayAssignments.length} assignments.` : 'You have been assigned to a service opportunity.'} Please review your assignment details below:
                 </Text>
 
-                {/* Details Card */}
-                <div style={{
-                  backgroundColor: "#f7f4f7",
-                  borderRadius: "12px",
-                  padding: "24px",
-                  marginBottom: "32px",
-                  border: "1px solid #ede7ef",
-                }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <tbody>
-                      <tr>
-                        <td style={{
-                          color: "#707070",
-                          fontSize: "14px",
-                          fontWeight: "500",
-                          paddingBottom: "12px",
-                          paddingRight: "16px",
-                          verticalAlign: "top",
-                          width: "120px",
-                        }}>
-                          Task
-                        </td>
-                        <td style={{
-                          color: "#000000",
-                          fontSize: "16px",
-                          fontWeight: "600",
-                          paddingBottom: "12px",
-                        }}>
-                          {taskName}
-                        </td>
-                      </tr>
-                      {locationName && (
+                {/* Details Cards */}
+                {displayAssignments.map((assignment, index) => (
+                  <div key={index} style={{
+                    backgroundColor: "#f7f4f7",
+                    borderRadius: "12px",
+                    padding: "24px",
+                    marginBottom: "24px",
+                    border: "1px solid #ede7ef",
+                  }}>
+                    {hasMultipleAssignments && (
+                      <Text style={{
+                        color: "rgb(115, 70, 213)",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        margin: "0 0 16px 0",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}>
+                        Assignment {index + 1}
+                      </Text>
+                    )}
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <tbody>
                         <tr>
                           <td style={{
                             color: "#707070",
@@ -188,8 +207,9 @@ export const AssignmentNotificationEmail = ({
                             paddingBottom: "12px",
                             paddingRight: "16px",
                             verticalAlign: "top",
+                            width: "120px",
                           }}>
-                            Location
+                            Task
                           </td>
                           <td style={{
                             color: "#000000",
@@ -197,53 +217,75 @@ export const AssignmentNotificationEmail = ({
                             fontWeight: "600",
                             paddingBottom: "12px",
                           }}>
-                            {locationName}
+                            {assignment.taskName}
                           </td>
                         </tr>
-                      )}
-                      <tr>
-                        <td style={{
-                          color: "#707070",
-                          fontSize: "14px",
-                          fontWeight: "500",
-                          paddingBottom: description ? "12px" : "0",
-                          paddingRight: "16px",
-                          verticalAlign: "top",
-                        }}>
-                          Schedule
-                        </td>
-                        <td style={{
-                          color: "#000000",
-                          fontSize: "16px",
-                          fontWeight: "600",
-                          paddingBottom: description ? "12px" : "0",
-                        }}>
-                          {scheduleText}
-                        </td>
-                      </tr>
-                      {description && (
+                        {assignment.locationName && (
+                          <tr>
+                            <td style={{
+                              color: "#707070",
+                              fontSize: "14px",
+                              fontWeight: "500",
+                              paddingBottom: "12px",
+                              paddingRight: "16px",
+                              verticalAlign: "top",
+                            }}>
+                              Location
+                            </td>
+                            <td style={{
+                              color: "#000000",
+                              fontSize: "16px",
+                              fontWeight: "600",
+                              paddingBottom: "12px",
+                            }}>
+                              {assignment.locationName}
+                            </td>
+                          </tr>
+                        )}
                         <tr>
                           <td style={{
                             color: "#707070",
                             fontSize: "14px",
                             fontWeight: "500",
+                            paddingBottom: assignment.description ? "12px" : "0",
                             paddingRight: "16px",
                             verticalAlign: "top",
                           }}>
-                            Notes
+                            Schedule
                           </td>
                           <td style={{
                             color: "#000000",
-                            fontSize: "15px",
-                            lineHeight: "1.6",
+                            fontSize: "16px",
+                            fontWeight: "600",
+                            paddingBottom: assignment.description ? "12px" : "0",
                           }}>
-                            {description}
+                            {getScheduleText(assignment)}
                           </td>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        {assignment.description && (
+                          <tr>
+                            <td style={{
+                              color: "#707070",
+                              fontSize: "14px",
+                              fontWeight: "500",
+                              paddingRight: "16px",
+                              verticalAlign: "top",
+                            }}>
+                              Notes
+                            </td>
+                            <td style={{
+                              color: "#000000",
+                              fontSize: "15px",
+                              lineHeight: "1.6",
+                            }}>
+                              {assignment.description}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
 
                 <Text style={{
                   color: "#000000",
