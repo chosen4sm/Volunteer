@@ -831,7 +831,8 @@ export function AssignmentsTab({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="volunteer">Volunteer</SelectItem>
-                <SelectItem value="lead">Team Lead</SelectItem>
+                <SelectItem value="team-lead">Team Lead</SelectItem>
+                <SelectItem value="lead">Core Team</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -896,6 +897,12 @@ export function AssignmentsTab({
                             </div>
                           </div>
                           <div className="flex flex-col gap-1 items-end shrink-0">
+                            {volunteer.role === "lead" && (
+                              <Badge variant="default" className="h-5 text-xs">Core Team</Badge>
+                            )}
+                            {volunteer.role === "team-lead" && (
+                              <Badge variant="secondary" className="h-5 text-xs">Team Lead</Badge>
+                            )}
                             <Badge variant="secondary" className="h-5 text-xs">
                               {totalShifts} {totalShifts === 1 ? "shift" : "shifts"}
                             </Badge>
@@ -914,7 +921,7 @@ export function AssignmentsTab({
                                 const shiftCount = uniqueShifts.size;
                                 return (
                                   <Badge variant="default" className="h-5 text-xs">
-                                    {shiftCount} {shiftCount === 1 ? "shift" : "shifts"}
+                                    {shiftCount} assigned
                                   </Badge>
                                 );
                               }
@@ -923,19 +930,30 @@ export function AssignmentsTab({
                           </div>
                         </div>
 
-                        {(volunteer.ageRange?.length || volunteer.experiences?.length) ? (
-                          <div className="flex gap-1.5 flex-wrap mt-2">
-                            {volunteer.ageRange?.map((ageId) => {
-                              const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
-                              const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label || ageId;
-                              return <Badge key={ageId} variant="secondary" className="text-xs h-5">{ageLabel}</Badge>;
-                            })}
-                            {volunteer.experiences?.map((exp) => {
-                              const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
-                              return expLabel ? <Badge key={exp} variant="outline" className="text-xs h-5">{expLabel}</Badge> : null;
-                            })}
-                          </div>
-                        ) : null}
+                        <div className="flex gap-1.5 flex-wrap mt-2">
+                          {volunteer.ageRange?.map((ageId) => {
+                            const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+                            const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label || ageId;
+                            return <Badge key={ageId} variant="secondary" className="text-xs h-5">👤 {ageLabel}</Badge>;
+                          })}
+                          {volunteer.experiences?.map((exp) => {
+                            const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
+                            return expLabel ? <Badge key={exp} variant="outline" className="text-xs h-5">⭐ {expLabel}</Badge> : null;
+                          })}
+                          {(() => {
+                            if (!volunteer.specialSkill) return null;
+                            const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+                            const skillLabel = skillQuestion?.options?.find(opt => opt.id === volunteer.specialSkill)?.label;
+                            return skillLabel ? <Badge variant="default" className="text-xs h-5">🛠️ {skillLabel}</Badge> : null;
+                          })()}
+                          {(() => {
+                            const jamatKhaneLabels = (volunteer.jamatKhane || []).map(jkId => {
+                              const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+                              return jamatQuestion?.options?.find(opt => opt.id === jkId)?.label || jkId;
+                            });
+                            return jamatKhaneLabels.length > 0 ? <Badge variant="outline" className="text-xs h-5">🕌 {jamatKhaneLabels[0]}</Badge> : null;
+                          })()}
+                        </div>
 
                         {consecutiveShifts && (
                           <div className="mt-2 p-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-md">

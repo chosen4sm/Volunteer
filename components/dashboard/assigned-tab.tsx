@@ -337,6 +337,12 @@ export function AssignedTab({
                               <div className="flex items-center gap-2.5 mb-2">
                                 <User className="w-4 h-4 text-muted-foreground shrink-0" />
                                 <span className="font-medium text-base">{volunteer.name}</span>
+                                {volunteer.role === "lead" && (
+                                  <Badge variant="default" className="h-5 text-xs">Core Team</Badge>
+                                )}
+                                {volunteer.role === "team-lead" && (
+                                  <Badge variant="secondary" className="h-5 text-xs">Team Lead</Badge>
+                                )}
                               </div>
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 ml-6.5 text-sm">
                                 {scheduleText && (

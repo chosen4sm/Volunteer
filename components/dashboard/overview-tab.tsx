@@ -472,7 +472,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("All Volunteers", () => true)}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -508,6 +508,21 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
           </CardContent>
         </Card>
 
+        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("Team Leads", (v) => v.role === "team-lead")}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Team Leads</CardTitle>
+              <Badge variant="secondary" className="text-xs">Team Lead</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{volunteers.filter(v => v.role === "team-lead").length}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Team lead volunteers
+            </p>
+          </CardContent>
+        </Card>
+
         <Card className="hover:border-primary/50 transition hover:shadow-md">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -522,7 +537,9 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
             </p>
           </CardContent>
         </Card>
+      </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
         <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("All Assigned Volunteers", (v) => assignments.some(a => a.volunteerId === v.id))}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -1320,24 +1337,84 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                 <p className="mt-4 text-muted-foreground">No volunteers found</p>
               </div>
             ) : (
-              detailDialogVolunteers.map((volunteer) => (
-                <div key={volunteer.id} className="p-3 rounded-lg border">
+              detailDialogVolunteers.map((volunteer) => {
+                const shiftData = volunteer.shifts || {};
+                const volunteerAssignments = assignments.filter((a) => a.volunteerId === volunteer.id);
+                const jamatKhaneLabels = (volunteer.jamatKhane || []).map(jkId => {
+                  const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+                  return jamatQuestion?.options?.find(opt => opt.id === jkId)?.label || jkId;
+                });
+                const skillLabel = volunteer.specialSkill ? (() => {
+                  const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+                  return skillQuestion?.options?.find(opt => opt.id === volunteer.specialSkill)?.label;
+                })() : null;
+
+                return (
+                <div key={volunteer.id} className="p-4 rounded-lg border">
                   <div className="flex gap-3">
-                    <Avatar className="h-10 w-10 shrink-0">
+                    <Avatar className="h-12 w-12 shrink-0">
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                         {getInitials(volunteer.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold">{volunteer.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {volunteer.email} • {formatPhone(volunteer.phone)}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="font-semibold">{volunteer.name}</div>
+                          {volunteer.role === "lead" && (
+                            <Badge variant="default" className="text-xs">Core Team</Badge>
+                          )}
+                          {volunteer.role === "team-lead" && (
+                            <Badge variant="secondary" className="text-xs">Team Lead</Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {volunteer.email} • {formatPhone(volunteer.phone)}
+                        </div>
                       </div>
-                      {volunteer.role === "lead" && (
-                        <Badge variant="default" className="text-xs mt-1">Core Team</Badge>
+
+                      <div className="flex gap-2 flex-wrap">
+                        {volunteer.ageRange?.map((ageId) => {
+                          const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+                          const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label || ageId;
+                          return <Badge key={ageId} variant="secondary" className="text-xs">👤 {ageLabel}</Badge>;
+                        })}
+                        {volunteer.experiences?.map((exp) => {
+                          const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
+                          return expLabel ? <Badge key={exp} variant="outline" className="text-xs">⭐ {expLabel}</Badge> : null;
+                        })}
+                        {skillLabel && (
+                          <Badge variant="default" className="text-xs">🛠️ {skillLabel}</Badge>
+                        )}
+                        {jamatKhaneLabels.length > 0 && (
+                          <Badge variant="outline" className="text-xs">🕌 {jamatKhaneLabels[0]}</Badge>
+                        )}
+                      </div>
+
+                      {Object.keys(shiftData).length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          {formConfig.days
+                            .filter((day) => shiftData[day]?.length > 0)
+                            .map((day) => (
+                              <div key={day} className="p-2 rounded bg-muted/50 border">
+                                <span className="font-medium text-primary">{day}:</span> <span className="text-muted-foreground">{shiftData[day].join(", ")}</span>
+                              </div>
+                            ))}
+                        </div>
                       )}
-                      {volunteer.role === "team-lead" && (
-                        <Badge variant="secondary" className="text-xs mt-1">Team Lead</Badge>
+
+                      {volunteerAssignments.length > 0 && (
+                        <div className="flex gap-2 flex-wrap">
+                          {volunteerAssignments.map((assignment) => {
+                            const task = tasks.find(t => t.id === assignment.taskId);
+                            const location = locations.find(l => l.id === (assignment.locationId || task?.locationId));
+                            return task ? (
+                              <Badge key={assignment.id} variant="secondary" className="text-xs">
+                                📋 {task.name} {location && `@ ${location.name}`}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-1 shrink-0">
@@ -1372,7 +1449,8 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                     </div>
                   </div>
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </DialogContent>
