@@ -364,15 +364,45 @@ export default function DashboardPage() {
     if (!email) return;
 
     try {
-      const { doc, getDoc, updateDoc, getDocs, query, collection, where } = await import("firebase/firestore");
+      const { doc, getDoc, updateDoc, getDocs, query, collection, where, setDoc } = await import("firebase/firestore");
       
       // Find user by email in profiles collection
       const profilesQuery = query(collection(db, "profiles"), where("email", "==", email));
       const querySnapshot = await getDocs(profilesQuery);
       
       if (querySnapshot.empty) {
-        toast.error("User not found", {
-          description: `No user found with email: ${email}`,
+        // Check if volunteer exists with this email
+        const volunteer = volunteers.find(v => v.email === email);
+        
+        if (!volunteer) {
+          toast.error("User not found", {
+            description: `No user or volunteer found with email: ${email}`,
+          });
+          return;
+        }
+
+        // Create profile for the volunteer
+        const volunteersQuery = query(collection(db, "volunteers"), where("email", "==", email));
+        const volunteerSnapshot = await getDocs(volunteersQuery);
+        
+        if (volunteerSnapshot.empty) {
+          toast.error("Volunteer not found in database", {
+            description: `Cannot create profile for: ${email}`,
+          });
+          return;
+        }
+
+        const volunteerId = volunteerSnapshot.docs[0].id;
+        await setDoc(doc(db, "profiles", volunteerId), {
+          email: volunteer.email,
+          displayName: volunteer.name,
+          admin: false,
+          viewer: true,
+          createdAt: new Date().toISOString(),
+        });
+
+        toast.success("Profile created and viewer access granted!", {
+          description: `${email} can now view the dashboard (read-only)`,
         });
         return;
       }

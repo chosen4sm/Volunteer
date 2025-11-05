@@ -32,10 +32,12 @@ service cloud.firestore {
       allow read: if (request.auth != null && request.auth.uid == userId) || hasAccess();
       
       // Users can create their own profile (with admin: false and viewer: false only)
-      allow create: if request.auth != null && 
-                      request.auth.uid == userId &&
-                      request.resource.data.admin == false &&
-                      request.resource.data.viewer == false;
+      // OR admins can create profiles for anyone
+      allow create: if (request.auth != null && 
+                        request.auth.uid == userId &&
+                        request.resource.data.admin == false &&
+                        request.resource.data.viewer == false) ||
+                       isAdmin();
       
       // Only admins can update or delete profiles
       allow update, delete: if isAdmin();
