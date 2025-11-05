@@ -39,10 +39,11 @@ import { populateJamatKhaneOptions } from "@/lib/seeder";
 import { OverviewTab } from "@/components/dashboard/overview-tab";
 import { LocationsTab } from "@/components/dashboard/locations-tab";
 import { AssignmentsTab } from "@/components/dashboard/assignments-tab";
+import { AssignedTab } from "@/components/dashboard/assigned-tab";
 import { FormConfigTab } from "@/components/dashboard/form-config-tab";
 import { HistoryTab } from "@/components/dashboard/history-tab";
 
-type TabType = "overview" | "locations" | "assignments" | "history" | "form-config" | "dev";
+type TabType = "overview" | "locations" | "assignments" | "assigned" | "history" | "form-config" | "dev";
 
 const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday"];
 const SHIFTS = ["12am-6am", "6am-12pm", "12pm-6pm", "6pm-12am"];
@@ -317,6 +318,46 @@ export default function DashboardPage() {
     }
   };
 
+  const handleMigrateRoles = async () => {
+    if (isMigrating) return;
+
+    const confirmed = confirm(
+      "This will update all volunteers with no role or empty role to 'volunteer'. Continue?"
+    );
+
+    if (!confirmed) return;
+
+    setIsMigrating(true);
+    toast.info("Migrating roles...", {
+      description: "Updating volunteer roles to new format.",
+    });
+
+    try {
+      const { updateVolunteer } = await import("@/lib/db");
+      let updated = 0;
+      
+      for (const volunteer of volunteers) {
+        if (!volunteer.role) {
+          await updateVolunteer(volunteer.id, { role: "volunteer" });
+          updated++;
+        }
+      }
+      
+      await fetchAllData();
+
+      toast.success("Migration complete!", {
+        description: `Updated ${updated} volunteer role(s) to new format.`,
+      });
+    } catch (error) {
+      console.error("Error migrating roles:", error);
+      toast.error("Migration failed", {
+        description: "Failed to migrate roles. Check console for details.",
+      });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   const handleGenerateUniqueCodes = async () => {
     if (isMigrating) return;
 
@@ -465,6 +506,17 @@ export default function DashboardPage() {
               Assignments
             </button>
             <button
+              onClick={() => setActiveTab("assigned")}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === "assigned"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Users className="w-4 h-4 inline mr-2" />
+              Assigned ({assignments.length})
+            </button>
+            <button
               onClick={() => setActiveTab("history")}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === "history"
@@ -526,6 +578,16 @@ export default function DashboardPage() {
 
           {activeTab === "assignments" && (
             <AssignmentsTab
+              volunteers={volunteers}
+              locations={locations}
+              tasks={tasks}
+              assignments={assignments}
+              onDataChange={fetchAllData}
+            />
+          )}
+
+          {activeTab === "assigned" && (
+            <AssignedTab
               volunteers={volunteers}
               locations={locations}
               tasks={tasks}
@@ -636,15 +698,26 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground">
                       Run data migrations for existing volunteers.
                     </p>
-                    <Button
-                      onClick={handleGenerateUniqueCodes}
-                      disabled={isMigrating}
-                      variant="outline"
-                      className="gap-2"
-                    >
-                      <Database className="w-4 h-4" />
-                      {isMigrating ? "Migrating..." : "Generate Unique Codes"}
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        onClick={handleGenerateUniqueCodes}
+                        disabled={isMigrating}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <Database className="w-4 h-4" />
+                        {isMigrating ? "Migrating..." : "Generate Unique Codes"}
+                      </Button>
+                      <Button
+                        onClick={handleMigrateRoles}
+                        disabled={isMigrating}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <Users className="w-4 h-4" />
+                        {isMigrating ? "Migrating..." : "Migrate Role Format"}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="border-t pt-6 space-y-4">

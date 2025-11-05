@@ -29,12 +29,12 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Edit2, Download, Trash2, MapPin } from "lucide-react";
+import { Users, Edit2, Download, Trash2, MapPin, Clock } from "lucide-react";
 import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
 import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/config";
 import { updateVolunteer, deleteVolunteer } from "@/lib/db";
-import { formatPhone } from "@/lib/utils";
+import { formatPhone, formatTime } from "@/lib/utils";
 import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 
 interface OverviewTabProps {
@@ -64,6 +64,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
   const [detailDialog, setDetailDialog] = useState(false);
   const [detailDialogTitle, setDetailDialogTitle] = useState("");
   const [detailDialogVolunteers, setDetailDialogVolunteers] = useState<Volunteer[]>([]);
+  const [shiftsBreakdownDialog, setShiftsBreakdownDialog] = useState(false);
   const volunteersPerPage = 10;
 
   useEffect(() => {
@@ -361,11 +362,12 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
     }
   };
 
-  const handleRoleChange = async (volunteerId: string, newRole: "volunteer" | "lead") => {
+  const handleRoleChange = async (volunteerId: string, newRole: "volunteer" | "lead" | "team-lead") => {
     setUpdatingRoles((prev) => new Set(prev).add(volunteerId));
     try {
       await updateVolunteer(volunteerId, { role: newRole });
-      toast.success(newRole === "lead" ? "Assigned as lead" : "Assigned as volunteer");
+      const roleLabel = newRole === "lead" ? "core team" : newRole === "team-lead" ? "team lead" : "volunteer";
+      toast.success(`Assigned as ${roleLabel}`);
     } catch (error) {
       console.error("Error updating role:", error);
       toast.error("Failed to update role");
@@ -382,13 +384,13 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
     if (!selectedLeadId) return;
     try {
       await updateVolunteer(selectedLeadId, { leadTaskIds: selectedLeadTasks });
-      toast.success("Lead assignments updated");
+      toast.success("Core team assignments updated");
       setLeadAssignmentDialog(false);
       setSelectedLeadId(null);
       setSelectedLeadTasks([]);
     } catch (error) {
       console.error("Error updating lead tasks:", error);
-      toast.error("Failed to update lead assignments");
+      toast.error("Failed to update core team assignments");
     }
   };
 
@@ -437,10 +439,39 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
   const pendingAssignments = assignments.filter(a => a.status === "pending").length;
   const completedAssignments = assignments.filter(a => a.status === "completed").length;
   const checkedInAssignments = assignments.filter(a => a.status === "checked-in").length;
+  
+  // Calculate unique shifts deployed
+  const shiftsDeployedMap = new Map<string, { day: string; shift: string; volunteers: Set<string> }>();
+  assignments.forEach(a => {
+    let shiftKey: string;
+    let shiftDisplay: string;
+    
+    if (a.startTime || a.endTime) {
+      const timeStr = [a.startTime, a.endTime].filter(Boolean).join("-");
+      shiftKey = `${a.day || "no-day"}_${timeStr}`;
+      shiftDisplay = timeStr;
+    } else {
+      shiftKey = `${a.day || "no-day"}_${a.shift || "no-shift"}`;
+      shiftDisplay = a.shift || "no-shift";
+    }
+    
+    const existing = shiftsDeployedMap.get(shiftKey);
+    if (existing) {
+      existing.volunteers.add(a.volunteerId);
+    } else {
+      shiftsDeployedMap.set(shiftKey, {
+        day: a.day || "No day",
+        shift: shiftDisplay,
+        volunteers: new Set([a.volunteerId])
+      });
+    }
+  });
+  
+  const uniqueShiftsDeployed = shiftsDeployedMap.size;
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("All Volunteers", () => true)}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -452,7 +483,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
             <div className="text-3xl font-bold">{volunteers.length}</div>
             <div className="flex gap-2 mt-2">
               <Badge variant="secondary" className="text-xs">
-                {volunteers.filter(v => v.role === "lead").length} leads
+                {volunteers.filter(v => v.role === "lead").length} core team
               </Badge>
               <Badge variant="outline" className="text-xs">
                 {totalShiftsAvailable} shifts
@@ -461,10 +492,10 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("Team Leads", (v) => v.role === "lead")}>
+        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("Core Team", (v) => v.role === "lead")}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Team Leads</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Core Team</CardTitle>
               <Badge variant="default" className="text-xs">Lead</Badge>
             </div>
           </CardHeader>
@@ -550,6 +581,21 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                 </Badge>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => setShiftsBreakdownDialog(true)}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Shifts Deployed</CardTitle>
+              <Clock className="w-4 h-4 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{uniqueShiftsDeployed}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Unique shift{uniqueShiftsDeployed !== 1 ? 's' : ''} with assignments
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -676,12 +722,12 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Leads</CardTitle>
-            <CardDescription>Team leads and their assignments</CardDescription>
+            <CardTitle className="text-lg">Core Team</CardTitle>
+            <CardDescription>Core team and their assignments</CardDescription>
           </CardHeader>
           <CardContent>
             {volunteers.filter(v => v.role === "lead").length === 0 ? (
-              <p className="text-sm text-muted-foreground">No leads assigned yet</p>
+              <p className="text-sm text-muted-foreground">No core team members yet</p>
             ) : (
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {volunteers
@@ -734,7 +780,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                             className="text-xs h-7"
                             onClick={() => {
                               let message = `Hi ${lead.name}!\n\n`;
-                              message += `Thank you for being a team lead for the USA Visit volunteer program.\n\n`;
+                              message += `Thank you for being part of the core team for the USA Visit volunteer program.\n\n`;
                               if (leadTasks.length > 0) {
                                 message += `You're leading:\n`;
                                 leadTasks.forEach((task, idx) => {
@@ -965,7 +1011,8 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="volunteer">Volunteer</SelectItem>
-                <SelectItem value="lead">Lead</SelectItem>
+                <SelectItem value="team-lead">Team Lead</SelectItem>
+                <SelectItem value="lead">Core Team</SelectItem>
               </SelectContent>
             </Select>
             <Input
@@ -1012,7 +1059,10 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                           <div className="flex items-center gap-2 mb-1">
                             <div className="font-semibold text-base">{volunteer.name}</div>
                             {volunteer.role === "lead" && (
-                              <Badge variant="default" className="text-xs">Team Lead</Badge>
+                              <Badge variant="default" className="text-xs">Core Team</Badge>
+                            )}
+                            {volunteer.role === "team-lead" && (
+                              <Badge variant="secondary" className="text-xs">Team Lead</Badge>
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
@@ -1078,7 +1128,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                       <div className="flex flex-col gap-2 items-end shrink-0">
                         <Select 
                           value={volunteer.role || "volunteer"}
-                          onValueChange={(value) => handleRoleChange(volunteer.id, value as "volunteer" | "lead")}
+                          onValueChange={(value) => handleRoleChange(volunteer.id, value as "volunteer" | "lead" | "team-lead")}
                           disabled={updatingRoles.has(volunteer.id)}
                         >
                           <SelectTrigger className="w-32 text-xs h-8">
@@ -1086,7 +1136,8 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="volunteer">Volunteer</SelectItem>
-                            <SelectItem value="lead">Team Lead</SelectItem>
+                            <SelectItem value="team-lead">Team Lead</SelectItem>
+                            <SelectItem value="lead">Core Team</SelectItem>
                           </SelectContent>
                         </Select>
                         <div className="flex gap-2">
@@ -1196,9 +1247,9 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
       <Dialog open={leadAssignmentDialog} onOpenChange={setLeadAssignmentDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Assign Tasks to Lead</DialogTitle>
+            <DialogTitle>Assign Tasks to Core Team Member</DialogTitle>
             <DialogDescription>
-              Select which tasks this lead will be responsible for
+              Select which tasks this core team member will be responsible for
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1281,7 +1332,10 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                         {volunteer.email} • {formatPhone(volunteer.phone)}
                       </div>
                       {volunteer.role === "lead" && (
-                        <Badge variant="default" className="text-xs mt-1">Lead</Badge>
+                        <Badge variant="default" className="text-xs mt-1">Core Team</Badge>
+                      )}
+                      {volunteer.role === "team-lead" && (
+                        <Badge variant="secondary" className="text-xs mt-1">Team Lead</Badge>
                       )}
                     </div>
                     <div className="flex gap-1 shrink-0">
@@ -1317,6 +1371,50 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                 </div>
               ))
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={shiftsBreakdownDialog} onOpenChange={setShiftsBreakdownDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Shifts Deployed Breakdown</DialogTitle>
+            <DialogDescription>
+              {uniqueShiftsDeployed} unique shift{uniqueShiftsDeployed !== 1 ? 's' : ''} with volunteers assigned
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {Array.from(shiftsDeployedMap.entries())
+              .sort((a, b) => {
+                // Sort by day first (in order of DAYS array), then by shift
+                const dayOrderA = DAYS.indexOf(a[1].day);
+                const dayOrderB = DAYS.indexOf(b[1].day);
+                if (dayOrderA !== dayOrderB) {
+                  return dayOrderA - dayOrderB;
+                }
+                return a[1].shift.localeCompare(b[1].shift);
+              })
+              .map(([key, data]) => {
+                // Format the shift display with AM/PM if it's a time range
+                const formattedShift = data.shift.includes('-') && data.shift.includes(':')
+                  ? data.shift.split('-').map(t => formatTime(t.trim())).join(' - ')
+                  : data.shift;
+
+                const volunteerCount = data.volunteers.size;
+                return (
+                  <div key={key} className="p-4 rounded-lg border hover:border-primary/50 transition">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="font-semibold text-base">{data.day}</div>
+                        <div className="text-sm text-muted-foreground mt-0.5">{formattedShift}</div>
+                      </div>
+                      <Badge variant="secondary" className="text-base px-3 py-1">
+                        {volunteerCount} {volunteerCount === 1 ? 'volunteer' : 'volunteers'}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </DialogContent>
       </Dialog>

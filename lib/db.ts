@@ -29,7 +29,7 @@ export interface Volunteer {
   phone: string;
   email: string;
   uniqueCode?: string;
-  role?: "volunteer" | "lead";
+  role?: "volunteer" | "lead" | "team-lead";
   leadTaskIds?: string[];
   experiences?: string[];
   ageRange?: string[];
