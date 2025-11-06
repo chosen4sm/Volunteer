@@ -27,7 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users, UserPlus, Trash2, AlertTriangle, Link2, Copy, MapPin, User, Clock } from "lucide-react";
+import { Users, UserPlus, AlertTriangle, Copy, MapPin, Clock } from "lucide-react";
 import { toast } from "sonner";
 import {
   createAssignment,
@@ -41,6 +41,8 @@ import { getFormConfig, DEFAULT_FORM_CONFIG, type FormConfig } from "@/lib/confi
 import { TimePicker } from "@/components/ui/time-picker";
 import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import { formatTime } from "@/lib/utils";
+import { useBatchEmailSender } from "@/lib/use-batch-email-sender";
+import { EmailProgressDialog } from "@/components/ui/email-progress-dialog";
 
 interface AssignmentsTabProps {
   volunteers: Volunteer[];
@@ -81,8 +83,20 @@ export function AssignmentsTab({
   const [assignEndTime, setAssignEndTime] = useState("");
   const [assignDescription, setAssignDescription] = useState("");
   const [sendEmailNotifications, setSendEmailNotifications] = useState(true);
-  const [sendWhatsAppMessage, setSendWhatsAppMessage] = useState(false);
+  const [sendWhatsAppMessage, setSendWhatsAppMessage] = useState(true);
   const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
+  const [emailProgressOpen, setEmailProgressOpen] = useState(false);
+  const [pendingWhatsAppData, setPendingWhatsAppData] = useState<{
+    volunteers: string[];
+    taskIds: string[];
+    locationId: string;
+    day: string;
+    shift: string;
+    startTime: string;
+    endTime: string;
+  } | null>(null);
+  
+  const { isSending, progress, currentBatch, totalBatches, sendEmails, reset: resetEmailProgress } = useBatchEmailSender();
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -222,25 +236,23 @@ export function AssignmentsTab({
           description: assignDescription || undefined,
         });
 
+        setEmailProgressOpen(true);
         try {
-          const response = await fetch("/api/send-assignment-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              assignments: [{
-                to: volunteer.email,
-                volunteerName: volunteer.name,
-                assignments: allVolunteerAssignments,
-                uniqueCode: volunteer.uniqueCode,
-              }]
-            }),
-          });
+          const result = await sendEmails([{
+            to: volunteer.email,
+            volunteerName: volunteer.name,
+            assignments: allVolunteerAssignments,
+            uniqueCode: volunteer.uniqueCode,
+          }]);
 
-          if (response.ok) {
+          if (result.sent > 0) {
             toast.success("Email notification sent");
+          } else {
+            toast.error("Failed to send email notification");
           }
         } catch (emailError) {
           console.error("Error sending email:", emailError);
+          toast.error("Failed to send email notification");
         }
       }
 
@@ -263,6 +275,7 @@ export function AssignmentsTab({
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDeleteAssignment = async (id: string) => {
     if (!confirm("Are you sure you want to remove this assignment?")) return;
     try {
@@ -376,22 +389,29 @@ export function AssignmentsTab({
         }
 
         if (emailAssignments.length > 0) {
-          try {
-            const response = await fetch("/api/send-assignment-email", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ assignments: emailAssignments }),
+          if (sendWhatsAppMessage) {
+            setPendingWhatsAppData({
+              volunteers: [...selectedVolunteers],
+              taskIds: [...assignTaskIds],
+              locationId: assignLocationId,
+              day: assignDay,
+              shift: assignShift,
+              startTime: assignStartTime,
+              endTime: assignEndTime,
             });
-
-            if (response.ok) {
-              const result = await response.json();
-              toast.success(`Sent ${result.successful} email notification(s)`, {
+          }
+          
+          setEmailProgressOpen(true);
+          try {
+            const result = await sendEmails(emailAssignments);
+            
+            if (result.sent > 0) {
+              toast.success(`Sent ${result.sent} email notification(s)`, {
                 description: result.failed > 0 ? `${result.failed} failed to send` : undefined,
               });
             } else {
-              const errorText = await response.text();
               toast.error("Failed to send email notifications", {
-                description: errorText || `Server returned ${response.status}`,
+                description: `All ${result.failed} emails failed to send`,
               });
             }
           } catch (emailError) {
@@ -402,59 +422,6 @@ export function AssignmentsTab({
             });
           }
         }
-      }
-
-      if (sendWhatsAppMessage) {
-        const taskNames = assignTaskIds
-          .map((taskId) => {
-            const task = tasks.find((t) => t.id === taskId);
-            return task?.name;
-          })
-          .filter(Boolean)
-          .join(", ");
-
-        const location = assignLocationId
-          ? locations.find((l) => l.id === assignLocationId)
-          : undefined;
-
-        const scheduleText = (() => {
-          if (assignStartTime || assignEndTime) {
-            const timeStr = [assignStartTime, assignEndTime]
-              .filter(Boolean)
-              .map(t => formatTime(t))
-              .join(" - ");
-            if (assignDay) {
-              return `${assignDay} ${timeStr}`;
-            }
-            return timeStr;
-          }
-          if (assignDay && assignShift) {
-            return `${assignDay} - ${assignShift}`;
-          }
-          return assignDay || assignShift || "TBD";
-        })();
-
-        const volunteersList = selectedVolunteers
-          .map((id) => {
-            const volunteer = volunteers.find((v) => v.id === id);
-            return volunteer ? `${volunteer.name} - ${volunteer.phone}` : null;
-          })
-          .filter(Boolean)
-          .join("\n");
-
-        let message = `You have been assigned to a duty @ ${location?.name || ""}\n\n`;
-        message += `*${taskNames}*\n`;
-        message += `${scheduleText}\n\n`;
-        message += `${volunteersList}\n\n`;
-        message += `Check your email for details.`;
-
-        const encodedMessage = encodeURIComponent(message);
-        const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-
-        window.open(whatsappUrl, "_blank");
-        toast.success("Opening WhatsApp", {
-          description: `Prepared message for ${selectedVolunteers.length} volunteer(s)`,
-        });
       }
 
       setSelectedVolunteers([]);
@@ -473,6 +440,63 @@ export function AssignmentsTab({
         description: errorMessage,
       });
     }
+  };
+
+  const handleGenerateWhatsApp = () => {
+    if (!pendingWhatsAppData) return;
+    
+    const taskNames = pendingWhatsAppData.taskIds
+      .map((taskId) => {
+        const task = tasks.find((t) => t.id === taskId);
+        return task?.name;
+      })
+      .filter(Boolean)
+      .join(", ");
+
+    const location = pendingWhatsAppData.locationId
+      ? locations.find((l) => l.id === pendingWhatsAppData.locationId)
+      : undefined;
+
+    const scheduleText = (() => {
+      if (pendingWhatsAppData.startTime || pendingWhatsAppData.endTime) {
+        const timeStr = [pendingWhatsAppData.startTime, pendingWhatsAppData.endTime]
+          .filter(Boolean)
+          .map(t => formatTime(t))
+          .join(" - ");
+        if (pendingWhatsAppData.day) {
+          return `${pendingWhatsAppData.day} ${timeStr}`;
+        }
+        return timeStr;
+      }
+      if (pendingWhatsAppData.day && pendingWhatsAppData.shift) {
+        return `${pendingWhatsAppData.day} - ${pendingWhatsAppData.shift}`;
+      }
+      return pendingWhatsAppData.day || pendingWhatsAppData.shift || "TBD";
+    })();
+
+    const volunteersList = pendingWhatsAppData.volunteers
+      .map((id) => {
+        const volunteer = volunteers.find((v) => v.id === id);
+        return volunteer ? `${volunteer.name} - ${volunteer.phone}` : null;
+      })
+      .filter(Boolean)
+      .join("\n");
+
+    let message = `You have been assigned to a duty @ ${location?.name || ""}\n\n`;
+    message += `*${taskNames}*\n`;
+    message += `${scheduleText}\n\n`;
+    message += `${volunteersList}\n\n`;
+    message += `Check your email for details.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+
+    window.open(whatsappUrl, "_blank");
+    toast.success("Opening WhatsApp", {
+      description: `Prepared message for ${pendingWhatsAppData.volunteers.length} volunteer(s)`,
+    });
+    
+    setPendingWhatsAppData(null);
   };
 
   const toggleVolunteerSelection = (volunteerId: string) => {
@@ -619,6 +643,7 @@ export function AssignmentsTab({
     return consecutiveShifts.length > 0 ? consecutiveShifts : null;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const sendToWhatsApp = (volunteer: Volunteer, task: Task, location: Location | undefined, assignment: Assignment) => {
     const getScheduleText = () => {
       if (assignment.startTime || assignment.endTime) {
@@ -654,6 +679,7 @@ export function AssignmentsTab({
     });
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const copyVolunteerLink = (volunteer: Volunteer) => {
     if (!volunteer.uniqueCode) {
       toast.error("No unique code found", {
@@ -694,6 +720,24 @@ export function AssignmentsTab({
   };
 
   return (
+    <>
+      <EmailProgressDialog
+        open={emailProgressOpen}
+        onClose={() => {
+          setEmailProgressOpen(false);
+          resetEmailProgress();
+          setPendingWhatsAppData(null);
+        }}
+        total={progress.total}
+        sent={progress.sent}
+        failed={progress.failed}
+        isComplete={!isSending && emailProgressOpen}
+        currentBatch={currentBatch}
+        totalBatches={totalBatches}
+        showWhatsAppOption={!!pendingWhatsAppData}
+        onGenerateWhatsApp={handleGenerateWhatsApp}
+      />
+      
     <div className="space-y-6">
       <Card>
         <CardHeader className="pb-4 bg-muted/30 border-b">
@@ -1617,6 +1661,7 @@ export function AssignmentsTab({
         </CardHeader>
       </Card>
     </div>
+    </>
   );
 }
 

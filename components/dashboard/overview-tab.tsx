@@ -385,13 +385,13 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
     if (!selectedLeadId) return;
     try {
       await updateVolunteer(selectedLeadId, { leadTaskIds: selectedLeadTasks });
-      toast.success("Core team assignments updated");
+      toast.success("Core lead assignments updated");
       setLeadAssignmentDialog(false);
       setSelectedLeadId(null);
       setSelectedLeadTasks([]);
     } catch (error) {
       console.error("Error updating lead tasks:", error);
-      toast.error("Failed to update core team assignments");
+      toast.error("Failed to update core lead assignments");
     }
   };
 
@@ -493,10 +493,10 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("Core Team", (v) => v.role === "lead")}>
+        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("Core Leads", (v) => v.role === "lead")}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Core Team</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Core Leads</CardTitle>
               <Badge variant="default" className="text-xs">Lead</Badge>
             </div>
           </CardHeader>
@@ -508,10 +508,10 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("Team Leads", (v) => v.role === "team-lead")}>
+        <Card className="cursor-pointer hover:border-primary/50 transition hover:shadow-md" onClick={() => handleShowVolunteersWithAttribute("Leads", (v) => v.role === "team-lead")}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Team Leads</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Leads</CardTitle>
               <Badge variant="secondary" className="text-xs">Team Lead</Badge>
             </div>
           </CardHeader>
@@ -616,6 +616,39 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {DAYS.map((day) => {
+          const volunteersForDay = volunteers.filter(v => {
+            const shifts = v.shifts?.[day] || [];
+            return shifts.length > 0;
+          }).length;
+          
+          return (
+            <Card 
+              key={day} 
+              className="cursor-pointer hover:border-primary/50 transition hover:shadow-md"
+              onClick={() => handleShowVolunteersWithAttribute(
+                `Volunteers for ${day}`,
+                (v) => {
+                  const shifts = v.shifts?.[day] || [];
+                  return shifts.length > 0;
+                }
+              )}
+            >
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{day}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{volunteersForDay}</div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  volunteer{volunteersForDay !== 1 ? 's' : ''}
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -740,12 +773,12 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Core Team</CardTitle>
-            <CardDescription>Core team and their assignments</CardDescription>
+            <CardTitle className="text-lg">Core Leads</CardTitle>
+            <CardDescription>Core leads and their assignments</CardDescription>
           </CardHeader>
           <CardContent>
             {volunteers.filter(v => v.role === "lead").length === 0 ? (
-              <p className="text-sm text-muted-foreground">No core team members yet</p>
+              <p className="text-sm text-muted-foreground">No core leads yet</p>
             ) : (
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {volunteers
@@ -798,7 +831,7 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                             className="text-xs h-7"
                             onClick={() => {
                               let message = `Hi ${lead.name}!\n\n`;
-                              message += `Thank you for being part of the core team for the USA Visit volunteer program.\n\n`;
+                              message += `Thank you for being a core lead for the USA Visit volunteer program.\n\n`;
                               if (leadTasks.length > 0) {
                                 message += `You're leading:\n`;
                                 leadTasks.forEach((task, idx) => {
@@ -1266,9 +1299,9 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
       <Dialog open={leadAssignmentDialog} onOpenChange={setLeadAssignmentDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Assign Tasks to Core Team Member</DialogTitle>
+            <DialogTitle>Assign Tasks to Core Lead</DialogTitle>
             <DialogDescription>
-              Select which tasks this core team member will be responsible for
+              Select which tasks this core lead will be responsible for
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1482,8 +1515,19 @@ export function OverviewTab({ volunteers, locations, tasks, assignments, onDataC
                   : data.shift;
 
                 const volunteerCount = data.volunteers.size;
+                
                 return (
-                  <div key={key} className="p-4 rounded-lg border hover:border-primary/50 transition">
+                  <div 
+                    key={key} 
+                    className="p-4 rounded-lg border hover:border-primary/50 transition cursor-pointer"
+                    onClick={() => {
+                      setShiftsBreakdownDialog(false);
+                      handleShowVolunteersWithAttribute(
+                        `Volunteers on ${data.day} - ${formattedShift}`,
+                        (v) => data.volunteers.has(v.id)
+                      );
+                    }}
+                  >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
                         <div className="font-semibold text-base">{data.day}</div>

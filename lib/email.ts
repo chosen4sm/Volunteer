@@ -27,6 +27,48 @@ export interface SendAssignmentEmailParams {
   uniqueCode: string;
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function sendEmailWithRetry(
+  emailParams: {
+    from: string;
+    to: string | string[];
+    subject: string;
+    react: React.ReactElement;
+    replyTo?: string;
+  },
+  maxRetries = 3
+): Promise<{ data: { id: string } | null; error: { message: string } | null }> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await resend.emails.send(emailParams);
+      
+      if (result.error) {
+        if (result.error.message?.includes('429') || result.error.message?.includes('rate limit')) {
+          if (attempt < maxRetries - 1) {
+            const delay = Math.pow(2, attempt) * 1000;
+            await sleep(delay);
+            continue;
+          }
+        }
+        return result;
+      }
+      
+      return result;
+    } catch (error: unknown) {
+      const err = error as { statusCode?: number; message?: string };
+      if (attempt < maxRetries - 1 && (err.statusCode === 429 || err.message?.includes('rate limit'))) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await sleep(delay);
+        continue;
+      }
+      throw error;
+    }
+  }
+  
+  throw new Error('Max retries exceeded');
+}
+
 export async function sendAssignmentNotification(params: SendAssignmentEmailParams) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -38,7 +80,7 @@ export async function sendAssignmentNotification(params: SendAssignmentEmailPara
     : `USA Visit Volunteer Assignment${params.taskName ? `: ${params.taskName}` : ''}`;
 
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await sendEmailWithRetry({
       from: "USA Visit Volunteer Team <noreply@notify.ismailiseva.com>",
       replyTo: "ismailiseva@gmail.com",
       to: params.to,

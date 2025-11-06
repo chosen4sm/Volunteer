@@ -19,12 +19,16 @@ export async function POST(request: NextRequest) {
 
     const successful = results.filter((r) => r.status === "fulfilled").length;
     const failed = results.filter((r) => r.status === "rejected").length;
+    const errors = results
+      .filter((r) => r.status === "rejected")
+      .map((r) => (r as PromiseRejectedResult).reason?.message || "Unknown error");
 
     return NextResponse.json({
       success: true,
       total: assignments.length,
       successful,
       failed,
+      errors: failed > 0 ? errors : undefined,
     });
   } catch (error) {
     console.error("Error in send-assignment-email route:", error);
