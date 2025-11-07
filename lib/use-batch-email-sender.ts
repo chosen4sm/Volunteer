@@ -21,8 +21,8 @@ export function useBatchEmailSender() {
 
   const sendEmails = async (
     assignments: SendAssignmentEmailParams[],
-    batchSize: number = 3,
-    delayBetweenBatches: number = 1500
+    batchSize: number = 5,
+    delayBetweenBatches: number = 2000
   ) => {
     if (assignments.length === 0) {
       return { total: 0, sent: 0, failed: 0 };

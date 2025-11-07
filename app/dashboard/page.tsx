@@ -20,7 +20,7 @@ import { useAuth } from "@/components/auth-provider";
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { signOut } from "firebase/auth";
-import { LogOut, Users, AlertCircle, User, MapPin, UserPlus, Database, Trash2, AlertTriangle, History, Clock } from "lucide-react";
+import { LogOut, Users, AlertCircle, User, MapPin, UserPlus, Database, Trash2, AlertTriangle, History, Clock, Mail } from "lucide-react";
 import { toast } from "sonner";
 import {
   getVolunteers,
@@ -63,6 +63,8 @@ export default function DashboardPage() {
   const [isPopulatingJamatOptions, setIsPopulatingJamatOptions] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [isFixingEmails, setIsFixingEmails] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -380,46 +382,56 @@ export default function DashboardPage() {
 
     const targetTaskIds = targetTasks.map(t => t.id);
 
-    // Find assignments for these tasks on Monday Morning with 6:00am - 8:00am
-    const targetAssignments = assignments.filter(
-      (a) =>
-        a.day === "Monday" &&
-        a.shift === "Morning" &&
-        targetTaskIds.includes(a.taskId) &&
-        (a.startTime === "06:00" || a.startTime === "6:00" || a.startTime === "06:00:00") &&
-        (a.endTime === "08:00" || a.endTime === "8:00" || a.endTime === "08:00:00")
-    );
-
-    console.log("Found assignments to fix:", targetAssignments.length);
-    console.log("Sample:", targetAssignments.slice(0, 3).map(a => ({
-      taskId: a.taskId,
+    // First, show ALL assignments for these tasks (no filters)
+    const allTaskAssignments = assignments.filter((a) => targetTaskIds.includes(a.taskId));
+    
+    console.log("=== ALL assignments for target tasks (no filters) ===");
+    console.log("Total count:", allTaskAssignments.length);
+    console.log("Breakdown by day/shift:", allTaskAssignments.map(a => ({
       taskName: tasks.find(t => t.id === a.taskId)?.name,
+      day: a.day,
+      shift: a.shift,
       startTime: a.startTime,
       endTime: a.endTime
     })));
 
-    if (targetAssignments.length === 0) {
-      toast.error("No matching assignments found", {
-        description: `Found ${targetTasks.length} target task(s), but no assignments with 6:00am - 8:00am on Monday Morning. Check console for details.`,
+    // Now filter for Monday
+    const mondayAssignments = allTaskAssignments.filter((a) => a.day === "Monday");
+    console.log("\n=== Monday assignments ===");
+    console.log("Count:", mondayAssignments.length);
+
+    // Don't filter yet - let's use all task assignments
+    if (allTaskAssignments.length === 0) {
+      toast.error("No assignments found for target tasks", {
+        description: "Check console for details",
       });
       return;
     }
 
+    const targetAssignments = allTaskAssignments;
+
+    // Return early for now to just see the debug info
+    toast.info("Check console for assignment details", {
+      description: `Found ${allTaskAssignments.length} total assignments for target tasks`,
+    });
+    return;
+
     const taskNames = targetTasks.map(t => t.name).join(", ");
 
     const confirmed = confirm(
-      `Found ${targetAssignments.length} assignments to update:\n\n` +
+      `This will update ${targetAssignments.length} assignments:\n\n` +
       `Tasks: ${taskNames}\n` +
-      `Current: Monday Morning 6:00am - 8:00am\n` +
-      `New: Monday Morning 12:00am - 8:00am\n\n` +
+      `Day: Monday Morning\n` +
+      `Current: 6:00am - 8:00am\n` +
+      `New: 12:00am - 8:00am\n\n` +
       `Continue?`
     );
 
     if (!confirmed) return;
 
     setIsFixing(true);
-    toast.info("Updating assignments...", {
-      description: `Fixing ${targetAssignments.length} assignments`,
+    toast.info("Setting custom times...", {
+      description: `Updating ${targetAssignments.length} assignments`,
     });
 
     try {
@@ -434,16 +446,208 @@ export default function DashboardPage() {
       
       await fetchAllData();
 
-      toast.success("Fix complete!", {
-        description: `Updated ${targetAssignments.length} assignment(s) to 12:00am - 8:00am.`,
+      toast.success("Times set successfully!", {
+        description: `Set custom times for ${targetAssignments.length} assignment(s) to 12:00am - 8:00am.`,
       });
     } catch (error) {
-      console.error("Error fixing assignments:", error);
-      toast.error("Fix failed", {
-        description: "Failed to update assignments. Check console for details.",
+      console.error("Error setting times:", error);
+      toast.error("Update failed", {
+        description: "Failed to set custom times. Check console for details.",
       });
     } finally {
       setIsFixing(false);
+    }
+  };
+
+  const handleSendTestReminderEmail = async () => {
+    if (isSendingTestEmail) return;
+
+    const volunteersWithAssignments = volunteers.filter(v => 
+      assignments.some(a => a.volunteerId === v.id)
+    );
+
+    if (volunteersWithAssignments.length === 0) {
+      toast.error("No volunteers with assignments found");
+      return;
+    }
+
+    const randomVolunteer = volunteersWithAssignments[Math.floor(Math.random() * volunteersWithAssignments.length)];
+    const volunteerAssignments = assignments.filter(a => a.volunteerId === randomVolunteer.id);
+
+    if (!confirm(`Send test reminder to geeth.gunnampalli@gmail.com using ${randomVolunteer.name}'s ${volunteerAssignments.length} assignment(s)?`)) {
+      return;
+    }
+
+    setIsSendingTestEmail(true);
+    toast.info("Sending test email...", {
+      description: `Using ${randomVolunteer.name}'s assignments`,
+    });
+
+    try {
+      const allVolunteerAssignments = [];
+      
+      for (const assignment of volunteerAssignments) {
+        const task = tasks.find((t) => t.id === assignment.taskId);
+        if (!task) continue;
+        
+        const location = assignment.locationId
+          ? locations.find((l) => l.id === assignment.locationId)
+          : task.locationId
+          ? locations.find((l) => l.id === task.locationId)
+          : undefined;
+        
+        allVolunteerAssignments.push({
+          taskName: task.name,
+          locationName: location?.name,
+          day: assignment.day,
+          shift: assignment.shift,
+          startTime: assignment.startTime,
+          endTime: assignment.endTime,
+          description: assignment.description,
+        });
+      }
+
+      const response = await fetch("/api/send-assignment-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignments: [{
+            to: "geeth.gunnampalli@gmail.com",
+            volunteerName: randomVolunteer.name,
+            assignments: allVolunteerAssignments,
+            uniqueCode: randomVolunteer.uniqueCode || "TEST123",
+          }]
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.successful > 0) {
+          toast.success("Test reminder sent!", {
+            description: `Sent to geeth.gunnampalli@gmail.com using ${randomVolunteer.name}'s ${volunteerAssignments.length} assignment(s)`,
+          });
+        } else {
+          toast.error("Failed to send test email");
+        }
+      } else {
+        toast.error("Failed to send test email");
+      }
+    } catch (error) {
+      console.error("Error sending test email:", error);
+      toast.error("Error sending test email", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
+
+  const handleResendSpecificEmails = async () => {
+    if (isFixingEmails) return;
+
+    const searchTerms = ["karimnmeghhani", "sahilkhoja"];
+
+    const volunteersToEmail = volunteers.filter(v => 
+      searchTerms.some(term => 
+        v.name.toLowerCase().includes(term.toLowerCase()) ||
+        v.email?.toLowerCase().includes(term.toLowerCase())
+      ) && assignments.some(a => a.volunteerId === v.id)
+    );
+
+    if (volunteersToEmail.length === 0) {
+      toast.error("No volunteers found", {
+        description: "Could not find Karim or Sahil with assignments",
+      });
+      return;
+    }
+
+    const message = volunteersToEmail.map(v => {
+      const assignmentCount = assignments.filter(a => a.volunteerId === v.id).length;
+      return `${v.name} (${v.email}) - ${assignmentCount} assignment(s)`;
+    }).join('\n');
+
+    if (!confirm(`Resend reminder emails to:\n\n${message}\n\nContinue?`)) {
+      return;
+    }
+
+    setIsFixingEmails(true);
+    toast.info("Sending emails...", {
+      description: `Preparing ${volunteersToEmail.length} email(s)`,
+    });
+
+    try {
+      const emailAssignments = [];
+      
+      for (const volunteer of volunteersToEmail) {
+        if (!volunteer.email || !volunteer.uniqueCode) continue;
+
+        const volunteerAssignments = assignments.filter(a => a.volunteerId === volunteer.id);
+        const allVolunteerAssignments = [];
+        
+        for (const assignment of volunteerAssignments) {
+          const task = tasks.find((t) => t.id === assignment.taskId);
+          if (!task) continue;
+          
+          const location = assignment.locationId
+            ? locations.find((l) => l.id === assignment.locationId)
+            : task.locationId
+            ? locations.find((l) => l.id === task.locationId)
+            : undefined;
+          
+          allVolunteerAssignments.push({
+            taskName: task.name,
+            locationName: location?.name,
+            day: assignment.day,
+            shift: assignment.shift,
+            startTime: assignment.startTime,
+            endTime: assignment.endTime,
+            description: assignment.description,
+          });
+        }
+
+        emailAssignments.push({
+          to: volunteer.email,
+          volunteerName: volunteer.name,
+          assignments: allVolunteerAssignments,
+          uniqueCode: volunteer.uniqueCode,
+        });
+      }
+
+      if (emailAssignments.length === 0) {
+        toast.error("No valid emails to send", {
+          description: "Volunteers missing email or unique code",
+        });
+        setIsFixingEmails(false);
+        return;
+      }
+
+      const response = await fetch("/api/send-assignment-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignments: emailAssignments }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.successful > 0) {
+          toast.success(`Sent ${result.successful} reminder email(s)!`, {
+            description: result.failed > 0 ? `${result.failed} failed` : "All emails sent",
+          });
+        } else {
+          toast.error("Failed to send emails", {
+            description: `All ${result.failed} emails failed`,
+          });
+        }
+      } else {
+        toast.error("Failed to send emails");
+      }
+    } catch (error) {
+      console.error("Error sending emails:", error);
+      toast.error("Error sending emails", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsFixingEmails(false);
     }
   };
 
@@ -452,7 +656,7 @@ export default function DashboardPage() {
     if (!email) return;
 
     try {
-      const { doc, getDoc, updateDoc, getDocs, query, collection, where, setDoc } = await import("firebase/firestore");
+      const { doc, updateDoc, getDocs, query, collection, where, setDoc } = await import("firebase/firestore");
       
       // Find user by email in profiles collection
       const profilesQuery = query(collection(db, "profiles"), where("email", "==", email));
@@ -906,14 +1110,41 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground">
                       One-time fixes for specific data issues.
                     </p>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        onClick={handleFixMondayMorningShift}
+                        disabled={isFixing}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <Clock className="w-4 h-4" />
+                        {isFixing ? "Setting times..." : "Set Monday Morning Times (12am-8am)"}
+                      </Button>
+                      <Button
+                        onClick={handleResendSpecificEmails}
+                        disabled={isFixingEmails}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <Mail className="w-4 h-4" />
+                        {isFixingEmails ? "Sending..." : "Resend Karim & Sahil Emails"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-6 space-y-4">
+                    <h3 className="text-lg font-semibold">Test Email</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Send a test reminder email to geeth.gunnampalli@gmail.com using a random volunteer&apos;s assignments.
+                    </p>
                     <Button
-                      onClick={handleFixMondayMorningShift}
-                      disabled={isFixing}
+                      onClick={handleSendTestReminderEmail}
+                      disabled={isSendingTestEmail}
                       variant="outline"
                       className="gap-2"
                     >
-                      <Clock className="w-4 h-4" />
-                      {isFixing ? "Fixing..." : "Fix Monday Morning Shift (6am→12am)"}
+                      <Mail className="w-4 h-4" />
+                      {isSendingTestEmail ? "Sending..." : "Send Test Reminder Email"}
                     </Button>
                   </div>
 

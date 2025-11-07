@@ -32,7 +32,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Users, UserPlus, AlertTriangle, Copy, MapPin, Clock, Check, ChevronDown, X, Pencil } from "lucide-react";
+import { Users, UserPlus, AlertTriangle, Copy, MapPin, Clock, Check, ChevronDown, X, Pencil, Mail } from "lucide-react";
 import { toast } from "sonner";
 import {
   createAssignment,
@@ -98,6 +98,7 @@ export function AssignmentsTab({
   const [sendWhatsAppMessage, setSendWhatsAppMessage] = useState(true);
   const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([]);
   const [emailProgressOpen, setEmailProgressOpen] = useState(false);
+  const [reminderProgressOpen, setReminderProgressOpen] = useState(false);
   const [pendingWhatsAppData, setPendingWhatsAppData] = useState<{
     volunteers: string[];
     taskIds: string[];
@@ -109,6 +110,14 @@ export function AssignmentsTab({
   } | null>(null);
   
   const { isSending, progress, currentBatch, totalBatches, sendEmails, reset: resetEmailProgress } = useBatchEmailSender();
+  const { 
+    isSending: isReminderSending, 
+    progress: reminderProgress, 
+    currentBatch: reminderCurrentBatch, 
+    totalBatches: reminderTotalBatches, 
+    sendEmails: sendReminderEmails, 
+    reset: resetReminderProgress 
+  } = useBatchEmailSender();
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -563,6 +572,82 @@ export function AssignmentsTab({
     }
   };
 
+  const handleSendReminderEmails = async () => {
+    const volunteersWithAssignments = volunteers.filter(v => {
+      const hasAssignment = assignments.some(a => a.volunteerId === v.id);
+      return hasAssignment && v.email && v.uniqueCode;
+    });
+
+    if (volunteersWithAssignments.length === 0) {
+      toast.error("No volunteers to remind", {
+        description: "No volunteers with assignments and valid emails found",
+      });
+      return;
+    }
+
+    if (!confirm(`Send reminder emails to ${volunteersWithAssignments.length} volunteer(s)?`)) {
+      return;
+    }
+
+    const emailAssignments = [];
+    
+    for (const volunteer of volunteersWithAssignments) {
+      const volunteerAssignments = assignments.filter(a => a.volunteerId === volunteer.id);
+      const allVolunteerAssignments = [];
+      
+      for (const assignment of volunteerAssignments) {
+        const task = tasks.find((t) => t.id === assignment.taskId);
+        if (!task) continue;
+        
+        const location = assignment.locationId
+          ? locations.find((l) => l.id === assignment.locationId)
+          : task.locationId
+          ? locations.find((l) => l.id === task.locationId)
+          : undefined;
+        
+        allVolunteerAssignments.push({
+          taskName: task.name,
+          locationName: location?.name,
+          day: assignment.day,
+          shift: assignment.shift,
+          startTime: assignment.startTime,
+          endTime: assignment.endTime,
+          description: assignment.description,
+        });
+      }
+
+      if (volunteer.uniqueCode) {
+        emailAssignments.push({
+          to: volunteer.email,
+          volunteerName: volunteer.name,
+          assignments: allVolunteerAssignments,
+          uniqueCode: volunteer.uniqueCode,
+        });
+      }
+    }
+
+    setReminderProgressOpen(true);
+    try {
+      const result = await sendReminderEmails(emailAssignments);
+      
+      if (result.sent > 0) {
+        toast.success(`Sent ${result.sent} reminder email(s)`, {
+          description: result.failed > 0 ? `${result.failed} failed to send` : "All reminders sent successfully",
+        });
+      } else {
+        toast.error("Failed to send reminder emails", {
+          description: `All ${result.failed} emails failed to send`,
+        });
+      }
+    } catch (emailError) {
+      console.error("Error sending reminder emails:", emailError);
+      const errorMessage = emailError instanceof Error ? emailError.message : "Network error";
+      toast.error("Failed to send reminder emails", {
+        description: errorMessage,
+      });
+    }
+  };
+
   const handleGenerateWhatsApp = () => {
     if (!pendingWhatsAppData) return;
     
@@ -916,6 +1001,20 @@ export function AssignmentsTab({
         totalBatches={totalBatches}
         showWhatsAppOption={!!pendingWhatsAppData}
         onGenerateWhatsApp={handleGenerateWhatsApp}
+      />
+      
+      <EmailProgressDialog
+        open={reminderProgressOpen}
+        onClose={() => {
+          setReminderProgressOpen(false);
+          resetReminderProgress();
+        }}
+        total={reminderProgress.total}
+        sent={reminderProgress.sent}
+        failed={reminderProgress.failed}
+        isComplete={!isReminderSending && reminderProgressOpen}
+        currentBatch={reminderCurrentBatch}
+        totalBatches={reminderTotalBatches}
       />
       
     <div className="space-y-6">
@@ -1863,13 +1962,23 @@ export function AssignmentsTab({
               <CardTitle className="text-lg">Assignments ({assignments.length})</CardTitle>
               <CardDescription>Volunteers grouped by task</CardDescription>
             </div>
-            <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline" disabled={isReadOnly || volunteers.length === 0 || tasks.length === 0}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Quick Assign
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleSendReminderEmails}
+                disabled={isReadOnly || assignments.length === 0}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Send Reminders
+              </Button>
+              <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={isReadOnly || volunteers.length === 0 || tasks.length === 0}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Quick Assign
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Quick Assign Volunteer</DialogTitle>
@@ -2109,6 +2218,7 @@ export function AssignmentsTab({
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
             
             <Dialog open={editAssignmentDialogOpen} onOpenChange={setEditAssignmentDialogOpen}>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
