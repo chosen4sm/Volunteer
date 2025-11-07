@@ -363,17 +363,29 @@ export default function DashboardPage() {
   const handleFixMondayMorningShift = async () => {
     if (isFixing) return;
 
+    // First, let's see what we have for Monday Morning
+    const mondayMorningAssignments = assignments.filter(
+      (a) => a.day === "Monday" && a.shift === "Morning"
+    );
+
+    console.log("All Monday Morning assignments:", mondayMorningAssignments.length);
+    console.log("Sample times:", mondayMorningAssignments.slice(0, 3).map(a => ({
+      startTime: a.startTime,
+      endTime: a.endTime
+    })));
+
+    // Try different time formats
     const targetAssignments = assignments.filter(
       (a) =>
         a.day === "Monday" &&
         a.shift === "Morning" &&
-        a.startTime === "06:00" &&
-        a.endTime === "08:00"
+        (a.startTime === "06:00" || a.startTime === "6:00" || a.startTime === "06:00:00") &&
+        (a.endTime === "08:00" || a.endTime === "8:00" || a.endTime === "08:00:00")
     );
 
     if (targetAssignments.length === 0) {
       toast.error("No matching assignments found", {
-        description: "No Monday Morning shifts with 6:00am - 8:00am times found.",
+        description: `Found ${mondayMorningAssignments.length} Monday Morning shifts, but none match 6:00am - 8:00am. Check console for time formats.`,
       });
       return;
     }
