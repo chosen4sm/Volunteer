@@ -20,7 +20,7 @@ import { useAuth } from "@/components/auth-provider";
 import { auth, db } from "@/lib/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { signOut } from "firebase/auth";
-import { LogOut, Users, AlertCircle, User, MapPin, UserPlus, Database, Trash2, AlertTriangle, History } from "lucide-react";
+import { LogOut, Users, AlertCircle, User, MapPin, UserPlus, Database, Trash2, AlertTriangle, History, Clock } from "lucide-react";
 import { toast } from "sonner";
 import {
   getVolunteers,
@@ -62,6 +62,7 @@ export default function DashboardPage() {
   const [isNuking, setIsNuking] = useState(false);
   const [isPopulatingJamatOptions, setIsPopulatingJamatOptions] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
+  const [isFixing, setIsFixing] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -356,6 +357,70 @@ export default function DashboardPage() {
       });
     } finally {
       setIsMigrating(false);
+    }
+  };
+
+  const handleFixMondayMorningShift = async () => {
+    if (isFixing) return;
+
+    const targetAssignments = assignments.filter(
+      (a) =>
+        a.day === "Monday" &&
+        a.shift === "Morning" &&
+        a.startTime === "06:00" &&
+        a.endTime === "08:00"
+    );
+
+    if (targetAssignments.length === 0) {
+      toast.error("No matching assignments found", {
+        description: "No Monday Morning shifts with 6:00am - 8:00am times found.",
+      });
+      return;
+    }
+
+    const uniqueTaskIds = new Set(targetAssignments.map((a) => a.taskId));
+    const taskNames = Array.from(uniqueTaskIds)
+      .map((taskId) => tasks.find((t) => t.id === taskId)?.name)
+      .filter(Boolean)
+      .join(", ");
+
+    const confirmed = confirm(
+      `Found ${targetAssignments.length} assignments to update:\n\n` +
+      `Tasks: ${taskNames}\n` +
+      `Current: Monday Morning 6:00am - 8:00am\n` +
+      `New: Monday Morning 12:00am - 8:00am\n\n` +
+      `Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setIsFixing(true);
+    toast.info("Updating assignments...", {
+      description: `Fixing ${targetAssignments.length} assignments`,
+    });
+
+    try {
+      const { updateAssignment } = await import("@/lib/db");
+      
+      for (const assignment of targetAssignments) {
+        await updateAssignment(assignment.id, {
+          startTime: "00:00",
+          endTime: "08:00",
+        });
+      }
+      
+      await fetchAllData();
+
+      toast.success("Fix complete!", {
+        description: `Updated ${targetAssignments.length} assignment(s) to 12:00am - 8:00am.`,
+      });
+    } catch (error) {
+      console.error("Error fixing assignments:", error);
+      toast.error("Fix failed", {
+        description: "Failed to update assignments. Check console for details.",
+      });
+    } finally {
+      setIsFixing(false);
     }
   };
 
@@ -811,6 +876,22 @@ export default function DashboardPage() {
                         {isMigrating ? "Migrating..." : "Migrate Role Format"}
                       </Button>
                     </div>
+                  </div>
+
+                  <div className="border-t pt-6 space-y-4">
+                    <h3 className="text-lg font-semibold">Quick Fixes</h3>
+                    <p className="text-sm text-muted-foreground">
+                      One-time fixes for specific data issues.
+                    </p>
+                    <Button
+                      onClick={handleFixMondayMorningShift}
+                      disabled={isFixing}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <Clock className="w-4 h-4" />
+                      {isFixing ? "Fixing..." : "Fix Monday Morning Shift (6am→12am)"}
+                    </Button>
                   </div>
 
                   <div className="border-t pt-6 space-y-4">
