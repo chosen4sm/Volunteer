@@ -73,58 +73,76 @@ export function AssignedTab({
   const SHIFTS = ["Morning", "Afternoon", "Evening", "Night"];
 
   const exportToExcel = () => {
-    const exportData = filteredAssignments.map((assignment) => {
-      const volunteer = volunteers.find(v => v.id === assignment.volunteerId);
-      const task = tasks.find(t => t.id === assignment.taskId);
-      const location = assignment.locationId 
-        ? locations.find(l => l.id === assignment.locationId)
-        : locations.find(l => l.id === task?.locationId);
+    const wb = XLSX.utils.book_new();
+    
+    const groupedByDay = filteredAssignments.reduce((acc, assignment) => {
+      const day = assignment.day || "Unscheduled";
+      if (!acc[day]) {
+        acc[day] = [];
+      }
+      acc[day].push(assignment);
+      return acc;
+    }, {} as Record<string, Assignment[]>);
 
-      const getScheduleText = () => {
-        if (assignment.startTime || assignment.endTime) {
-          return [assignment.startTime, assignment.endTime]
-            .filter(Boolean)
-            .map(t => formatTime(t))
-            .join(" - ");
-        }
-        return assignment.shift || "";
-      };
-
-      return {
-        Name: volunteer?.name || "",
-        Email: volunteer?.email || "",
-        Phone: volunteer?.phone || "",
-        Role: volunteer?.role === "lead" ? "Core Team" : volunteer?.role === "team-lead" ? "Team Lead" : "Volunteer",
-        Location: location?.name || "",
-        Task: task?.name || "",
-        Day: assignment.day || "",
-        Shift: assignment.shift || "",
-        "Custom Time": getScheduleText(),
-        Description: assignment.description || "",
-      };
+    const dayOrder = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Unscheduled"];
+    const sortedDays = Object.keys(groupedByDay).sort((a, b) => {
+      const indexA = dayOrder.indexOf(a);
+      const indexB = dayOrder.indexOf(b);
+      return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
     });
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Assignments");
+    sortedDays.forEach((day) => {
+      const dayAssignments = groupedByDay[day];
+      
+      const exportData = dayAssignments.map((assignment) => {
+        const volunteer = volunteers.find(v => v.id === assignment.volunteerId);
+        const task = tasks.find(t => t.id === assignment.taskId);
+        const location = assignment.locationId 
+          ? locations.find(l => l.id === assignment.locationId)
+          : locations.find(l => l.id === task?.locationId);
 
-    const colWidths = [
-      { wch: 20 },
-      { wch: 30 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 20 },
-      { wch: 25 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 20 },
-      { wch: 30 },
-    ];
-    ws['!cols'] = colWidths;
+        const getScheduleText = () => {
+          if (assignment.startTime || assignment.endTime) {
+            return [assignment.startTime, assignment.endTime]
+              .filter(Boolean)
+              .map(t => formatTime(t))
+              .join(" - ");
+          }
+          return assignment.shift || "";
+        };
+
+        return {
+          Name: volunteer?.name || "",
+          Email: volunteer?.email || "",
+          Phone: volunteer?.phone || "",
+          Role: volunteer?.role === "lead" ? "Core Team" : volunteer?.role === "team-lead" ? "Team Lead" : "Volunteer",
+          Location: location?.name || "",
+          Task: task?.name || "",
+          Shift: assignment.shift || "",
+          "Custom Time": getScheduleText(),
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      const colWidths = [
+        { wch: 20 },
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 20 },
+        { wch: 25 },
+        { wch: 12 },
+        { wch: 20 },
+      ];
+      ws['!cols'] = colWidths;
+
+      XLSX.utils.book_append_sheet(wb, ws, day);
+    });
 
     XLSX.writeFile(wb, `volunteer-assignments-${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success("Exported successfully", {
-      description: `${exportData.length} assignments exported to Excel`,
+      description: `${filteredAssignments.length} assignments across ${sortedDays.length} sheet(s)`,
     });
   };
 
