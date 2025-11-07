@@ -302,7 +302,13 @@ export function AssignedTab({
 
     if (filterDay && filterDay !== "all" && assignment.day !== filterDay) return false;
 
-    if (filterShift && filterShift !== "all" && assignment.shift !== filterShift) return false;
+    if (filterShift && filterShift !== "all") {
+      if (filterShift === "custom-time") {
+        if (!assignment.startTime && !assignment.endTime) return false;
+      } else {
+        if (assignment.shift !== filterShift) return false;
+      }
+    }
 
     if (filterTask && filterTask !== "all" && assignment.taskId !== filterTask) return false;
 
@@ -496,6 +502,7 @@ export function AssignedTab({
                     <SelectItem value="Afternoon">Afternoon</SelectItem>
                     <SelectItem value="Evening">Evening</SelectItem>
                     <SelectItem value="Night">Night</SelectItem>
+                    <SelectItem value="custom-time">Custom Time</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -645,7 +652,14 @@ export function AssignedTab({
                         <TableCell>{location?.name || "-"}</TableCell>
                         <TableCell>{task?.name || "-"}</TableCell>
                         <TableCell>{assignment.day || "-"}</TableCell>
-                        <TableCell>{assignment.shift || "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span>{assignment.shift || "-"}</span>
+                            {(assignment.startTime || assignment.endTime) && (
+                              <Badge variant="outline" className="text-xs">Custom Time</Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{getTimeText()}</TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
