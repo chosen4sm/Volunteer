@@ -1,7 +1,18 @@
 import { Resend } from "resend";
 import { AssignmentNotificationEmail } from "@/emails/assignment-notification";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendInstance: Resend | null = null;
+
+function getResend() {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error("RESEND_API_KEY is not set");
+    }
+    resendInstance = new Resend(apiKey);
+  }
+  return resendInstance;
+}
 
 interface AssignmentDetail {
   taskName: string;
@@ -41,6 +52,7 @@ async function sendEmailWithRetry(
 ): Promise<{ data: { id: string } | null; error: { message: string } | null }> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
+      const resend = getResend();
       const result = await resend.emails.send(emailParams);
       
       if (result.error) {

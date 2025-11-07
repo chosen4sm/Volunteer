@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MapPin, Clock, User, Link2, Trash2, UserPlus, Search, Pencil } from "lucide-react";
+import { MapPin, Clock, User, Link2, Trash2, UserPlus, Search, Pencil, Download, Table as TableIcon, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
 import { deleteAssignment, updateAssignment } from "@/lib/db";
@@ -27,6 +27,15 @@ import {
 } from "@/components/ui/dialog";
 import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import { formatTime } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import * as XLSX from 'xlsx';
 
 interface AssignedTabProps {
   volunteers: Volunteer[];
@@ -48,6 +57,7 @@ export function AssignedTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLocation, setFilterLocation] = useState<string>("all");
   const [filterDay, setFilterDay] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("table");
   
   const [editAssignmentDialogOpen, setEditAssignmentDialogOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
@@ -61,6 +71,62 @@ export function AssignedTab({
   
   const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
   const SHIFTS = ["Morning", "Afternoon", "Evening", "Night"];
+
+  const exportToExcel = () => {
+    const exportData = filteredAssignments.map((assignment) => {
+      const volunteer = volunteers.find(v => v.id === assignment.volunteerId);
+      const task = tasks.find(t => t.id === assignment.taskId);
+      const location = assignment.locationId 
+        ? locations.find(l => l.id === assignment.locationId)
+        : locations.find(l => l.id === task?.locationId);
+
+      const getScheduleText = () => {
+        if (assignment.startTime || assignment.endTime) {
+          return [assignment.startTime, assignment.endTime]
+            .filter(Boolean)
+            .map(t => formatTime(t))
+            .join(" - ");
+        }
+        return assignment.shift || "";
+      };
+
+      return {
+        Name: volunteer?.name || "",
+        Email: volunteer?.email || "",
+        Phone: volunteer?.phone || "",
+        Role: volunteer?.role === "lead" ? "Core Team" : volunteer?.role === "team-lead" ? "Team Lead" : "Volunteer",
+        Location: location?.name || "",
+        Task: task?.name || "",
+        Day: assignment.day || "",
+        Shift: assignment.shift || "",
+        "Custom Time": getScheduleText(),
+        Description: assignment.description || "",
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Assignments");
+
+    const colWidths = [
+      { wch: 20 },
+      { wch: 30 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 20 },
+      { wch: 25 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 20 },
+      { wch: 30 },
+    ];
+    ws['!cols'] = colWidths;
+
+    XLSX.writeFile(wb, `volunteer-assignments-${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success("Exported successfully", {
+      description: `${exportData.length} assignments exported to Excel`,
+    });
+  };
 
   const handleDeleteAssignment = async (id: string) => {
     try {
@@ -248,9 +314,38 @@ export function AssignedTab({
                 {totalAssignments} assignment{totalAssignments !== 1 ? 's' : ''} across {uniqueVolunteers} volunteer{uniqueVolunteers !== 1 ? 's' : ''}
               </p>
             </div>
-            <Badge variant="secondary" className="text-lg px-4 py-2">
-              {totalAssignments}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <div className="flex border rounded-lg p-1">
+                <Button
+                  size="sm"
+                  variant={viewMode === "table" ? "secondary" : "ghost"}
+                  onClick={() => setViewMode("table")}
+                  className="h-8 px-3"
+                >
+                  <TableIcon className="w-4 h-4 mr-1.5" />
+                  Table
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "cards" ? "secondary" : "ghost"}
+                  onClick={() => setViewMode("cards")}
+                  className="h-8 px-3"
+                >
+                  <LayoutGrid className="w-4 h-4 mr-1.5" />
+                  Cards
+                </Button>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={exportToExcel}
+                disabled={totalAssignments === 0}
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -305,6 +400,111 @@ export function AssignedTab({
               <p className="text-sm text-muted-foreground mt-1">
                 Go to the Assignments tab to assign volunteers to tasks
               </p>
+            </div>
+          ) : viewMode === "table" ? (
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Day</TableHead>
+                    <TableHead>Shift</TableHead>
+                    <TableHead>Time</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAssignments.map((assignment) => {
+                    const volunteer = volunteers.find(v => v.id === assignment.volunteerId);
+                    const task = tasks.find(t => t.id === assignment.taskId);
+                    const location = assignment.locationId 
+                      ? locations.find(l => l.id === assignment.locationId)
+                      : locations.find(l => l.id === task?.locationId);
+
+                    if (!volunteer) return null;
+
+                    const getTimeText = () => {
+                      if (assignment.startTime || assignment.endTime) {
+                        return [assignment.startTime, assignment.endTime]
+                          .filter(Boolean)
+                          .map(t => formatTime(t))
+                          .join(" - ");
+                      }
+                      return "-";
+                    };
+
+                    return (
+                      <TableRow key={assignment.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {volunteer.name}
+                            {volunteer.role === "lead" && (
+                              <Badge variant="default" className="h-5 text-xs">Core</Badge>
+                            )}
+                            {volunteer.role === "team-lead" && (
+                              <Badge variant="secondary" className="h-5 text-xs">Lead</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{volunteer.email}</TableCell>
+                        <TableCell className="text-muted-foreground">{volunteer.phone || "-"}</TableCell>
+                        <TableCell>{location?.name || "-"}</TableCell>
+                        <TableCell>{task?.name || "-"}</TableCell>
+                        <TableCell>{assignment.day || "-"}</TableCell>
+                        <TableCell>{assignment.shift || "-"}</TableCell>
+                        <TableCell>{getTimeText()}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => copyVolunteerLink(volunteer)}
+                              className="h-8 w-8 p-0"
+                              title="Copy volunteer link"
+                            >
+                              <Link2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => task && sendToWhatsApp(volunteer, task, location, assignment)}
+                              className="h-8 w-8 p-0"
+                              title="Share to WhatsApp"
+                              disabled={!task}
+                            >
+                              <WhatsAppIcon className="w-4 h-4 text-green-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditAssignment(assignment)}
+                              className="h-8 w-8 p-0"
+                              disabled={isReadOnly}
+                              title={isReadOnly ? "Cannot edit in view-only mode" : "Edit assignment"}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteAssignment(assignment.id)}
+                              className="h-8 w-8 p-0"
+                              disabled={isReadOnly}
+                              title={isReadOnly ? "Cannot delete in view-only mode" : "Remove"}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <div className="space-y-4">
