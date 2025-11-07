@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MapPin, Clock, User, Link2, Trash2, UserPlus, Search, Pencil, Download, Table as TableIcon, LayoutGrid } from "lucide-react";
+import { MapPin, Clock, User, Link2, Trash2, UserPlus, Search, Pencil, Download, Table as TableIcon, LayoutGrid, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
 import { deleteAssignment, updateAssignment } from "@/lib/db";
@@ -57,7 +57,11 @@ export function AssignedTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLocation, setFilterLocation] = useState<string>("all");
   const [filterDay, setFilterDay] = useState<string>("all");
+  const [filterShift, setFilterShift] = useState<string>("all");
+  const [filterTask, setFilterTask] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const [sortField, setSortField] = useState<"name" | "location" | "task" | "day" | "shift">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   
   const [editAssignmentDialogOpen, setEditAssignmentDialogOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
@@ -75,7 +79,7 @@ export function AssignedTab({
   const exportToExcel = () => {
     const wb = XLSX.utils.book_new();
     
-    const groupedByDay = filteredAssignments.reduce((acc, assignment) => {
+    const groupedByDay = sortedAssignments.reduce((acc, assignment) => {
       const day = assignment.day || "Unscheduled";
       if (!acc[day]) {
         acc[day] = [];
@@ -142,7 +146,7 @@ export function AssignedTab({
 
     XLSX.writeFile(wb, `volunteer-assignments-${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success("Exported successfully", {
-      description: `${filteredAssignments.length} assignments across ${sortedDays.length} sheet(s)`,
+      description: `${sortedAssignments.length} assignments across ${sortedDays.length} sheet(s)`,
     });
   };
 
@@ -268,6 +272,15 @@ export function AssignedTab({
     });
   };
 
+  const handleSort = (field: "name" | "location" | "task" | "day" | "shift") => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
   // Filter assignments
   const filteredAssignments = assignments.filter((assignment) => {
     const volunteer = volunteers.find(v => v.id === assignment.volunteerId);
@@ -276,8 +289,10 @@ export function AssignedTab({
     if (searchQuery && volunteer) {
       const query = searchQuery.toLowerCase();
       const matchesName = volunteer.name.toLowerCase().includes(query);
+      const matchesEmail = volunteer.email?.toLowerCase().includes(query);
+      const matchesPhone = volunteer.phone?.toLowerCase().includes(query);
       const matchesTask = task?.name.toLowerCase().includes(query);
-      if (!matchesName && !matchesTask) return false;
+      if (!matchesName && !matchesEmail && !matchesPhone && !matchesTask) return false;
     }
 
     if (filterLocation && filterLocation !== "all") {
@@ -287,7 +302,53 @@ export function AssignedTab({
 
     if (filterDay && filterDay !== "all" && assignment.day !== filterDay) return false;
 
+    if (filterShift && filterShift !== "all" && assignment.shift !== filterShift) return false;
+
+    if (filterTask && filterTask !== "all" && assignment.taskId !== filterTask) return false;
+
     return true;
+  });
+
+  // Sort assignments
+  const sortedAssignments = [...filteredAssignments].sort((a, b) => {
+    const volunteerA = volunteers.find(v => v.id === a.volunteerId);
+    const volunteerB = volunteers.find(v => v.id === b.volunteerId);
+    const taskA = tasks.find(t => t.id === a.taskId);
+    const taskB = tasks.find(t => t.id === b.taskId);
+    const locationA = a.locationId 
+      ? locations.find(l => l.id === a.locationId)
+      : locations.find(l => l.id === taskA?.locationId);
+    const locationB = b.locationId 
+      ? locations.find(l => l.id === b.locationId)
+      : locations.find(l => l.id === taskB?.locationId);
+
+    let compareValue = 0;
+
+    switch (sortField) {
+      case "name":
+        compareValue = (volunteerA?.name || "").localeCompare(volunteerB?.name || "");
+        break;
+      case "location":
+        compareValue = (locationA?.name || "").localeCompare(locationB?.name || "");
+        break;
+      case "task":
+        compareValue = (taskA?.name || "").localeCompare(taskB?.name || "");
+        break;
+      case "day":
+        const dayOrder = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+        const dayIndexA = a.day ? dayOrder.indexOf(a.day) : 999;
+        const dayIndexB = b.day ? dayOrder.indexOf(b.day) : 999;
+        compareValue = dayIndexA - dayIndexB;
+        break;
+      case "shift":
+        const shiftOrder = ["Morning", "Afternoon", "Evening", "Night"];
+        const shiftIndexA = a.shift ? shiftOrder.indexOf(a.shift) : 999;
+        const shiftIndexB = b.shift ? shiftOrder.indexOf(b.shift) : 999;
+        compareValue = shiftIndexA - shiftIndexB;
+        break;
+    }
+
+    return sortDirection === "asc" ? compareValue : -compareValue;
   });
 
   // Group assignments by location and task
@@ -318,8 +379,8 @@ export function AssignedTab({
       };
     });
 
-  const totalAssignments = filteredAssignments.length;
-  const uniqueVolunteers = new Set(filteredAssignments.map(a => a.volunteerId)).size;
+  const totalAssignments = sortedAssignments.length;
+  const uniqueVolunteers = new Set(sortedAssignments.map(a => a.volunteerId)).size;
 
   return (
     <div className="space-y-6">
@@ -367,48 +428,94 @@ export function AssignedTab({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-3 mb-6">
-            <div className="relative flex-1">
+          <div className="space-y-3 mb-6">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search by volunteer name or task..."
+                placeholder="Search by name, email, phone, or task..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
             </div>
-            <Select value={filterLocation} onValueChange={setFilterLocation}>
-              <SelectTrigger className="w-full sm:w-48">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  <SelectValue placeholder="All locations" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All locations</SelectItem>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterDay} onValueChange={setFilterDay}>
-              <SelectTrigger className="w-full sm:w-48">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <SelectValue placeholder="All days" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All days</SelectItem>
-                <SelectItem value="Friday">Friday</SelectItem>
-                <SelectItem value="Saturday">Saturday</SelectItem>
-                <SelectItem value="Sunday">Sunday</SelectItem>
-                <SelectItem value="Monday">Monday</SelectItem>
-                <SelectItem value="Tuesday">Tuesday</SelectItem>
-              </SelectContent>
-            </Select>
+            
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="flex flex-wrap gap-2 flex-1">
+                <Select value={filterLocation} onValueChange={setFilterLocation}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterTask} onValueChange={setFilterTask}>
+                  <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Task" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Tasks</SelectItem>
+                    {tasks.map((task) => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterDay} onValueChange={setFilterDay}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Days</SelectItem>
+                    <SelectItem value="Friday">Friday</SelectItem>
+                    <SelectItem value="Saturday">Saturday</SelectItem>
+                    <SelectItem value="Sunday">Sunday</SelectItem>
+                    <SelectItem value="Monday">Monday</SelectItem>
+                    <SelectItem value="Tuesday">Tuesday</SelectItem>
+                    <SelectItem value="Wednesday">Wednesday</SelectItem>
+                    <SelectItem value="Thursday">Thursday</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={filterShift} onValueChange={setFilterShift}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Shift" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Shifts</SelectItem>
+                    <SelectItem value="Morning">Morning</SelectItem>
+                    <SelectItem value="Afternoon">Afternoon</SelectItem>
+                    <SelectItem value="Evening">Evening</SelectItem>
+                    <SelectItem value="Night">Night</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {(filterLocation !== "all" || filterTask !== "all" || filterDay !== "all" || filterShift !== "all") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFilterLocation("all");
+                      setFilterTask("all");
+                      setFilterDay("all");
+                      setFilterShift("all");
+                    }}
+                    className="h-9"
+                  >
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
 
           {totalAssignments === 0 ? (
@@ -424,19 +531,84 @@ export function AssignedTab({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("name")}
+                        className="h-8 px-2 lg:px-3 hover:bg-transparent"
+                      >
+                        Name
+                        {sortField === "name" ? (
+                          sortDirection === "asc" ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Task</TableHead>
-                    <TableHead>Day</TableHead>
-                    <TableHead>Shift</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("location")}
+                        className="h-8 px-2 lg:px-3 hover:bg-transparent"
+                      >
+                        Location
+                        {sortField === "location" ? (
+                          sortDirection === "asc" ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("task")}
+                        className="h-8 px-2 lg:px-3 hover:bg-transparent"
+                      >
+                        Task
+                        {sortField === "task" ? (
+                          sortDirection === "asc" ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("day")}
+                        className="h-8 px-2 lg:px-3 hover:bg-transparent"
+                      >
+                        Day
+                        {sortField === "day" ? (
+                          sortDirection === "asc" ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort("shift")}
+                        className="h-8 px-2 lg:px-3 hover:bg-transparent"
+                      >
+                        Shift
+                        {sortField === "shift" ? (
+                          sortDirection === "asc" ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                        ) : (
+                          <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead>Time</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAssignments.map((assignment) => {
+                  {sortedAssignments.map((assignment) => {
                     const volunteer = volunteers.find(v => v.id === assignment.volunteerId);
                     const task = tasks.find(t => t.id === assignment.taskId);
                     const location = assignment.locationId 
