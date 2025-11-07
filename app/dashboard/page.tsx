@@ -363,38 +363,49 @@ export default function DashboardPage() {
   const handleFixMondayMorningShift = async () => {
     if (isFixing) return;
 
-    // First, let's see what we have for Monday Morning
-    const mondayMorningAssignments = assignments.filter(
-      (a) => a.day === "Monday" && a.shift === "Morning"
+    // Find the specific task IDs for Carpet Installation, Decor, and General Setup
+    const targetTaskNames = ["Carpet Installation", "Decor", "General setup"];
+    const targetTasks = tasks.filter(t => 
+      targetTaskNames.some(name => t.name.toLowerCase().includes(name.toLowerCase()))
     );
+    
+    console.log("Target tasks found:", targetTasks.map(t => ({ id: t.id, name: t.name })));
 
-    console.log("All Monday Morning assignments:", mondayMorningAssignments.length);
-    console.log("Sample times:", mondayMorningAssignments.slice(0, 3).map(a => ({
-      startTime: a.startTime,
-      endTime: a.endTime
-    })));
-
-    // Try different time formats
-    const targetAssignments = assignments.filter(
-      (a) =>
-        a.day === "Monday" &&
-        a.shift === "Morning" &&
-        (a.startTime === "06:00" || a.startTime === "6:00" || a.startTime === "06:00:00") &&
-        (a.endTime === "08:00" || a.endTime === "8:00" || a.endTime === "08:00:00")
-    );
-
-    if (targetAssignments.length === 0) {
-      toast.error("No matching assignments found", {
-        description: `Found ${mondayMorningAssignments.length} Monday Morning shifts, but none match 6:00am - 8:00am. Check console for time formats.`,
+    if (targetTasks.length === 0) {
+      toast.error("Target tasks not found", {
+        description: "Could not find Carpet Installation, Decor, or General setup tasks.",
       });
       return;
     }
 
-    const uniqueTaskIds = new Set(targetAssignments.map((a) => a.taskId));
-    const taskNames = Array.from(uniqueTaskIds)
-      .map((taskId) => tasks.find((t) => t.id === taskId)?.name)
-      .filter(Boolean)
-      .join(", ");
+    const targetTaskIds = targetTasks.map(t => t.id);
+
+    // Find assignments for these tasks on Monday Morning with 6:00am - 8:00am
+    const targetAssignments = assignments.filter(
+      (a) =>
+        a.day === "Monday" &&
+        a.shift === "Morning" &&
+        targetTaskIds.includes(a.taskId) &&
+        (a.startTime === "06:00" || a.startTime === "6:00" || a.startTime === "06:00:00") &&
+        (a.endTime === "08:00" || a.endTime === "8:00" || a.endTime === "08:00:00")
+    );
+
+    console.log("Found assignments to fix:", targetAssignments.length);
+    console.log("Sample:", targetAssignments.slice(0, 3).map(a => ({
+      taskId: a.taskId,
+      taskName: tasks.find(t => t.id === a.taskId)?.name,
+      startTime: a.startTime,
+      endTime: a.endTime
+    })));
+
+    if (targetAssignments.length === 0) {
+      toast.error("No matching assignments found", {
+        description: `Found ${targetTasks.length} target task(s), but no assignments with 6:00am - 8:00am on Monday Morning. Check console for details.`,
+      });
+      return;
+    }
+
+    const taskNames = targetTasks.map(t => t.name).join(", ");
 
     const confirmed = confirm(
       `Found ${targetAssignments.length} assignments to update:\n\n` +
