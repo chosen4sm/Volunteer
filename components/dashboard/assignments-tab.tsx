@@ -27,7 +27,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Users, UserPlus, AlertTriangle, Copy, MapPin, Clock } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Users, UserPlus, AlertTriangle, Copy, MapPin, Clock, Check, ChevronDown, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   createAssignment,
@@ -62,15 +67,19 @@ export function AssignmentsTab({
   isReadOnly = false,
 }: AssignmentsTabProps) {
   const [formConfig, setFormConfig] = useState<FormConfig>(DEFAULT_FORM_CONFIG);
-  const [filterDay, setFilterDay] = useState<string>("");
-  const [filterShift, setFilterShift] = useState<string>("");
+  const [filterDay, setFilterDay] = useState<string[]>([]);
+  const [filterShift, setFilterShift] = useState<string[]>([]);
   const [filterCount, setFilterCount] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [filterExperience, setFilterExperience] = useState<string>("");
-  const [filterAgeRange, setFilterAgeRange] = useState<string>("");
-  const [filterJamatKhane, setFilterJamatKhane] = useState<string>("");
-  const [filterSkill, setFilterSkill] = useState<string>("");
-  const [filterRole, setFilterRole] = useState<string>("");
+  const [filterExperience, setFilterExperience] = useState<string[]>([]);
+  const [filterAgeRange, setFilterAgeRange] = useState<string[]>([]);
+  const [filterJamatKhane, setFilterJamatKhane] = useState<string[]>([]);
+  const [filterSkill, setFilterSkill] = useState<string[]>([]);
+  const [filterRole, setFilterRole] = useState<string[]>([]);
+  const [filterAssignmentStatus, setFilterAssignmentStatus] = useState<string>("");
+  const [filterUnassignedDay, setFilterUnassignedDay] = useState<string>("");
+  const [filterAssignmentCount, setFilterAssignmentCount] = useState<string>("");
+  const [filterAssignmentOperator, setFilterAssignmentOperator] = useState<string>("equal");
 
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
   const [assignVolunteerId, setAssignVolunteerId] = useState("");
@@ -127,27 +136,83 @@ export function AssignmentsTab({
         : true;
 
       const shiftData = volunteer.shifts || {};
-      const dayShifts = shiftData[filterDay] || [];
+      
+      const matchesDay = filterDay.length > 0 
+        ? filterDay.some(day => {
+            const dayShifts = shiftData[day] || [];
+            return dayShifts.length > 0;
+          })
+        : true;
+        
+      const matchesShift = filterShift.length > 0
+        ? filterShift.some(shift => {
+            return Object.values(shiftData).some(dayShifts => dayShifts.includes(shift));
+          })
+        : true;
+        
+      const matchesExperience = filterExperience.length > 0
+        ? filterExperience.some(exp => (volunteer.experiences || []).includes(exp))
+        : true;
+        
+      const matchesAgeRange = filterAgeRange.length > 0
+        ? filterAgeRange.some(age => (volunteer.ageRange || []).includes(age))
+        : true;
+        
+      const matchesJamatKhane = filterJamatKhane.length > 0
+        ? filterJamatKhane.some(jk => (volunteer.jamatKhane || []).includes(jk))
+        : true;
+        
+      const matchesSkill = filterSkill.length > 0
+        ? filterSkill.includes(volunteer.specialSkill || "")
+        : true;
+        
+      const matchesRole = filterRole.length > 0
+        ? filterRole.includes(volunteer.role || "")
+        : true;
+      
+      // Assignment status filter
+      const volunteerAssignments = assignments.filter(a => a.volunteerId === volunteer.id);
+      let matchesAssignmentStatus = true;
+      
+      if (filterAssignmentStatus === "no-assignments") {
+        matchesAssignmentStatus = volunteerAssignments.length === 0;
+      } else if (filterAssignmentStatus === "has-assignments") {
+        matchesAssignmentStatus = volunteerAssignments.length > 0;
+      }
+      
+      // Unassigned on specific day filter
+      let matchesUnassignedDay = true;
+      if (filterUnassignedDay) {
+        const dayAssignments = volunteerAssignments.filter(a => a.day === filterUnassignedDay);
+        matchesUnassignedDay = dayAssignments.length === 0;
+      }
+      
+      // Assignment count filter
+      let matchesAssignmentCount = true;
+      if (filterAssignmentCount) {
+        const targetCount = parseInt(filterAssignmentCount);
+        const actualCount = volunteerAssignments.length;
+        
+        switch (filterAssignmentOperator) {
+          case "equal":
+            matchesAssignmentCount = actualCount === targetCount;
+            break;
+          case "less":
+            matchesAssignmentCount = actualCount < targetCount;
+            break;
+          case "lessOrEqual":
+            matchesAssignmentCount = actualCount <= targetCount;
+            break;
+          case "greater":
+            matchesAssignmentCount = actualCount > targetCount;
+            break;
+          case "greaterOrEqual":
+            matchesAssignmentCount = actualCount >= targetCount;
+            break;
+        }
+      }
 
-      const matchesDay = filterDay ? dayShifts.length > 0 : true;
-      const matchesShift = filterShift ? dayShifts.includes(filterShift) : true;
-      const matchesExperience = filterExperience
-        ? (volunteer.experiences || []).includes(filterExperience)
-        : true;
-      const matchesAgeRange = filterAgeRange
-        ? (volunteer.ageRange || []).includes(filterAgeRange)
-        : true;
-      const matchesJamatKhane = filterJamatKhane
-        ? (volunteer.jamatKhane || []).includes(filterJamatKhane)
-        : true;
-      const matchesSkill = filterSkill
-        ? volunteer.specialSkill === filterSkill
-        : true;
-      const matchesRole = filterRole
-        ? volunteer.role === filterRole
-        : true;
-
-      return matchesSearch && matchesDay && matchesShift && matchesExperience && matchesAgeRange && matchesJamatKhane && matchesSkill && matchesRole;
+      return matchesSearch && matchesDay && matchesShift && matchesExperience && matchesAgeRange && matchesJamatKhane && matchesSkill && matchesRole && matchesAssignmentStatus && matchesUnassignedDay && matchesAssignmentCount;
     });
 
     const count = parseInt(filterCount);
@@ -158,11 +223,7 @@ export function AssignmentsTab({
     return filtered;
   })();
 
-  const displayVolunteers = (() => {
-    const selectedVols = volunteers.filter((v) => selectedVolunteers.includes(v.id));
-    const unselectedFiltered = filteredVolunteers.filter((v) => !selectedVolunteers.includes(v.id));
-    return [...selectedVols, ...unselectedFiltered];
-  })();
+  const displayVolunteers = filteredVolunteers;
 
   const handleCreateAssignment = async () => {
     if (!assignVolunteerId) {
@@ -510,11 +571,11 @@ export function AssignmentsTab({
   };
 
   useEffect(() => {
-    if (filterDay) {
-      setAssignDay(filterDay);
+    if (filterDay.length === 1) {
+      setAssignDay(filterDay[0]);
     }
-    if (filterShift) {
-      setAssignShift(filterShift);
+    if (filterShift.length === 1) {
+      setAssignShift(filterShift[0]);
     }
   }, [filterDay, filterShift]);
 
@@ -544,30 +605,89 @@ export function AssignmentsTab({
       if (!matchesSearch) return false;
       
       const shiftData = v.shifts || {};
-      const dayShifts = shiftData[filterDay] || [];
       
-      const matchesDay = filterDay ? dayShifts.length > 0 : true;
-      const matchesShift = filterShift ? dayShifts.includes(filterShift) : true;
-      const matchesExperience = filterExperience
-        ? (v.experiences || []).includes(filterExperience)
+      const matchesDay = filterDay.length > 0 
+        ? filterDay.some(day => {
+            const dayShifts = shiftData[day] || [];
+            return dayShifts.length > 0;
+          })
         : true;
-      const matchesAgeRange = filterAgeRange
-        ? (v.ageRange || []).includes(filterAgeRange)
+        
+      const matchesShift = filterShift.length > 0
+        ? filterShift.some(shift => {
+            return Object.values(shiftData).some(dayShifts => dayShifts.includes(shift));
+          })
         : true;
-      const matchesJamatKhane = filterJamatKhane
-        ? (v.jamatKhane || []).includes(filterJamatKhane)
+        
+      const matchesExperience = filterExperience.length > 0
+        ? filterExperience.some(exp => (v.experiences || []).includes(exp))
         : true;
-      const matchesSkill = filterSkill
-        ? v.specialSkill === filterSkill
+        
+      const matchesAgeRange = filterAgeRange.length > 0
+        ? filterAgeRange.some(age => (v.ageRange || []).includes(age))
         : true;
-      const matchesRole = filterRole
-        ? v.role === filterRole
+        
+      const matchesJamatKhane = filterJamatKhane.length > 0
+        ? filterJamatKhane.some(jk => (v.jamatKhane || []).includes(jk))
+        : true;
+        
+      const matchesSkill = filterSkill.length > 0
+        ? filterSkill.includes(v.specialSkill || "")
+        : true;
+        
+      const matchesRole = filterRole.length > 0
+        ? filterRole.includes(v.role || "")
         : true;
       
-      if (!matchesDay || !matchesShift || !matchesExperience || !matchesAgeRange || !matchesJamatKhane || !matchesSkill || !matchesRole) return false;
+      // Assignment status filter
+      const volunteerAssignments = assignments.filter(a => a.volunteerId === v.id);
+      let matchesAssignmentStatus = true;
       
-      const hasConflict = hasConsecutiveShifts(v, filterDay, filterShift);
-      if (hasConflict) return false;
+      if (filterAssignmentStatus === "no-assignments") {
+        matchesAssignmentStatus = volunteerAssignments.length === 0;
+      } else if (filterAssignmentStatus === "has-assignments") {
+        matchesAssignmentStatus = volunteerAssignments.length > 0;
+      }
+      
+      // Unassigned on specific day filter
+      let matchesUnassignedDay = true;
+      if (filterUnassignedDay) {
+        const dayAssignments = volunteerAssignments.filter(a => a.day === filterUnassignedDay);
+        matchesUnassignedDay = dayAssignments.length === 0;
+      }
+      
+      // Assignment count filter
+      let matchesAssignmentCount = true;
+      if (filterAssignmentCount) {
+        const targetCount = parseInt(filterAssignmentCount);
+        const actualCount = volunteerAssignments.length;
+        
+        switch (filterAssignmentOperator) {
+          case "equal":
+            matchesAssignmentCount = actualCount === targetCount;
+            break;
+          case "less":
+            matchesAssignmentCount = actualCount < targetCount;
+            break;
+          case "lessOrEqual":
+            matchesAssignmentCount = actualCount <= targetCount;
+            break;
+          case "greater":
+            matchesAssignmentCount = actualCount > targetCount;
+            break;
+          case "greaterOrEqual":
+            matchesAssignmentCount = actualCount >= targetCount;
+            break;
+        }
+      }
+      
+      if (!matchesDay || !matchesShift || !matchesExperience || !matchesAgeRange || !matchesJamatKhane || !matchesSkill || !matchesRole || !matchesAssignmentStatus || !matchesUnassignedDay || !matchesAssignmentCount) return false;
+      
+      // Check consecutive shifts only if we have a single day and shift selected
+      if (filterDay.length === 1 && filterShift.length === 1) {
+        const hasConflict = hasConsecutiveShifts(v, filterDay[0], filterShift[0]);
+        if (hasConflict) return false;
+      }
       
       return true;
     });
@@ -749,18 +869,22 @@ export function AssignmentsTab({
                 <CardDescription>Find and filter volunteers to assign tasks</CardDescription>
               </div>
             </div>
-            {(searchQuery || filterDay || filterShift || filterCount || filterExperience || filterAgeRange || filterJamatKhane || filterSkill || filterRole) && (
+            {(searchQuery || filterDay.length > 0 || filterShift.length > 0 || filterCount || filterExperience.length > 0 || filterAgeRange.length > 0 || filterJamatKhane.length > 0 || filterSkill.length > 0 || filterRole.length > 0 || filterAssignmentStatus || filterUnassignedDay || filterAssignmentCount) && (
               <Button
                 onClick={() => {
                   setSearchQuery("");
-                  setFilterDay("");
-                  setFilterShift("");
+                  setFilterDay([]);
+                  setFilterShift([]);
                   setFilterCount("");
-                  setFilterExperience("");
-                  setFilterAgeRange("");
-                  setFilterJamatKhane("");
-                  setFilterSkill("");
-                  setFilterRole("");
+                  setFilterExperience([]);
+                  setFilterAgeRange([]);
+                  setFilterJamatKhane([]);
+                  setFilterSkill([]);
+                  setFilterRole([]);
+                  setFilterAssignmentStatus("");
+                  setFilterUnassignedDay("");
+                  setFilterAssignmentCount("");
+                  setFilterAssignmentOperator("equal");
                 }}
                 variant="outline"
                 size="sm"
@@ -781,26 +905,64 @@ export function AssignmentsTab({
           <div className="space-y-3">
             <div className="text-sm font-medium text-muted-foreground px-1">Availability</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <Select value={filterDay || undefined} onValueChange={(val) => setFilterDay(val)}>
-                <SelectTrigger className="bg-background w-full">
-                  <SelectValue placeholder="📅 Day" />
-              </SelectTrigger>
-              <SelectContent>
-                {DAYS.map((day) => (
-                  <SelectItem key={day} value={day}>{day}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterShift || undefined} onValueChange={(val) => setFilterShift(val)}>
-                <SelectTrigger className="bg-background w-full">
-                  <SelectValue placeholder="⏰ Shift" />
-              </SelectTrigger>
-              <SelectContent>
-                {SHIFTS.map((shift) => (
-                  <SelectItem key={shift} value={shift}>{shift}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between bg-background">
+                    <span className="truncate">
+                      {filterDay.length > 0 ? `${filterDay.length} day(s)` : "📅 Day"}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-1">
+                    {DAYS.map((day) => (
+                      <div
+                        key={day}
+                        className="flex items-center space-x-2 hover:bg-accent rounded-sm p-2 cursor-pointer"
+                        onClick={() => {
+                          setFilterDay(prev => 
+                            prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+                          );
+                        }}
+                      >
+                        <Checkbox checked={filterDay.includes(day)} />
+                        <label className="flex-1 cursor-pointer text-sm">{day}</label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between bg-background">
+                    <span className="truncate">
+                      {filterShift.length > 0 ? `${filterShift.length} shift(s)` : "⏰ Shift"}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-1">
+                    {SHIFTS.map((shift) => (
+                      <div
+                        key={shift}
+                        className="flex items-center space-x-2 hover:bg-accent rounded-sm p-2 cursor-pointer"
+                        onClick={() => {
+                          setFilterShift(prev => 
+                            prev.includes(shift) ? prev.filter(s => s !== shift) : [...prev, shift]
+                          );
+                        }}
+                      >
+                        <Checkbox checked={filterShift.includes(shift)} />
+                        <label className="flex-1 cursor-pointer text-sm">{shift}</label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
               <Input
                 type="number"
                 min="1"
@@ -815,95 +977,231 @@ export function AssignmentsTab({
           <div className="space-y-3">
             <div className="text-sm font-medium text-muted-foreground px-1">Demographics & Skills</div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Select value={filterExperience || undefined} onValueChange={(val) => setFilterExperience(val)}>
-                <SelectTrigger className="bg-background w-full">
-                <SelectValue placeholder="Experience" />
-              </SelectTrigger>
-              <SelectContent>
-                {formConfig.experiences.map((exp) => (
-                  <SelectItem key={exp.id} value={exp.id}>{exp.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterAgeRange || undefined} onValueChange={(val) => setFilterAgeRange(val)}>
-                <SelectTrigger className="bg-background w-full">
-                <SelectValue placeholder="Age Range" />
-              </SelectTrigger>
-              <SelectContent>
-                {(() => {
-                  const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
-                  return ageQuestion?.options?.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-                  ));
-                })()}
-              </SelectContent>
-            </Select>
-            <Select value={filterJamatKhane || undefined} onValueChange={(val) => setFilterJamatKhane(val)}>
-                <SelectTrigger className="bg-background w-full">
-                <SelectValue placeholder="Jamat Khane" />
-              </SelectTrigger>
-              <SelectContent>
-                {(() => {
-                  const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
-                  return jamatQuestion?.options?.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-                  ));
-                })()}
-              </SelectContent>
-            </Select>
-            <Select value={filterSkill || undefined} onValueChange={(val) => setFilterSkill(val)}>
-                <SelectTrigger className="bg-background w-full">
-                  <SelectValue placeholder="Special Skill" />
-              </SelectTrigger>
-              <SelectContent>
-                {(() => {
-                  const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
-                  return skillQuestion?.options?.map((opt) => (
-                    <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
-                  ));
-                })()}
-              </SelectContent>
-            </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between bg-background">
+                    <span className="truncate">
+                      {filterExperience.length > 0 ? `${filterExperience.length} exp` : "Experience"}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-1">
+                    {formConfig.experiences.map((exp) => (
+                      <div
+                        key={exp.id}
+                        className="flex items-center space-x-2 hover:bg-accent rounded-sm p-2 cursor-pointer"
+                        onClick={() => {
+                          setFilterExperience(prev => 
+                            prev.includes(exp.id) ? prev.filter(e => e !== exp.id) : [...prev, exp.id]
+                          );
+                        }}
+                      >
+                        <Checkbox checked={filterExperience.includes(exp.id)} />
+                        <label className="flex-1 cursor-pointer text-sm">{exp.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between bg-background">
+                    <span className="truncate">
+                      {filterAgeRange.length > 0 ? `${filterAgeRange.length} age(s)` : "Age Range"}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-1">
+                    {(() => {
+                      const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+                      return ageQuestion?.options?.map((opt) => (
+                        <div
+                          key={opt.id}
+                          className="flex items-center space-x-2 hover:bg-accent rounded-sm p-2 cursor-pointer"
+                          onClick={() => {
+                            setFilterAgeRange(prev => 
+                              prev.includes(opt.id) ? prev.filter(a => a !== opt.id) : [...prev, opt.id]
+                            );
+                          }}
+                        >
+                          <Checkbox checked={filterAgeRange.includes(opt.id)} />
+                          <label className="flex-1 cursor-pointer text-sm">{opt.label}</label>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between bg-background">
+                    <span className="truncate">
+                      {filterJamatKhane.length > 0 ? `${filterJamatKhane.length} JK(s)` : "Jamat Khane"}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-1">
+                    {(() => {
+                      const jamatQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("jamat"));
+                      return jamatQuestion?.options?.map((opt) => (
+                        <div
+                          key={opt.id}
+                          className="flex items-center space-x-2 hover:bg-accent rounded-sm p-2 cursor-pointer"
+                          onClick={() => {
+                            setFilterJamatKhane(prev => 
+                              prev.includes(opt.id) ? prev.filter(j => j !== opt.id) : [...prev, opt.id]
+                            );
+                          }}
+                        >
+                          <Checkbox checked={filterJamatKhane.includes(opt.id)} />
+                          <label className="flex-1 cursor-pointer text-sm">{opt.label}</label>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between bg-background">
+                    <span className="truncate">
+                      {filterSkill.length > 0 ? `${filterSkill.length} skill(s)` : "Special Skill"}
+                    </span>
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-1">
+                    {(() => {
+                      const skillQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("skill"));
+                      return skillQuestion?.options?.map((opt) => (
+                        <div
+                          key={opt.id}
+                          className="flex items-center space-x-2 hover:bg-accent rounded-sm p-2 cursor-pointer"
+                          onClick={() => {
+                            setFilterSkill(prev => 
+                              prev.includes(opt.id) ? prev.filter(s => s !== opt.id) : [...prev, opt.id]
+                            );
+                          }}
+                        >
+                          <Checkbox checked={filterSkill.includes(opt.id)} />
+                          <label className="flex-1 cursor-pointer text-sm">{opt.label}</label>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
           <div className="space-y-3">
             <div className="text-sm font-medium text-muted-foreground px-1">Role</div>
-            <Select value={filterRole || undefined} onValueChange={(val) => setFilterRole(val)}>
-              <SelectTrigger className="bg-background w-full sm:w-48">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="volunteer">Volunteer</SelectItem>
-                <SelectItem value="team-lead">Team Lead</SelectItem>
-                <SelectItem value="lead">Core Team</SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-48 justify-between bg-background">
+                  <span className="truncate">
+                    {filterRole.length > 0 ? `${filterRole.length} role(s)` : "Filter by role"}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2">
+                <div className="space-y-1">
+                  {[
+                    { value: "volunteer", label: "Volunteer" },
+                    { value: "team-lead", label: "Team Lead" },
+                    { value: "lead", label: "Core Team" }
+                  ].map((role) => (
+                    <div
+                      key={role.value}
+                      className="flex items-center space-x-2 hover:bg-accent rounded-sm p-2 cursor-pointer"
+                      onClick={() => {
+                        setFilterRole(prev => 
+                          prev.includes(role.value) ? prev.filter(r => r !== role.value) : [...prev, role.value]
+                        );
+                      }}
+                    >
+                      <Checkbox checked={filterRole.includes(role.value)} />
+                      <label className="flex-1 cursor-pointer text-sm">{role.label}</label>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-3">
+            <div className="text-sm font-medium text-muted-foreground px-1">Assignment Status</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Select value={filterAssignmentStatus || undefined} onValueChange={(val) => setFilterAssignmentStatus(val || "")}>
+                <SelectTrigger className="bg-background w-full">
+                  <SelectValue placeholder="All volunteers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no-assignments">No assignments</SelectItem>
+                  <SelectItem value="has-assignments">Has assignments</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={filterUnassignedDay || undefined} onValueChange={(val) => setFilterUnassignedDay(val || "")}>
+                <SelectTrigger className="bg-background w-full">
+                  <SelectValue placeholder="Unassigned on day..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAYS.map((day) => (
+                    <SelectItem key={day} value={day}>Not assigned on {day}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2">
+              <Select value={filterAssignmentOperator} onValueChange={(val) => setFilterAssignmentOperator(val)}>
+                <SelectTrigger className="bg-background w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="equal">=</SelectItem>
+                  <SelectItem value="less">&lt;</SelectItem>
+                  <SelectItem value="lessOrEqual">≤</SelectItem>
+                  <SelectItem value="greater">&gt;</SelectItem>
+                  <SelectItem value="greaterOrEqual">≥</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Input
+                type="number"
+                min="0"
+                placeholder="# of assignments"
+                value={filterAssignmentCount}
+                onChange={(e) => setFilterAssignmentCount(e.target.value)}
+                className="bg-background w-full col-span-2"
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t">
             <div className="text-sm text-muted-foreground">
               {selectedVolunteers.length > 0
-                ? `${selectedVolunteers.length} selected • ${filteredVolunteers.length} match filters`
+                ? `${selectedVolunteers.length} selected • ${filteredVolunteers.length} available`
                 : filteredVolunteers.length !== volunteers.length
                 ? `Showing ${filteredVolunteers.length} of ${volunteers.length}`
                 : `${volunteers.length} total`}
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={selectAllFilteredVolunteers}>
-                Select All
+                Select All Filtered
               </Button>
-              {selectedVolunteers.length > 0 && (
-                <>
-                  <Button size="sm" variant="outline" onClick={copyAllSelectedLinks}>
-                    <Copy className="w-4 h-4 mr-1" />
-                    Copy Links
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={clearVolunteerSelection}>
-                    Clear ({selectedVolunteers.length})
-                  </Button>
-                </>
-              )}
             </div>
           </div>
           {filteredVolunteers.length === 0 ? (
@@ -917,7 +1215,9 @@ export function AssignmentsTab({
                 const isSelected = selectedVolunteers.includes(volunteer.id);
                 const shiftData = volunteer.shifts || {};
                 const totalShifts = getTotalShifts(volunteer);
-                const consecutiveShifts = hasConsecutiveShifts(volunteer, filterDay, filterShift);
+                const consecutiveShifts = filterDay.length === 1 && filterShift.length === 1 
+                  ? hasConsecutiveShifts(volunteer, filterDay[0], filterShift[0])
+                  : null;
 
                 return (
                   <div
@@ -925,12 +1225,20 @@ export function AssignmentsTab({
                     onClick={() => toggleVolunteerSelection(volunteer.id)}
                     className={`rounded-lg border cursor-pointer transition-all ${
                       isSelected 
-                        ? "border-primary bg-primary/5 shadow-sm" 
+                        ? "border-primary bg-primary/5 shadow-sm ring-2 ring-primary/20" 
                         : "hover:border-primary/50 hover:shadow-sm"
                     }`}
                   >
                     <div className="p-3 flex gap-3">
-                      <Checkbox checked={isSelected} className="pointer-events-none mt-0.5" />
+                      <div className="flex items-center shrink-0 mt-0.5">
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                          isSelected 
+                            ? "border-primary bg-primary" 
+                            : "border-muted-foreground/30"
+                        }`}>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
+                        </div>
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div className="flex-1 min-w-0">
@@ -1096,15 +1404,87 @@ export function AssignmentsTab({
       {selectedVolunteers.length > 0 && (
         <Card className="border-2 border-primary shadow-lg">
           <CardHeader className="pb-4 bg-primary/5 border-b">
-            <div className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-primary" />
-              <div>
-            <CardTitle className="text-lg">Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? 's' : ''}</CardTitle>
-                <CardDescription>Select tasks and schedule details</CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-primary" />
+                <div>
+                  <CardTitle className="text-lg">Selected Volunteers ({selectedVolunteers.length})</CardTitle>
+                  <CardDescription>Review selected volunteers and configure assignment</CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={copyAllSelectedLinks}>
+                  <Copy className="w-4 h-4 mr-1" />
+                  Copy Links
+                </Button>
+                <Button size="sm" variant="outline" onClick={clearVolunteerSelection}>
+                  <X className="w-4 h-4 mr-1" />
+                  Clear All
+                </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
+            <div className="max-h-[300px] overflow-y-auto space-y-2 mb-4 p-2 bg-muted/30 rounded-lg">
+              {selectedVolunteers.map((volunteerId) => {
+                const volunteer = volunteers.find((v) => v.id === volunteerId);
+                if (!volunteer) return null;
+                
+                const shiftData = volunteer.shifts || {};
+                const totalShifts = getTotalShifts(volunteer);
+                
+                return (
+                  <div
+                    key={volunteer.id}
+                    className="flex items-start gap-3 p-3 bg-background rounded-lg border border-primary/20"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold">{volunteer.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{volunteer.email}</div>
+                        </div>
+                        <div className="flex flex-col gap-1 items-end shrink-0">
+                          {volunteer.role === "lead" && (
+                            <Badge variant="default" className="h-5 text-xs">Core Team</Badge>
+                          )}
+                          {volunteer.role === "team-lead" && (
+                            <Badge variant="secondary" className="h-5 text-xs">Team Lead</Badge>
+                          )}
+                          <Badge variant="secondary" className="h-5 text-xs">
+                            {totalShifts} {totalShifts === 1 ? "shift" : "shifts"}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 flex-wrap mt-2">
+                        {volunteer.ageRange?.slice(0, 1).map((ageId) => {
+                          const ageQuestion = formConfig.questions.find(q => q.label.toLowerCase().includes("age"));
+                          const ageLabel = ageQuestion?.options?.find(opt => opt.id === ageId)?.label || ageId;
+                          return <Badge key={ageId} variant="secondary" className="text-xs h-5">👤 {ageLabel}</Badge>;
+                        })}
+                        {volunteer.experiences?.slice(0, 2).map((exp) => {
+                          const expLabel = formConfig.experiences.find(e => e.id === exp)?.label;
+                          return expLabel ? <Badge key={exp} variant="outline" className="text-xs h-5">⭐ {expLabel}</Badge> : null;
+                        })}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleVolunteerSelection(volunteer.id);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="border-t pt-4"></div>
             <div>
               <Label className="text-sm font-medium mb-2 block">Location (optional)</Label>
               <Select value={assignLocationId} onValueChange={(val) => setAssignLocationId(val || "")}>
