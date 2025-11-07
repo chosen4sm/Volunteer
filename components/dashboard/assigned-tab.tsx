@@ -12,10 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MapPin, Clock, User, Link2, Trash2, UserPlus, Search, Filter } from "lucide-react";
+import { MapPin, Clock, User, Link2, Trash2, UserPlus, Search, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { Volunteer, Location, Task, Assignment } from "@/lib/db";
-import { deleteAssignment } from "@/lib/db";
+import { deleteAssignment, updateAssignment } from "@/lib/db";
+import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import { formatTime } from "@/lib/utils";
 
@@ -39,6 +48,19 @@ export function AssignedTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLocation, setFilterLocation] = useState<string>("all");
   const [filterDay, setFilterDay] = useState<string>("all");
+  
+  const [editAssignmentDialogOpen, setEditAssignmentDialogOpen] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const [assignLocationId, setAssignLocationId] = useState("");
+  const [assignTaskId, setAssignTaskId] = useState("");
+  const [assignShift, setAssignShift] = useState("");
+  const [assignDay, setAssignDay] = useState("");
+  const [assignStartTime, setAssignStartTime] = useState("");
+  const [assignEndTime, setAssignEndTime] = useState("");
+  const [assignDescription, setAssignDescription] = useState("");
+  
+  const DAYS = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+  const SHIFTS = ["Morning", "Afternoon", "Evening", "Night"];
 
   const handleDeleteAssignment = async (id: string) => {
     try {
@@ -48,6 +70,63 @@ export function AssignedTab({
     } catch (error) {
       console.error("Error deleting assignment:", error);
       toast.error("Failed to remove assignment");
+    }
+  };
+
+  const handleEditAssignment = (assignment: Assignment) => {
+    setEditingAssignment(assignment);
+    setAssignLocationId(assignment.locationId || "");
+    setAssignTaskId(assignment.taskId);
+    setAssignShift(assignment.shift || "");
+    setAssignDay(assignment.day || "");
+    setAssignStartTime(assignment.startTime || "");
+    setAssignEndTime(assignment.endTime || "");
+    setAssignDescription(assignment.description || "");
+    setEditAssignmentDialogOpen(true);
+  };
+
+  const handleUpdateAssignment = async () => {
+    if (!editingAssignment) return;
+    if (!assignTaskId) {
+      toast.error("Missing task", {
+        description: "Please select a task",
+      });
+      return;
+    }
+    try {
+      const updateData: Partial<Assignment> = {
+        taskId: assignTaskId,
+        shift: assignShift || undefined,
+        day: assignDay || undefined,
+        startTime: assignStartTime || undefined,
+        endTime: assignEndTime || undefined,
+        description: assignDescription || undefined,
+      };
+      if (assignLocationId) {
+        updateData.locationId = assignLocationId;
+      } else {
+        updateData.locationId = undefined;
+      }
+      
+      await updateAssignment(editingAssignment.id, updateData);
+      toast.success("Assignment updated successfully");
+      
+      setEditAssignmentDialogOpen(false);
+      setEditingAssignment(null);
+      setAssignLocationId("");
+      setAssignTaskId("");
+      setAssignShift("");
+      setAssignDay("");
+      setAssignStartTime("");
+      setAssignEndTime("");
+      setAssignDescription("");
+      onDataChange();
+    } catch (error) {
+      console.error("Error updating assignment:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error("Failed to update assignment", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -389,6 +468,16 @@ export function AssignedTab({
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                onClick={() => handleEditAssignment(assignment)}
+                                className="h-9 w-9 p-0"
+                                disabled={isReadOnly}
+                                title={isReadOnly ? "Cannot edit in view-only mode" : "Edit assignment"}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
                                 onClick={() => handleDeleteAssignment(assignment.id)}
                                 className="h-9 w-9 p-0"
                                 disabled={isReadOnly}
@@ -408,6 +497,139 @@ export function AssignedTab({
           )}
         </CardContent>
       </Card>
+      
+      <Dialog open={editAssignmentDialogOpen} onOpenChange={setEditAssignmentDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Assignment</DialogTitle>
+            <DialogDescription>Update the assignment details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Volunteer</Label>
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="font-medium">
+                  {editingAssignment && volunteers.find(v => v.id === editingAssignment.volunteerId)?.name}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {editingAssignment && volunteers.find(v => v.id === editingAssignment.volunteerId)?.email}
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-location">Location (optional)</Label>
+              <Select value={assignLocationId || undefined} onValueChange={(val) => setAssignLocationId(val || "")}>
+                <SelectTrigger id="edit-location">
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-task">Task *</Label>
+              <Select value={assignTaskId} onValueChange={setAssignTaskId}>
+                <SelectTrigger id="edit-task">
+                  <SelectValue placeholder="Select task" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tasks
+                    .filter((t) => !assignLocationId || !t.locationId || t.locationId === assignLocationId)
+                    .map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} {t.locationId ? `(${locations.find(l => l.id === t.locationId)?.name})` : '(No location)'}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Schedule</Label>
+                <div className="grid gap-2 grid-cols-2">
+                  <Select value={assignDay || undefined} onValueChange={(val) => setAssignDay(val || "")}>
+                    <SelectTrigger id="edit-day">
+                      <SelectValue placeholder="Select day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAYS.map((day) => (
+                        <SelectItem key={day} value={day}>{day}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={assignShift || undefined} onValueChange={(val) => setAssignShift(val || "")} disabled={!assignDay}>
+                    <SelectTrigger id="edit-shift">
+                      <SelectValue placeholder="Select shift" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHIFTS.map((shift) => (
+                        <SelectItem key={shift} value={shift}>{shift}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm text-muted-foreground mb-2 block">Custom Time (optional)</Label>
+                <div className="grid gap-2 grid-cols-2">
+                  <TimePicker
+                    value={assignStartTime}
+                    onChange={setAssignStartTime}
+                    placeholder="Start time"
+                    className="w-full"
+                  />
+                  <TimePicker
+                    value={assignEndTime}
+                    onChange={setAssignEndTime}
+                    placeholder="End time"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description (optional)</Label>
+              <Input
+                id="edit-description"
+                value={assignDescription}
+                onChange={(e) => setAssignDescription(e.target.value)}
+                placeholder="e.g., Special instructions or notes"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleUpdateAssignment} 
+                className="flex-1" 
+                disabled={isReadOnly}
+              >
+                Update Assignment
+              </Button>
+              <Button 
+                onClick={() => {
+                  setEditAssignmentDialogOpen(false);
+                  setEditingAssignment(null);
+                }} 
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
